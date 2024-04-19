@@ -16,8 +16,7 @@ PyJabber
 
 
 
-Python Boilerplate contains all the boilerplate you need to create a Python package.
-
+An XMPP server implemented in Python
 
 * Free software: MIT license
 * Documentation: https://pyjabber.readthedocs.io.
@@ -26,12 +25,7 @@ Python Boilerplate contains all the boilerplate you need to create a Python pack
 Features
 --------
 
-* TODO
+* Implemented the `RFC 6120 <https://datatracker.ietf.org/doc/rfc6120/>`_ (Core)
+* Partially implemented the `RFC 6121 <https://datatracker.ietf.org/doc/rfc6121/>`_ (IM and Presence)
+* Fully asynchronous
 
-Credits
--------
-
-This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
-
-.. _Cookiecutter: https://github.com/audreyr/cookiecutter
-.. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
