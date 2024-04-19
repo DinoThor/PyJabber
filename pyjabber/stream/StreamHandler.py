@@ -109,36 +109,44 @@ class StreamHandler():
             if "iq" in elem.tag:
                 if elem.attrib["type"] == "set":
                     bindElem = elem.find("urn:ietf:params:xml:ns:xmpp-bind#bind")
-                    if bindElem.text:   # Client gives the identifier
-                        pass   # TODO: Use given resource
-                    else:               # Server generates the identifier
-                        iqRes = ET.Element(
-                            "iq", 
-                            attrib = {
-                                "id": elem.attrib["id"],
-                                "type": "result"
-                            }
-                        )
-                        
-                        bindRes = ET.Element(
-                            "bind",
-                            attrib = {
-                                "xmlns": "urn:ietf:params:xml:ns:xmpp-bind"
-                            }
-                        )
-                        jidRes = ET.Element("jid")
-                        jidRes.text = f"{self._jid}@localhost/{str(uuid4())}"
-                        bindRes.append(jidRes)
-                        iqRes.append(bindRes)
+                    print(ET.tostring(bindElem))
+                    resouce = bindElem.find("urn:ietf:params:xml:ns:xmpp-bind#resource")
+                    print(resouce)
 
-                        self._buffer.write(ET.tostring(iqRes))
+                    if resouce is not None:   
+                        resource_id = resouce.text   
+                        print(resource_id)
+                    else:        
+                        resource_id = uuid4()
 
-                        # Stream is negotiated.
-                        # Update the connection register 
-                        # with the jid and transport
-                        self._connections.setJID(
-                            self._buffer.get_extra_info('peername'), 
-                            jidRes.text, self._buffer
-                        )
+                    iqRes = ET.Element(
+                        "iq", 
+                        attrib = {
+                            "id": elem.attrib["id"],
+                            "type": "result"
+                        }
+                    )
+                    
+                    bindRes = ET.Element(
+                        "bind",
+                        attrib = {
+                            "xmlns": "urn:ietf:params:xml:ns:xmpp-bind"
+                        }
+                    )
+
+                    jidRes = ET.Element("jid")
+                    jidRes.text = f"{self._jid}@localhost/{resource_id}"
+                    bindRes.append(jidRes)
+                    iqRes.append(bindRes)
+
+                    self._buffer.write(ET.tostring(iqRes))
+
+                    # Stream is negotiated.
+                    # Update the connection register 
+                    # with the jid and transport
+                    self._connections.setJID(
+                        self._buffer.get_extra_info('peername'), 
+                        jidRes.text, self._buffer
+                    )
                         
             return Signal.DONE

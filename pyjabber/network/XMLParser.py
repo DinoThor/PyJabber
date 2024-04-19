@@ -81,6 +81,11 @@ class XMPPStreamHandler(ContentHandler):
     def endElementNS(self, name, qname):
         logger.debug(f"End element NS: {qname} : {name}")
 
+        if "stream" in name:
+            self._buffer.write(b'</stream:stream>')
+            self._stack.clear()
+            return
+        
         if not self._stack:
             raise Exception()
 
@@ -103,7 +108,6 @@ class XMPPStreamHandler(ContentHandler):
                     self._stanzaHandler = StanzaHandler(self._buffer)
                     self._state = StreamState.READY
 
-        return
 
     def characters(self, content: str) -> None:
         if not self._stack:
