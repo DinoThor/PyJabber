@@ -6,7 +6,6 @@ import shelve
 from loguru import logger
 from uuid import uuid4
 from xml.etree import ElementTree as ET
-from stream.Stream import Stream
 from features.StartTLSFeature import StartTLSFeature
 from features.StreamFeature import StreamFeature
 from features.SASLFeature import SASLFeature
@@ -39,7 +38,6 @@ class StreamHandler():
         self._stage         = Stage.CONNECTED
 
         self._elem          = None
-
         self._jid           = None
 
     @property
@@ -51,6 +49,7 @@ class StreamHandler():
         self._buffer = value
 
     def handle_open_stream(self, elem:ET.Element = None) -> Signal | None:
+        # TCP Connection opened
         if self._stage == Stage.CONNECTED:
             self._streamFeature.reset()
             self._streamFeature.register(StartTLSFeature())
@@ -58,6 +57,7 @@ class StreamHandler():
             
             self._stage = Stage.OPENED
 
+        # TLS feature sended
         elif self._stage == Stage.OPENED:
             if "starttls" in elem.tag:
                 self._buffer.write(StartTLSFeature().proceedResponse())
@@ -73,6 +73,29 @@ class StreamHandler():
             self._stage = Stage.SASL
         
         elif self._stage == Stage.SASL:
+            if "iq" in elem.tag:
+                query = elem.find("jabber:iq:register#query")
+                if query:
+                    iq = ET.Element(
+                        "iq", 
+                        attrib = {
+                            "type": "error", 
+                            "id": elem.attrib["id"]
+                        }
+                    )
+                    error = ET.Element(
+                        "error",
+                        attrib = {"type": "cancel"}
+                    )
+                    msg = ET.Element(
+                        "service-unavailable",
+                        attrib = {
+                            "xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"
+                        }
+                    )
+                    error.append(msg)
+                    iq.append(error)
+                    self._buffer.write(ET.tostring(iq))
             if "auth" in elem.tag:
                 with shelve.open("./network/users/credentials") as credStorage:
 
@@ -144,7 +167,7 @@ class StreamHandler():
                     # Stream is negotiated.
                     # Update the connection register 
                     # with the jid and transport
-                    self._connections.setJID(
+                    self._connections.set_jid(
                         self._buffer.get_extra_info('peername'), 
                         jidRes.text, self._buffer
                     )

@@ -2,6 +2,7 @@
 import re
 
 def deglose(tag: str):
+    print(f"DEGLOSSING ==> {tag}")
     namespace   = tag.split("}")[0].replace("{", "")
     tag         = tag.split("}")[1] 
     return namespace, tag

@@ -8,6 +8,9 @@ class ConectionsManager(metaclass = Singleton):
         "_autoRegister"
     ]
     
+    JID = "jid"
+    TRANSPORT = "transport"
+
     def __init__(self, autoRegister = True) -> None:
         self._peerList = {} 
         self._autoRegister = autoRegister
@@ -17,30 +20,36 @@ class ConectionsManager(metaclass = Singleton):
     
     def get_buffer_by_jid(self, jid):
         for key, values in self._peerList.items():
-            if re.search(f"{jid}/*", values["jid"]):
-                return self._peerList[key]["transport"]
+            if re.search(f"{jid}/*", values[self.JID]):
+                return self._peerList[key][self.TRANSPORT]
             
         return None
 
     def connection(self, peer):
         if peer not in self._peerList:
             self._peerList[peer] = {
-                "jid"       : None,
-                "transport" : None
+                self.JID       : None,
+                self.TRANSPORT : None
             } 
-
-    def setJID(self, peer, jid, transport):
-        try:
-            self._peerList[peer]["jid"]         = jid
-            self._peerList[peer]["transport"]   = transport
-        except KeyError:
-            raise Exception()
 
     def disconnection(self, peer):
         try:
             self._peerList.pop(peer)
         except KeyError:
             logger.error(f"{peer} not present in the online list")
+
+    def get_jid(self, peer):
+        try:
+            return self._peerList[peer][self.JID]
+        except KeyError:
+            pass
+
+    def set_jid(self, peer, jid, transport):
+        try:
+            self._peerList[peer][self.JID]         = jid
+            self._peerList[peer][self.TRANSPORT]   = transport
+        except KeyError:
+            raise Exception()
 
     def autoRegister(self):
         return self._autoRegister

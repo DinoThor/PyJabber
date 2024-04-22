@@ -94,10 +94,11 @@ class XMLProtocol(asyncio.Protocol):
 
         self._timeout_monitor.reset()
 
-        newdata = data.decode()
-        
+        newdata = data[:21]
+        if newdata == b"<?xml version=\"1.0\"?>":
+            data = data[21:]
         # try:
-        self._xml_parser.feed(newdata)
+        self._xml_parser.feed(data)
         # except sax.SAXParseException as e:
         #     logger.error(f"Error parsing XML: {e}")
         # except Exception as e:

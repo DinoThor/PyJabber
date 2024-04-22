@@ -1,13 +1,16 @@
 import xml.etree.ElementTree as ET
 
 from network.ConnectionsManager import ConectionsManager
+from plugins.PluginManager import PluginManager
 from stanzas.Message import Message
 
 class StanzaHandler():
     def __init__(self, buffer) -> None:
+        peername = buffer.get_extra_info('peername')
+        
         self._buffer = buffer
-
         self._connections   = ConectionsManager()
+        self._pluginManager = PluginManager(self._connections.get_jid(peername))
         self._functions     = {
             "jabber:client#iq"          : self.handleIQ,
             "jabber:client#message"     : self.handleMsg,
@@ -21,14 +24,8 @@ class StanzaHandler():
             raise Exception()
         
     def handleIQ(self, element: ET.Element):
-        type = element.attrib["type"]
-        
-        hand = {
-            "get": 2,
-            "result" : 2,
-            "set": 2,
-            "error": 2
-        }
+        res = self._pluginManager.feed(element)
+        self._buffer.write(res)
 
 
     def handleMsg(self, element: ET.Element):

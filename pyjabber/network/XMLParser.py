@@ -65,6 +65,7 @@ class XMPPStreamHandler(ContentHandler):
             self._stack.append(elem)
 
         elif name[1] == "stream" and name[0] == "http://etherx.jabber.org/streams":
+            self._buffer.write(b"<?xml version='1.0'?>")
             self._buffer.write(responseStream(attrs).open_tag())
             
             elem = ET.Element(
@@ -104,7 +105,7 @@ class XMPPStreamHandler(ContentHandler):
                 signal = self._streamHandler.handle_open_stream(elem)
                 if signal == Signal.RESET and "stream" in self._stack[-1].tag:
                     self._stack.pop()
-                elif signal == Signal.DONE:         # Features negotiation ongoing         
+                elif signal == Signal.DONE:        
                     self._stanzaHandler = StanzaHandler(self._buffer)
                     self._state = StreamState.READY
 
@@ -123,3 +124,4 @@ class XMPPStreamHandler(ContentHandler):
 
     def tagToString(self, tag):
         return "#".join(map(str, tag))
+
