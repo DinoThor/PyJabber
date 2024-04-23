@@ -6,11 +6,11 @@ import shelve
 from loguru import logger
 from uuid import uuid4
 from xml.etree import ElementTree as ET
-from features.StartTLSFeature import StartTLSFeature
-from features.StreamFeature import StreamFeature
-from features.SASLFeature import SASLFeature
-from features.ResourceBinding import ResourceBinding
-from network.ConnectionsManager import ConectionsManager
+from pyjabber.features.StartTLSFeature import StartTLSFeature
+from pyjabber.features.StreamFeature import StreamFeature
+from pyjabber.features.SASLFeature import SASLFeature
+from pyjabber.features.ResourceBinding import ResourceBinding
+from pyjabber.network.ConnectionsManager import ConectionsManager
 
 class Stage(Enum):
     """
@@ -97,7 +97,7 @@ class StreamHandler():
                     iq.append(error)
                     self._buffer.write(ET.tostring(iq))
             if "auth" in elem.tag:
-                with shelve.open("./network/users/credentials") as credStorage:
+                with shelve.open("./pyjabber/network/users/credentials") as credStorage:
 
                     data        = base64.b64decode(elem.text).split("\x00".encode())
                     self._jid   = data[1].decode()
@@ -132,13 +132,10 @@ class StreamHandler():
             if "iq" in elem.tag:
                 if elem.attrib["type"] == "set":
                     bindElem = elem.find("urn:ietf:params:xml:ns:xmpp-bind#bind")
-                    print(ET.tostring(bindElem))
                     resouce = bindElem.find("urn:ietf:params:xml:ns:xmpp-bind#resource")
-                    print(resouce)
 
                     if resouce is not None:   
                         resource_id = resouce.text   
-                        print(resource_id)
                     else:        
                         resource_id = uuid4()
 

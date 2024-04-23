@@ -1,6 +1,6 @@
-from plugins.roster.Roster import Roster
-from plugins.PluginInterface import Plugin
-from utils import ClarkNotation
+from pyjabber.plugins.roster.Roster import Roster
+from pyjabber.plugins.PluginInterface import Plugin
+import pyjabber.stanzas.error.StanzaError as SE
 
 import xml.etree.ElementTree as ET
 
@@ -10,21 +10,26 @@ class PluginManager():
         self._jid = jid
         self._plugins: dict[str, Plugin] = {
             'jabber:iq:roster'      : Roster,
-            # 'jabber:'
         }
+        self._activePlugins: dict[str, Plugin] = {}
 
     def feed(self, element: ET.Element):
         if not element:
-            raise Exception() #TODO: Handle "not child in IQ"
+            return SE.invalid_xml()
         
         child = element[0]
         tag = child.tag.split("#")[0]
+        print(self._plugins[tag])
 
         try:
-            plugin = self._plugins[tag]
-            handler: Plugin = plugin()
-            return handler.feed(self._jid, element)
+            plugin = self._activePlugins[tag]       #Plugin already instanced
+            return plugin.feed(self._jid, element)
         except KeyError:
-            raise Exception() #TODO: Handle "not suported XEP"
+            try:
+                plugin = self._plugins[tag]         #Retrive plugin from list and instance
+                self._activePlugins[tag] = plugin()
+                return self._activePlugins[tag].feed(self._jid, element)
+            except KeyError: 
+                return SE.service_unavaliable()     #Plugin unavaliable
 
       

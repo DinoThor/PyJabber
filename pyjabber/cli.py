@@ -1,5 +1,4 @@
 
-"""Console script for vangare."""
 import click
 import os
 import socket
@@ -7,9 +6,7 @@ import sys
 import yaml
 
 from loguru import logger
-
-from server import Server, run_server
-from features import StartTLSFeature
+from pyjabber.server import Server, run_server
 
 
 def CommandWithConfigFile(config_file_param_name):
@@ -37,16 +34,14 @@ def CommandWithConfigFile(config_file_param_name):
 
 
 @click.option("--log_level", default="INFO", type=str, help="Sets the logging level")
-@click.option("--log_file", default="vangare.log", type=str, help="Sets the logging filename")
+@click.option("--log_file", default="pyjabber.log", type=str, help="Sets the logging filename")
 @click.option(
     "--log_format",
     default="<green>{time}</green> - <level>{level}: {message}</level>",
     type=str,
     help="Sets the logging format",
 )
-@click.option(
-    "--log_rotation", default=None, type=str, help="Sets the logging file rotation mode"
-)
+@click.option("--log_rotation", default=None, type=str, help="Sets the logging file rotation mode")
 @click.option("--host", default="0.0.0.0", type=str, help="Server hostname")
 @click.option("--client_port", default=5222, type=int, help="Client connections port")
 @click.option("--server_port", default=5269, type=int, help="Server connections port")
@@ -56,31 +51,26 @@ def CommandWithConfigFile(config_file_param_name):
     type=click.Choice(["IPV4", "IPV6", "NONE"]),
     help="Server connections port",
 )
-@click.option(
-    "--features",
-    default=["*starttls*", "*sasl*"],
-    help="Supported features by XMPP server. Add * to set the feature as required."
-)
-@click.option(
-    "--cert_file",
-    default=os.path.realpath("certs/server.crt"),
-    help="Sets the certificate file path for TLS connections"
-)
-@click.option(
-    "--key_file",
-    default=os.path.realpath("certs/server.key"),
-    help="Sets the private key file path for TLS connections"
-)
-@click.option(
-    "--sasl_mechanisms",
-    default=["PLAIN", "SCRAM-SHA-1", "SCRAMPLUS"],
-    help="Supported SASL mechanisms",
-)
-@click.option(
-    "--sasl_max_retries",
-    default=3,
-    help="Max retries on failed sasl authentication",
-)
+# @click.option(
+#     "--cert_file",
+#     default=os.path.realpath("certs/server.crt"),
+#     help="Sets the certificate file path for TLS connections"
+# )
+# @click.option(
+#     "--key_file",
+#     default=os.path.realpath("certs/server.key"),
+#     help="Sets the private key file path for TLS connections"
+# )
+# @click.option(
+#     "--sasl_mechanisms",
+#     default=["PLAIN", "SCRAM-SHA-1", "SCRAMPLUS"],
+#     help="Supported SASL mechanisms",
+# )
+# @click.option(
+#     "--sasl_max_retries",
+#     default=3,
+#     help="Max retries on failed sasl authentication",
+# )
 @click.option(
     "-t",
     "--timeout",
@@ -93,59 +83,52 @@ def CommandWithConfigFile(config_file_param_name):
     type=click.Path(exists=True),
     help="Loads configuration from a yaml file. Overrides other parameters",
 )
-@click.command(cls=CommandWithConfigFile("config_file"))
+# @click.command(cls=CommandWithConfigFile("config_file"))
 def main(
-    log_level,
-    log_file,
-    log_format,
-    log_rotation,
-    host,
-    client_port,
-    server_port,
-    family,
-    features,
-    cert_file,
-    key_file,
-    sasl_mechanisms,
-    sasl_max_retries,
-    timeout,
-    config_file,
+    # log_level,
+    # log_file,
+    # log_format,
+    # log_rotation,
+    # host,
+    # client_port,
+    # server_port,
+    # family,
+    # timeout,
 ):
-    # Register logger
+
+    # logger.add(
+    #     log_file,
+    #     enqueue     = True,
+    #     format      = log_format,
+    #     rotation    = log_rotation,
+    #     level       = "log_level",
+    # )
+
     logger.add(
-        log_file,
+        "pyjabber.log",
         enqueue     = True,
-        format      = log_format,
-        rotation    = log_rotation,
-        level       = log_level,
+        format      = "<green>{time}</green> - <level>{level}: {message}</level>",
+        rotation    = None,
+        level       = "DEBUG",
     )
 
-    # Create server
-    f = socket.AF_UNSPEC
-    if family == "IPV4":
-        f = socket.AF_INET
-    if family == "IPV6":
-        f = socket.AF_INET6
+    f = socket.AF_INET
 
-    # Create server
+
+    # f = socket.AF_UNSPEC
+    # if family == "IPV4":
+    #     f = socket.AF_INET
+    # if family == "IPV6":
+    #     f = socket.AF_INET6
+
     server = Server(
-        host                = host,
-        client_port         = client_port,
-        server_port         = server_port,
+        host                = "0.0.0.0",
+        client_port         = 5222,
+        server_port         = 5223,
         family              = f,
-        connection_timeout  = timeout
+        connection_timeout  = 60
     )
 
-    # # Set server features
-    # for f in features:
-    #     required = f.startswith("*")
-    #     if f.strip() == "starttls" or f.strip() == "*starttls*":
-    #         server._features.register(StartTLSFeature(cert=cert_file, key=key_file, required=required))
-    #     elif f.strip() == "sasl" or f.strip() == "*sasl*":
-    #         pass
-    #         # server.features.register(SASLFeature(mechanisms=sasl_mechanisms, max_retries=sasl_max_retries, required=required))
-
-    # Run server
     run_server(server)
     return 0
 

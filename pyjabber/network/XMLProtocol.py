@@ -5,9 +5,9 @@ import os
 from loguru import logger
 from xml import sax
 
-from network.StreamAlivenessMonitor import StreamAlivenessMonitor
-from network.XMLParser import XMPPStreamHandler
-from network.ConnectionsManager import ConectionsManager
+from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
+from pyjabber.network.XMLParser import XMPPStreamHandler
+from pyjabber.network.ConnectionsManager import ConectionsManager
 
 
 
@@ -78,10 +78,14 @@ class XMLProtocol(asyncio.Protocol):
         :param exc: Exception that caused the connection to close
         :type exc: Exception
         '''
-        # logger.info(f"Connection lost from {self._transport.get_extra_info('peername')}: Reason {exc}")
+        try:
+            logger.info(f"Connection lost from {self._transport.get_extra_info('peername')}: Reason {exc}")
+            self._transport     = None
+            self._xml_parser    = None
 
-        # self._transport     = None
-        # self._xml_parser    = None
+        except:
+            logger.info(f"Connection lost after EOF recived")
+
 
     def data_received(self, data):
         '''
@@ -90,13 +94,24 @@ class XMLProtocol(asyncio.Protocol):
         :param data: Chunk of data received
         :type data: Byte array
         '''
-        logger.debug(f"Data received: {data.decode('utf-8')}")
+        try:
+            logger.debug(f"Data received: {data.decode()}")
+        except:
+            return
 
         self._timeout_monitor.reset()
 
-        newdata = data[:21]
-        if newdata == b"<?xml version=\"1.0\"?>":
-            data = data[21:]
+        '''
+        Some XMPP clients/libraries send the XML header
+        with the stream stanza all together.
+        This can lead sometimes in a exception for the parser.
+        An XML header gives no usefull information, as the RFC6120
+        takes the vesion 1.0 as standar, so we can remove it safely.
+        If I try to remove the header inside the except block, the parser
+        keeps refusing it. I'm forced to do always before the feed.
+        I probably should change the parser
+        '''
+        data = data.replace(b"<?xml version=\"1.0\"?>", b"")
         # try:
         self._xml_parser.feed(data)
         # except sax.SAXParseException as e:
@@ -135,11 +150,12 @@ class XMLProtocol(asyncio.Protocol):
         task.add_done_callback(self.handleSTARTTLS)
 
     async def enableTLS(self):
+        print(os.getcwd() + 'pyjabber/network/certs/localhost.pem')
         loop        = asyncio.get_running_loop()
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
         ssl_context.load_cert_chain(
-            os.getcwd() + '/network/certs/localhost.pem',     # Cert file
-            os.getcwd() + '/network/certs/localhost-key.pem') # Key file
+            os.getcwd() + '/pyjabber/network/certs/localhost.pem',     # Cert file
+            os.getcwd() + '/pyjabber/network/certs/localhost-key.pem') # Key file
 
         return await loop.start_tls(
                                 transport   = self._transport, 

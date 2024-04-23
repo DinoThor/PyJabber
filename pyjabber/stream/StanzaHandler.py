@@ -1,8 +1,8 @@
 import xml.etree.ElementTree as ET
 
-from network.ConnectionsManager import ConectionsManager
-from plugins.PluginManager import PluginManager
-from stanzas.Message import Message
+from pyjabber.network.ConnectionsManager import ConectionsManager
+from pyjabber.plugins.PluginManager import PluginManager
+from pyjabber.stanzas.Message import Message
 
 class StanzaHandler():
     def __init__(self, buffer) -> None:

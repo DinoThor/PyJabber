@@ -8,17 +8,16 @@ class Message(ET.Element):
             id      : str,
             body    : str,
             mtype   : str = "chat",
-            lang    : str = "en",
             tag     : str = "message", 
             **extra : str) -> None:
         
-        attrib: dict[str, str] = {}
-        
-        attrib["to"]        = mto
-        attrib["from"]      = mfrom
-        attrib["mtype"]     = mtype
-        attrib["id"]        = id
-        attrib["xml:lang"]  = lang
+        attrib = {
+            k: v for k, v in (
+                ("id", id), 
+                ("from", mfrom), 
+                ("to", mto), 
+                ("type", mtype)) if v is not None
+        }
         
         super().__init__(tag, attrib, **extra)
 

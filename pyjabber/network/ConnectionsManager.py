@@ -1,5 +1,5 @@
 import re
-from utils import Singleton
+from pyjabber.utils import Singleton
 from loguru import logger
 
 class ConectionsManager(metaclass = Singleton):

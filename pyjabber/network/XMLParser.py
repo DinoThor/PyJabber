@@ -4,12 +4,12 @@ from loguru import logger
 from xml.sax import ContentHandler
 from xml.etree import ElementTree as ET
 
-from XMLObject import responseStream
+from pyjabber.XMLObject import responseStream
 
-from stream import Stream
-from stream.StreamHandler import StreamHandler, Signal
-from stream.StanzaHandler import StanzaHandler
-from network.ConnectionsManager import ConectionsManager
+from pyjabber.stream import Stream
+from pyjabber.stream .StreamHandler import StreamHandler, Signal
+from pyjabber.stream .StanzaHandler import StanzaHandler
+from pyjabber.network.ConnectionsManager import ConectionsManager
 
 
 class StreamState(Enum):

@@ -1,6 +1,6 @@
 from uuid import uuid4
-from XMLObject import BaseXML
-from XMLObject.Namespaces import Namespaces
+from pyjabber.XMLObject import BaseXML
+from pyjabber.XMLObject.Namespaces import Namespaces
 
 class Stream(BaseXML):
     '''
