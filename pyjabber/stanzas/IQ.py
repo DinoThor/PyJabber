@@ -25,5 +25,4 @@ class IQ(ET.Element):
                 ("type", type)) if v is not None
         }
 
-        
         super().__init__(tag, attrib, **extra)

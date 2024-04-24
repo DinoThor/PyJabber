@@ -12,10 +12,8 @@ CLIENT_NS   = "jabber:client"
 SERVER_PORT = 5269
 SERVER_NS   = "jabber:server"
 
-def raise_exit():
-    raise SystemExit(1)
 
-class Server:
+class Server():
     _slots__ = [
         "_host",
         "_client_port",
@@ -29,7 +27,7 @@ class Server:
 
     def __init__(
         self,
-        host                = "0.0.0.0",
+        host                = "localhost",
         client_port         = CLIENT_PORT,
         server_port         = SERVER_PORT,
         family              = socket.AF_INET,
@@ -55,7 +53,6 @@ class Server:
             lambda: XMLProtocol(
                 namespace           = CLIENT_NS,
                 connection_timeout  = self._connection_timeout,
-                connectionList      = self._connections
             ),
             host    = self._host,
             port    = self._client_port,
@@ -79,39 +76,37 @@ class Server:
 
         logger.info("Server stopped...")
 
-def run_server(
-        server:         Server, 
-        debug:          bool = False):
-    
-    loop = asyncio.get_event_loop()
-    loop.set_debug(debug)
+    def raise_exit(self):
+        raise SystemExit(1)
 
-    # Add handler for graceful exit
-    try:
-        loop.add_signal_handler(signal.SIGINT, raise_exit)
-        loop.add_signal_handler(signal.SIGABRT, raise_exit)
-        loop.add_signal_handler(signal.SIGTERM, raise_exit)
-    except NotImplementedError:  # pragma: no cover
-        # Not implemented on Windows
-        pass
+    def run_server(self, debug:bool = False):
+        loop = asyncio.get_event_loop()
+        loop.set_debug(debug)
 
-    try:        
-        main_task = loop.create_task(server.start(), name="main_server")
-        loop.run_until_complete(main_task)
-        loop.run_forever()
+        try:
+            loop.add_signal_handler(signal.SIGINT, self.raise_exit)
+            loop.add_signal_handler(signal.SIGABRT, self.raise_exit)
+            loop.add_signal_handler(signal.SIGTERM, self.raise_exit)
+        except NotImplementedError:  # pragma: no cover
+            pass
 
-    except (SystemExit, KeyboardInterrupt):  # pragma: no cover
-        pass
+        try:        
+            main_task = loop.create_task(self.start(), name="main_server")
+            loop.run_until_complete(main_task)
+            loop.run_forever()
 
-    finally:
-        # Cancel pending tasks
-        tasks = asyncio.all_tasks(loop)
-        for task in tasks:
-            task.cancel()
-        loop.run_until_complete(asyncio.gather(*tasks, return_exceptions = True))
+        except (SystemExit, KeyboardInterrupt):  # pragma: no cover
+            pass
 
-        # Close the server
-        close_task = loop.create_task(server.stop(), name="close_server")
-        loop.run_until_complete(close_task)
-        loop.close()
-        asyncio.set_event_loop(None)
+        finally:
+            # Cancel pending tasks
+            tasks = asyncio.all_tasks(loop)
+            for task in tasks:
+                task.cancel()
+            loop.run_until_complete(asyncio.gather(*tasks, return_exceptions = True))
+
+            # Close the server
+            close_task = loop.create_task(self.stop(), name="close_server")
+            loop.run_until_complete(close_task)
+            loop.close()
+            asyncio.set_event_loop(None)

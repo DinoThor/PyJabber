@@ -6,7 +6,7 @@ import sys
 import yaml
 
 from loguru import logger
-from pyjabber.server import Server, run_server
+from pyjabber.server import Server
 
 
 def CommandWithConfigFile(config_file_param_name):
@@ -42,7 +42,7 @@ def CommandWithConfigFile(config_file_param_name):
     help="Sets the logging format",
 )
 @click.option("--log_rotation", default=None, type=str, help="Sets the logging file rotation mode")
-@click.option("--host", default="0.0.0.0", type=str, help="Server hostname")
+@click.option("--host", default="localhost", type=str, help="Server hostname")
 @click.option("--client_port", default=5222, type=int, help="Client connections port")
 @click.option("--server_port", default=5269, type=int, help="Server connections port")
 @click.option(
@@ -84,25 +84,7 @@ def CommandWithConfigFile(config_file_param_name):
     help="Loads configuration from a yaml file. Overrides other parameters",
 )
 # @click.command(cls=CommandWithConfigFile("config_file"))
-def main(
-    # log_level,
-    # log_file,
-    # log_format,
-    # log_rotation,
-    # host,
-    # client_port,
-    # server_port,
-    # family,
-    # timeout,
-):
-
-    # logger.add(
-    #     log_file,
-    #     enqueue     = True,
-    #     format      = log_format,
-    #     rotation    = log_rotation,
-    #     level       = "log_level",
-    # )
+def main():
 
     logger.add(
         "pyjabber.log",
@@ -112,24 +94,9 @@ def main(
         level       = "DEBUG",
     )
 
-    f = socket.AF_INET
+    server = Server()
+    server.run_server()
 
-
-    # f = socket.AF_UNSPEC
-    # if family == "IPV4":
-    #     f = socket.AF_INET
-    # if family == "IPV6":
-    #     f = socket.AF_INET6
-
-    server = Server(
-        host                = "0.0.0.0",
-        client_port         = 5222,
-        server_port         = 5223,
-        family              = f,
-        connection_timeout  = 60
-    )
-
-    run_server(server)
     return 0
 
 

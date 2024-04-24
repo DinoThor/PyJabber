@@ -27,7 +27,6 @@ class XMLProtocol(asyncio.Protocol):
 
     def __init__(
             self, 
-            connectionList,
             namespace                       = "jabber:client", 
             connection_timeout              = None):
         
