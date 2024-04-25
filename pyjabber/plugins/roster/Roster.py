@@ -8,7 +8,7 @@ from pyjabber.stanzas.IQ import IQ
 
 
 class Roster(Plugin):
-    DB_NAME = "./pyjabber/plugins/roster/roster.db"
+    DB_NAME = "./pyjabber/db/server.db"
 
     def __init__(self) -> None:
         self._handlers = {
