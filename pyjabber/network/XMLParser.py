@@ -4,7 +4,7 @@ from loguru import logger
 from xml.sax import ContentHandler
 from xml.etree import ElementTree as ET
 
-from pyjabber.XMLObject import responseStream
+import pyjabber.stream.Stream
 
 from pyjabber.stream import Stream
 from pyjabber.stream .StreamHandler import StreamHandler, Signal
@@ -65,8 +65,8 @@ class XMPPStreamHandler(ContentHandler):
             self._stack.append(elem)
 
         elif name[1] == "stream" and name[0] == "http://etherx.jabber.org/streams":
-            self._buffer.write(b"<?xml version='1.0'?>")
-            self._buffer.write(responseStream(attrs).open_tag())
+            # self._buffer.write(b"<?xml version='1.0'?>")
+            self._buffer.write(Stream.responseStream(attrs))
             
             elem = ET.Element(
                 self.tagToString(name),

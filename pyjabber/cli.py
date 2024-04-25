@@ -1,36 +1,36 @@
 
 import click
-import os
-import socket
+# import os
+# import socket
 import sys
-import yaml
+# import yaml
 
 from loguru import logger
 from pyjabber.server import Server
 
 
-def CommandWithConfigFile(config_file_param_name):
-    """This class load the configuration file and overrides the parameters.
+# def CommandWithConfigFile(config_file_param_name):
+#     """This class load the configuration file and overrides the parameters.
 
-    :param config_file_param_name: Parameter cointaing the path of the configuration file.
-    :type config_file_param_name: click.Path
-    :return: Custom command parser
-    :rtype: CustomCommandClass
-    """
+#     :param config_file_param_name: Parameter cointaing the path of the configuration file.
+#     :type config_file_param_name: click.Path
+#     :return: Custom command parser
+#     :rtype: CustomCommandClass
+#     """
 
-    class CustomCommandClass(click.Command):
-        def invoke(self, ctx):
-            config_file = ctx.params[config_file_param_name]
-            if config_file is not None:
-                with open(config_file) as f:
-                    config_data = yaml.safe_load(f)
-                    for param, value in ctx.params.items():
-                        if param in config_data:
-                            ctx.params[param] = config_data[param]
+#     class CustomCommandClass(click.Command):
+#         def invoke(self, ctx):
+#             config_file = ctx.params[config_file_param_name]
+#             if config_file is not None:
+#                 with open(config_file) as f:
+#                     config_data = yaml.safe_load(f)
+#                     for param, value in ctx.params.items():
+#                         if param in config_data:
+#                             ctx.params[param] = config_data[param]
 
-            return super(CustomCommandClass, self).invoke(ctx)
+#             return super(CustomCommandClass, self).invoke(ctx)
 
-    return CustomCommandClass
+#     return CustomCommandClass
 
 
 @click.option("--log_level", default="INFO", type=str, help="Sets the logging level")
