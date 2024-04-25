@@ -34,9 +34,10 @@ class Stream(ET.Element):
                 ("to", to), 
                 ("version", version), 
                 ("xml:lang", xml_lang),
-                ("xmlns:stream", Namespaces.XMLSTREAM.value) 
                 ("xmlns", xmlns)) if v is not None
         }
+
+        attrib["xmlns:stream"] = Namespaces.XMLSTREAM.value
 
         super().__init__("stream:stream", attrib)
 
