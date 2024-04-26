@@ -11,6 +11,7 @@ from pyjabber.features.StreamFeature import StreamFeature
 from pyjabber.features.SASLFeature import SASLFeature
 from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionsManager import ConectionsManager
+from pyjabber.utils import ClarkNotation as CN
 
 class Stage(Enum):
     """
@@ -74,7 +75,7 @@ class StreamHandler():
         
         elif self._stage == Stage.SASL:
             if "iq" in elem.tag:
-                query = elem.find("jabber:iq:register#query")
+                query = elem.find(CN.clarkFromTuple(("jabber:iq:register", "query")))
                 if query:
                     iq = ET.Element(
                         "iq", 
@@ -131,8 +132,8 @@ class StreamHandler():
         elif self._stage == Stage.BIND:
             if "iq" in elem.tag:
                 if elem.attrib["type"] == "set":
-                    bindElem = elem.find("urn:ietf:params:xml:ns:xmpp-bind#bind")
-                    resouce = bindElem.find("urn:ietf:params:xml:ns:xmpp-bind#resource")
+                    bindElem = elem.find(CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "bind")))
+                    resouce = bindElem.find(CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "resource")))
 
                     if resouce is not None:   
                         resource_id = resouce.text   

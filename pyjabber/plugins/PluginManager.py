@@ -1,6 +1,7 @@
 from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.plugins.PluginInterface import Plugin
 import pyjabber.stanzas.error.StanzaError as SE
+from pyjabber.utils import ClarkNotation as CN
 
 import xml.etree.ElementTree as ET
 
@@ -18,7 +19,7 @@ class PluginManager():
             return SE.invalid_xml()
         
         child = element[0]
-        tag = child.tag.split("#")[0]
+        tag, _ = CN.deglose(child.tag)
         print(self._plugins[tag])
 
         try:
