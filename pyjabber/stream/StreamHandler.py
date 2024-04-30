@@ -1,14 +1,15 @@
 import base64
 from enum import Enum
 import hashlib
-import shelve
+import sqlite3
 
 from loguru import logger
 from uuid import uuid4
 from xml.etree import ElementTree as ET
+from pyjabber.features import InBandRegistration as IBR
 from pyjabber.features.StartTLSFeature import StartTLSFeature
 from pyjabber.features.StreamFeature import StreamFeature
-from pyjabber.features.SASLFeature import SASLFeature
+from pyjabber.features.SASLFeature import SASLFeature, SOSLFeature
 from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionsManager import ConectionsManager
 from pyjabber.utils import ClarkNotation as CN
@@ -66,62 +67,32 @@ class StreamHandler():
                 self._stage = Stage.SSL
                 return Signal.RESET
         
+        # TLS Handshake made. Authenticate/register user
         elif self._stage == Stage.SSL:
             self._streamFeature.reset()
+
+            if self._connections.autoRegister():
+                self._streamFeature.register(IBR.InBandRegistration())
+
             self._streamFeature.register(SASLFeature())
             self._buffer.write(self._streamFeature.tobytes())
 
             self._stage = Stage.SASL
         
         elif self._stage == Stage.SASL:
-            if "iq" in elem.tag:
-                query = elem.find(CN.clarkFromTuple(("jabber:iq:register", "query")))
-                if query:
-                    iq = ET.Element(
-                        "iq", 
-                        attrib = {
-                            "type": "error", 
-                            "id": elem.attrib["id"]
-                        }
-                    )
-                    error = ET.Element(
-                        "error",
-                        attrib = {"type": "cancel"}
-                    )
-                    msg = ET.Element(
-                        "service-unavailable",
-                        attrib = {
-                            "xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"
-                        }
-                    )
-                    error.append(msg)
-                    iq.append(error)
-                    self._buffer.write(ET.tostring(iq))
-            if "auth" in elem.tag:
-                with shelve.open("./pyjabber/network/users/credentials") as credStorage:
+            res = SOSLFeature().feed(elem)
+            if type(res) is tuple:
+                if res[0].value == Signal.RESET.value:
+                    self._buffer.write(res[1])
+                    self._stage = Stage.AUTH
+                    return Signal.RESET
+                else:
+                    self._buffer.write(res[1])
+                    self._stage = Stage.AUTH
+                    return
+                
+            self._buffer.write(res)
 
-                    data        = base64.b64decode(elem.text).split("\x00".encode())
-                    self._jid   = data[1].decode()
-                    keyhash     = hashlib.sha256(data[2]).hexdigest()
-
-                    try:
-
-                        if credStorage[data[1].decode()] == keyhash:
-                            self._buffer.write(SASLFeature().success())
-                            self._stage = Stage.AUTH
-                        else:
-                            self._buffer.write(SASLFeature().not_authorized())
-
-                    except KeyError:
-                        if self._connections.autoRegister:
-                            credStorage[data[1].decode()] = keyhash
-                            self._buffer.write(SASLFeature().success())
-                            self._stage = Stage.AUTH
-                        else:
-                            logger.info("Auth tag without credentials")
-                            self._buffer.write(SASLFeature().not_authorized())
-
-                return Signal.RESET
             
         elif self._stage == Stage.AUTH:
             self._streamFeature.reset()

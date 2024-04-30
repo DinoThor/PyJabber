@@ -3,6 +3,8 @@ from pyjabber.plugins.PluginInterface import Plugin
 import pyjabber.stanzas.error.StanzaError as SE
 from pyjabber.utils import ClarkNotation as CN
 
+from pyjabber.plugins.xep_0077 import inBandRegistration
+
 import xml.etree.ElementTree as ET
 
 class PluginManager():
@@ -11,6 +13,7 @@ class PluginManager():
         self._jid = jid
         self._plugins: dict[str, Plugin] = {
             'jabber:iq:roster'      : Roster,
+            'jabber:iq:register'    : inBandRegistration
         }
         self._activePlugins: dict[str, Plugin] = {}
 
