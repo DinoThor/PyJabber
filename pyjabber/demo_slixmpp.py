@@ -75,6 +75,7 @@ if __name__ == "__main__":
     if sys.argv[1] == "t":
         xmpp = TestClientBot("test@127.0.0.1", "1234")
     else:    
-        xmpp = TestClientBot("demo@localhost", "1234")
+        xmpp = TestClientBot("jincho@127.0.0.1", "1234")
+    xmpp.register_plugin('xep_0077')
     xmpp.connect()
     xmpp.process(forever=False)

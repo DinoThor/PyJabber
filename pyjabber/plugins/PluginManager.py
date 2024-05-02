@@ -13,7 +13,7 @@ class PluginManager():
         self._jid = jid
         self._plugins: dict[str, Plugin] = {
             'jabber:iq:roster'      : Roster,
-            'jabber:iq:register'    : inBandRegistration
+            # 'jabber:iq:register'    : inBandRegistration
         }
         self._activePlugins: dict[str, Plugin] = {}
 
@@ -23,7 +23,6 @@ class PluginManager():
         
         child = element[0]
         tag, _ = CN.deglose(child.tag)
-        print(self._plugins[tag])
 
         try:
             plugin = self._activePlugins[tag]       #Plugin already instanced

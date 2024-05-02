@@ -1,78 +1,26 @@
 import base64
-from enum import Enum
+from contextlib import closing
 import hashlib
-import sqlite3
 import pyjabber.utils.ClarkNotation as CN
+
+from enum import Enum
+from pyjabber.features.FeatureInterface import FeatureInterface
 from typing import Tuple
 from xml.etree import ElementTree as ET
-from xml.etree.ElementTree import Element
-
-from pyjabber.features.FeatureInterface import FeatureInterface
-from pyjabber.network.ConnectionsManager import ConectionsManager
+from pyjabber.db.database import connection
 
 
 class mechanismEnum(Enum):
     PLAIN       = "PLAIN"
     SCRAM_SHA_1 = "SCRAM-SHA-1"
 
+
 class Signal(Enum):
     RESET   = 0
     DONE    = 1
 
 
-# if "iq" in elem.tag:
-
-#     query = elem.find(CN.clarkFromTuple(("jabber:iq:register", "query")))
-#     if query is None:
-#         raise Exception()
-
-#     new_jid = query.find(CN.clarkFromTuple(("jabber:iq:register", "username"))).text
-
-#     with sqlite3.connect("./pyjabber/db/server.db") as con:
-#         res = con.execute("SELECT jid FROM credentials WHERE jid = ?", (new_jid,))
-
-#     jid_match = res.fetchone()
-#     if jid_match is None:
-#         pwd         = query.find(CN.clarkFromTuple(("jabber:iq:register", "password"))).text
-#         hash_pwd    = hashlib.sha256(pwd.encode()).hexdigest()
-        
-#         with sqlite3.connect("./pyjabber/db/server.db") as con:
-#             con.execute("INSERT INTO credentials(jid, hash_pwd) VALUES(?, ?)", (new_jid, hash_pwd))
-#             con.commit()
-
-#         self._buffer.write(IBR.result(elem.attrib["id"]))
-
-#     else:
-#         self._buffer.write(IBR.conflict_error(elem.attrib["id"]))                    
-    
-# if "auth" in elem.tag:
-
-#     data        = base64.b64decode(elem.text).split("\x00".encode())
-#     self._jid   = data[1].decode()
-#     keyhash     = hashlib.sha256(data[2]).hexdigest()
-
-#     with sqlite3.connect("./pyjabber/db/server.db") as con:
-#         res = con.execute("SELECT hash_pwd FROM credentials WHERE jid = ?", (self._jid,))
-
-#     try:
-#         hash_pwd = res.fetchone()[0]
-#         if hash_pwd == keyhash:
-#             self._buffer.write(SASLFeature().success())
-#             self._stage = Stage.AUTH
-
-#         else:
-#             self._buffer.write(SASLFeature().not_authorized())
-
-#     except (KeyError, TypeError):
-#         self._buffer.write(SASLFeature().not_authorized())
-
-#     return Signal.RESET
-
-
-
-
-
-class SOSLFeature(FeatureInterface):
+class SASL(FeatureInterface):
     def __init__(self):
         self._handlers = {
             "iq"    : self.handleIQ,
@@ -84,92 +32,100 @@ class SOSLFeature(FeatureInterface):
         return self._handlers[tag](element)
 
     def handleIQ(self, element: ET.Element) -> Tuple[Signal, bytes] | bytes:
-
         query = element.find(CN.clarkFromTuple(("jabber:iq:register", "query")))
+        
         if query is None:
             raise Exception()
-
-        new_jid     = query.find(CN.clarkFromTuple(("jabber:iq:register", "username"))).text
-
-        with sqlite3.connect("./pyjabber/db/server.db") as con:
-            res = con.execute("SELECT * FROM credentials WHERE jid = ?", (new_jid,))
-
-        credentials = res.fetchone()
-        if credentials:
-            return Signal.RESET, self.conflict_error(element.attrib["id"])
         
+        if element.attrib["type"] == "get":
+            pass #TODO XEP-0077 form data
+
+        elif element.attrib["type"] == "set":
+            new_jid     = query.find(CN.clarkFromTuple(("jabber:iq:register", "username"))).text
+
+            with closing(connection()) as con:
+                res = con.execute("SELECT * FROM credentials WHERE jid = ?", (new_jid,))
+                credentials = res.fetchone()
+
+            if credentials:
+                return Signal.RESET, self.conflict_error(element.attrib["id"])
+            else:
+                pwd         = query.find(CN.clarkFromTuple(("jabber:iq:register", "password"))).text
+                hash_pwd    = hashlib.sha256(pwd.encode()).hexdigest()
+
+                with closing(connection()) as con:
+                    con.execute("INSERT INTO credentials(jid, hash_pwd) VALUES (?, ?)", (new_jid, hash_pwd))
+                    con.commit()
+                return Signal.RESET, self.iq_register_result(element.attrib["id"])
+            
         else:
-            pwd         = query.find(CN.clarkFromTuple(("jabber:iq:register", "password"))).text
-            hash_pwd    = hashlib.sha256(pwd.encode()).hexdigest()
-
-            with sqlite3.connect("./pyjabber/db/server.db") as con:
-                con.execute("INSERT INTO credentials(jid, hash_pwd) VALUES (?, ?)", (new_jid, hash_pwd))
-                con.commit()
-
-            return Signal.RESET, self.iq_register_result(element.attrib["id"])
+            raise Exception()
 
 
-    def handleAuth(self, element: ET.Element):
+    def handleAuth(self, element: ET.Element) -> Tuple[Signal, bytes] | bytes:
         data    = base64.b64decode(element.text).split("\x00".encode())
         jid     = data[1].decode()
         keyhash = hashlib.sha256(data[2]).hexdigest()
 
-        with sqlite3.connect("./pyjabber/db/server.db") as con:
+        with closing(connection()) as con:
             res = con.execute("SELECT hash_pwd FROM credentials WHERE jid = ?", (jid,))
+            hash_pwd = res.fetchone()
 
-        try:
-            hash_pwd = res.fetchone()[0]
-            if hash_pwd == keyhash:
+        if hash_pwd:
+            if hash_pwd[0] == keyhash:
                 return Signal.RESET, self.success()
-
-            else:
-                return self.not_authorized()
-
-        except (KeyError, TypeError):
-            return self.not_authorized()
+            
+        return self.not_authorized()
 
     def success(self) -> bytes:
-        elem = Element("success", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
+        elem = ET.Element("success", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
         return ET.tostring(elem)
     
     def not_authorized(self) -> bytes:
-        elem    = Element("failure", attrib = {"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
-        elem = ET.SubElement(elem, "not-authorized")
-        # forbid  = Element("not-authorized")
-        # elem.append(forbid)
+        elem = ET.Element("failure", attrib = {"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
+        ET.SubElement(elem, "not-authorized")
         return ET.tostring(elem)
     
-    def conflict_error(self, id: str):
-        return f"<iq id='{id}' type='error' from='localhost'><error type='cancel'><conflict xmlns='urn:ietf:params:xml:ns:xmpp-stanzas' /><text xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'>The requested username already exists.</text></error></iq>".encode()
+    def conflict_error(self, id: str) -> bytes:
+        iq = ET.Element("iq", attrib = {"id": id, "type": "error", "from": "localhost"})
+        error = ET.SubElement(iq, "error", attrib = {"type": "cancel"})
+        ET.SubElement(error, "conflict", attrib = {"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
+        text = ET.SubElement(error, "text", attrib = {"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
+        text.text = "The requested username already exists"
+        return ET.tostring(iq)
+        # return f"<iq id='{id}' type='error' from='localhost'><error type='cancel'><conflict xmlns='urn:ietf:params:xml:ns:xmpp-stanzas' /><text xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'>The requested username already exists.</text></error></iq>".encode()
 
-    def iq_register_result(self, id: str):
-        return f"<iq type='result' id='{id}' from='localhost'/>".encode()
+    def iq_register_result(self, id: str) -> bytes:
+        iq = ET.Element("iq", attrib = {"type": "result", "id": id, "from": "localhost"})
+        return ET.tostring(iq)
+        # return f"<iq type='result' id='{id}' from='localhost'/>".encode()
 
-class SASLFeature(ET.Element):
-    
-    def __init__(
-            self, 
-            tag         : str = "mechanisms", 
-            attrib      : dict[str, str] = {
-                "xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"
-            },
-            mechanism   : list[mechanismEnum] = [mechanismEnum.PLAIN],
-            **extra : str) -> None:
-        
-        super().__init__(tag, attrib, **extra)
+def SASLFeature(
+        mechanismList: list[mechanismEnum] = [
+            mechanismEnum.PLAIN
+        ]):
 
-        for m in mechanism:
-            mechanism       = Element("mechanism")
-            mechanism.text  = m.value
-            self.append(mechanism)        
+    element = ET.Element(
+        "mechanisms",
+        attrib  = {
+            "xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"
+        }
+    )
 
-    def success(self) -> bytes:
-        elem = Element("success", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
-        return ET.tostring(elem)
-    
-    def not_authorized(self) -> bytes:
-        elem    = Element("failure", attrib = {"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
-        forbid  = Element("not-authorized")
-        elem.append(forbid)
-        return ET.tostring(elem)
+    for m in mechanismList:
+        mechanism       = ET.Element("mechanism")
+        mechanism.text  = m.value
+        element.append(mechanism)  
+
+    return element
+
+
+def success() -> bytes:
+    elem = ET.Element("success", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
+    return ET.tostring(elem)
+
+def not_authorized() -> bytes:
+    elem = ET.Element("failure", attrib = {"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
+    ET.SubElement(elem, "not-authorized")
+    return ET.tostring(elem)
             

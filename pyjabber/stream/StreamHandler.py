@@ -9,7 +9,7 @@ from xml.etree import ElementTree as ET
 from pyjabber.features import InBandRegistration as IBR
 from pyjabber.features.StartTLSFeature import StartTLSFeature
 from pyjabber.features.StreamFeature import StreamFeature
-from pyjabber.features.SASLFeature import SASLFeature, SOSLFeature
+from pyjabber.features.SASLFeature import SASLFeature, SASL
 from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionsManager import ConectionsManager
 from pyjabber.utils import ClarkNotation as CN
@@ -79,8 +79,9 @@ class StreamHandler():
 
             self._stage = Stage.SASL
         
+        # SASL
         elif self._stage == Stage.SASL:
-            res = SOSLFeature().feed(elem)
+            res = SASL().feed(elem)
             if type(res) is tuple:
                 if res[0].value == Signal.RESET.value:
                     self._buffer.write(res[1])

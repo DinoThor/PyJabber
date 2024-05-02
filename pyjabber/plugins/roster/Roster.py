@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+from pyjabber.db.database import connection
 import pyjabber.stanzas.error.StanzaError as SE
 import sqlite3
 
@@ -8,8 +9,6 @@ from pyjabber.stanzas.IQ import IQ
 
 
 class Roster(Plugin):
-    DB_NAME = "./pyjabber/db/server.db"
-
     def __init__(self) -> None:
         self._handlers = {
             "get"   : self.handleGet,
@@ -18,7 +17,7 @@ class Roster(Plugin):
         }
         self._ns = "jabber:iq:roster"
 
-        with closing(sqlite3.connect(self.DB_NAME)) as con:
+        with closing(connection()) as con:
             res = con.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'roster'")
             if res.fetchone() is None:
                 try:
@@ -36,7 +35,7 @@ class Roster(Plugin):
 
     def handleGet(self, element: ET.Element, jid):
         try:
-            with closing(sqlite3.connect(self.DB_NAME)) as con:
+            with closing(connection()) as con:
                 res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
                 rosters = res.fetchall()
 
@@ -64,7 +63,7 @@ class Roster(Plugin):
         return
         new_roster = element.findall(f"{self._ns}#query")
         try:
-            with closing(sqlite3.connect(self.DB_NAME)) as con:
+            with closing(connection()) as con:
                 pass
         except:
             pass

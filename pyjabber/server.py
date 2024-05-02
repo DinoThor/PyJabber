@@ -1,9 +1,13 @@
 import asyncio
+import os
 import signal
 import socket
 
+from contextlib import closing
+import sqlite3
 from loguru import logger
 
+from pyjabber.db.database import connection
 from pyjabber.network.XMLProtocol  import XMLProtocol
 from pyjabber.network.ConnectionsManager import ConectionsManager
 
@@ -46,6 +50,13 @@ class Server():
 
     async def start(self):
         logger.info("Starting server...")
+
+        if os.path.isfile("./pyjabber/db/server.db") is False:
+            logger.debug("No database found. Initializing one...")
+            with closing(connection()) as con:
+                with open("./pyjabber/db/schema.sql", "r") as schema:
+                    con.cursor().executescript(schema.read())
+                con.commit()
 
         loop = asyncio.get_running_loop()
 

@@ -149,7 +149,6 @@ class XMLProtocol(asyncio.Protocol):
         task.add_done_callback(self.handleSTARTTLS)
 
     async def enableTLS(self):
-        print(os.getcwd() + 'pyjabber/network/certs/localhost.pem')
         loop        = asyncio.get_running_loop()
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
         ssl_context.load_cert_chain(
