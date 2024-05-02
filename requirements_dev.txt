@@ -11,3 +11,4 @@ twine==4.0.2
 wheel==0.40.0
 loguru==0.7.2
 click==8.1.7
+xmlschema==3.3.0
