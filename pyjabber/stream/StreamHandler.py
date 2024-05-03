@@ -1,7 +1,4 @@
-import base64
 from enum import Enum
-import hashlib
-import sqlite3
 
 from loguru import logger
 from uuid import uuid4
@@ -59,7 +56,7 @@ class StreamHandler():
             
             self._stage = Stage.OPENED
 
-        # TLS feature sended
+        # TLS feature offered
         elif self._stage == Stage.OPENED:
             if "starttls" in elem.tag:
                 self._buffer.write(StartTLSFeature().proceedResponse())
@@ -67,7 +64,7 @@ class StreamHandler():
                 self._stage = Stage.SSL
                 return Signal.RESET
         
-        # TLS Handshake made. Authenticate/register user
+        # TLS Handshake made. Starting SASL
         elif self._stage == Stage.SSL:
             self._streamFeature.reset()
 
@@ -94,11 +91,12 @@ class StreamHandler():
                 
             self._buffer.write(res)
 
-            
+        # User register/authenticated. Starting resource binding
         elif self._stage == Stage.AUTH:
             self._streamFeature.reset()
             self._streamFeature.register(ResourceBinding())
             self._buffer.write(self._streamFeature.tobytes())
+            
             self._stage = Stage.BIND
 
         elif self._stage == Stage.BIND:

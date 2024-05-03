@@ -48,7 +48,7 @@ class Server():
 
         self._connections           = ConectionsManager()
 
-    async def start(self):
+    async def run_server(self):
         logger.info("Starting server...")
 
         if os.path.isfile("./pyjabber/db/server.db") is False:
@@ -90,7 +90,7 @@ class Server():
     def raise_exit(self):
         raise SystemExit(1)
 
-    def run_server(self, debug:bool = False):
+    def start(self, debug:bool = False):
         loop = asyncio.get_event_loop()
         loop.set_debug(debug)
 
@@ -102,7 +102,7 @@ class Server():
             pass
 
         try:        
-            main_task = loop.create_task(self.start(), name="main_server")
+            main_task = loop.create_task(self.run_server(), name="main_server")
             loop.run_until_complete(main_task)
             loop.run_forever()
 

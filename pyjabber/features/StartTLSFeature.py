@@ -1,6 +1,9 @@
+from enum import Enum
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
+from pyjabber.features.FeatureInterface import FeatureInterface
+import xml.etree.ElementTree as ET
 
 
 # # TCP Connection opened
@@ -20,11 +23,20 @@ from xml.etree.ElementTree import Element
 #                 return Signal.RESET
 
 
+class Signal(Enum):
+    RESET   = 0
+    DONE    = 1
+
+
+class TLS(FeatureInterface):
+    def __init__(self):
+        pass
+
+    def feed(element: ET.Element):
+        pass
+
 
 class StartTLSFeature(ElementTree.Element):
-    name = "starttls"
-    description = "RFC 6120: Stream feature: StartTLS"
-
     def __init__(
             self, 
             tag     : str = "starttls", 

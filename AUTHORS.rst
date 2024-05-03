@@ -5,7 +5,7 @@ Credits
 Development Lead
 ----------------
 
-* Aarón Raya <araylop@inf.upv.es>
+* Aarón Raya <aaron.raya.lopez@gmail.com>
 
 Contributors
 ------------

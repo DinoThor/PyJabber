@@ -95,7 +95,7 @@ def main():
     )
 
     server = Server()
-    server.run_server()
+    server.start()
 
     return 0
 
