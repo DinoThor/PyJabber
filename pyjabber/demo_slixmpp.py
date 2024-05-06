@@ -21,16 +21,18 @@ class TestClientBot(ClientXMPP):
     async def stream_negotiated(self, event):
         self.send_presence()
         await self.get_roster()
+        self.update_roster(jid="demotest@localhost")
 
     async def start(self, event):       
-        await asyncio.sleep(5)
-        if sys.argv[1] == "t":
-                self.send_message(
-                    mto = "demo@localhost",
-                    mfrom = self.boundjid.bare,
-                    mbody = "Hola! soy Test",
-                    mtype = "chat"
-                )
+        pass
+        # await asyncio.sleep(5)
+        # if sys.argv[1] == "t":
+        #         self.send_message(
+        #             mto = "demo@localhost",
+        #             mfrom = self.boundjid.bare,
+        #             mbody = "Hola! soy Test",
+        #             mtype = "chat"
+        #         )
         # while True:
         #     a = input(">>")
         #     if sys.argv[1] == "t":
@@ -75,7 +77,7 @@ if __name__ == "__main__":
     if sys.argv[1] == "t":
         xmpp = TestClientBot("test@127.0.0.1", "1234")
     else:    
-        xmpp = TestClientBot("jincho@127.0.0.1", "1234")
+        xmpp = TestClientBot("demo@127.0.0.1", "1234")
     xmpp.register_plugin('xep_0077')
     xmpp.connect()
     xmpp.process(forever=False)

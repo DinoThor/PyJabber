@@ -11,9 +11,12 @@ from pyjabber.utils import ClarkNotation as CN
 class StanzaHandler():
     def __init__(self, buffer) -> None:
         peername = buffer.get_extra_info('peername')
+        print(peername)
+        
         
         self._buffer = buffer
         self._connections   = ConectionsManager()
+        print(self._connections.get_jid(peername))
         self._pluginManager = PluginManager(self._connections.get_jid(peername))
         self._functions     = {
             "{jabber:client}iq"          : self.handleIQ,
@@ -60,4 +63,6 @@ class StanzaHandler():
         reciverBuffer.write(ET.tostring(res))
 
     def handlePre(self, element: ET.Element):
-        pass
+        if "type" in element.attrib.keys():
+            if element.attrib["type"] == "subscribe":
+                print("ajsdaskjkdlasKLDJK")

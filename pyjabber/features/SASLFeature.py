@@ -27,12 +27,14 @@ class SASL(FeatureInterface):
             "auth"  : self.handleAuth
         }
 
+        self._ns = "jabber:iq:register"
+
     def feed(self, element: ET) -> Tuple[Signal, bytes] | bytes:
         _, tag = CN.deglose(element.tag)
         return self._handlers[tag](element)
 
     def handleIQ(self, element: ET.Element) -> Tuple[Signal, bytes] | bytes:
-        query = element.find(CN.clarkFromTuple(("jabber:iq:register", "query")))
+        query = element.find(CN.clarkFromTuple((self._ns, "query")))
         
         if query is None:
             raise Exception()
@@ -41,7 +43,7 @@ class SASL(FeatureInterface):
             pass #TODO XEP-0077 form data
 
         elif element.attrib["type"] == "set":
-            new_jid     = query.find(CN.clarkFromTuple(("jabber:iq:register", "username"))).text
+            new_jid     = query.find(CN.clarkFromTuple((self._ns, "username"))).text
 
             with closing(connection()) as con:
                 res = con.execute("SELECT * FROM credentials WHERE jid = ?", (new_jid,))
@@ -50,7 +52,7 @@ class SASL(FeatureInterface):
             if credentials:
                 return Signal.RESET, self.conflict_error(element.attrib["id"])
             else:
-                pwd         = query.find(CN.clarkFromTuple(("jabber:iq:register", "password"))).text
+                pwd         = query.find(CN.clarkFromTuple((self._ns, "password"))).text
                 hash_pwd    = hashlib.sha256(pwd.encode()).hexdigest()
 
                 with closing(connection()) as con:

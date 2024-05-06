@@ -1,11 +1,12 @@
-import xml.etree.ElementTree as ET
-from pyjabber.db.database import connection
 import pyjabber.stanzas.error.StanzaError as SE
-import sqlite3
+import pyjabber.utils.ClarkNotation as CN
+import xml.etree.ElementTree as ET
 
 from contextlib import closing
+from pyjabber.db.database import connection
 from pyjabber.plugins.PluginInterface import Plugin
 from pyjabber.stanzas.IQ import IQ
+from sqlite3 import IntegrityError
 
 
 class Roster(Plugin):
@@ -15,17 +16,11 @@ class Roster(Plugin):
             "set"   : self.handleSet,
             "result": self.handleResult
         }
-        self._ns = "jabber:iq:roster"
-
-        with closing(connection()) as con:
-            res = con.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'roster'")
-            if res.fetchone() is None:
-                try:
-                    with con:
-                        con.execute("CREATE TABLE roster(jid, rosterList)")
-                except sqlite3.IntegrityError:
-                    raise Exception()
-
+        self._ns = {
+            "ns"    : "jabber:iq:roster",
+            "query" : "{jabber:iq:roster}query",
+            "item"  : "{jabber:iq:roster}item"
+        }
     
     def feed(self, jid: str, element: ET.Element):
         if len(element) != 1:
@@ -37,36 +32,56 @@ class Roster(Plugin):
         try:
             with closing(connection()) as con:
                 res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
-                rosters = res.fetchall()
+                roster = res.fetchone()
 
             iq_res = IQ(
                 type = IQ.TYPE.RESULT.value,
                 id = element.attrib["id"]
             )
 
-            query = ET.Element(
+            query = ET.SubElement(
+                iq_res,
                 "query",
-                attrib = {"xmlns": self._ns}
+                attrib = {"xmlns": self._ns["ns"]}
             )
 
-            if rosters:
-                query.append(ET.fromstring(rosters[0]))                
+            if roster:
+                query.append(ET.fromstring(roster))                
             
-            iq_res.append(query)
             return ET.tostring(iq_res)
                 
         except:
             raise Exception()
 
 
-    def handleSet(self, element: ET.Element):
-        return
-        new_roster = element.findall(f"{self._ns}#query")
-        try:
+    def handleSet(self, element: ET.Element, jid: str):
+        query = element.find(self._ns["query"])
+
+        if query is None:
+            raise Exception()
+        
+        item = query.findall(self._ns["item"])
+        if len(item) != 1:
+            raise Exception()
+        item = item[0]
+        
+        with closing(connection()) as con:
+            res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
+            res = res.fetchone()
+
+        if res is None:
+            new_roster = ET.tostring(item).decode()
+            print(new_roster)
             with closing(connection()) as con:
-                pass
-        except:
-            pass
+                con.execute("INSERT INTO roster(jid, rosterList) VALUES (?, ?)", (jid, new_roster))
+                con.commit()
+
+        roster = ET.fromstring(res)
+
+        print(res); return
+        roster = ET.fromstring(res)
+        print(roster); return
+        print(ET.tostring(roster))
         
 
     def handleResult(self, element):
