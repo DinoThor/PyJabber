@@ -1,4 +1,3 @@
-import aiohttp
 from aiohttp import web
 
 async def handle(request):

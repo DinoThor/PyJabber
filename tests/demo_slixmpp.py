@@ -21,7 +21,8 @@ class TestClientBot(ClientXMPP):
     async def stream_negotiated(self, event):
         self.send_presence()
         await self.get_roster()
-        self.update_roster(jid="demotest@localhost")
+        # self.send_presence_subscription("test@localhost")
+        self.del_roster_item("demotest@localhost")
 
     async def start(self, event):       
         pass

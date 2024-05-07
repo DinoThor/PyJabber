@@ -1,6 +1,7 @@
 import base64
 from contextlib import closing
 import hashlib
+from pyjabber.network.ConnectionsManager import ConectionsManager
 import pyjabber.utils.ClarkNotation as CN
 
 from enum import Enum
@@ -26,10 +27,14 @@ class SASL(FeatureInterface):
             "iq"    : self.handleIQ,
             "auth"  : self.handleAuth
         }
-
         self._ns = "jabber:iq:register"
+        self._connections = ConectionsManager()
+        self._peername = None
 
-    def feed(self, element: ET) -> Tuple[Signal, bytes] | bytes:
+    def feed(self, element: ET, extra: dict[str, any] = None) -> Tuple[Signal, bytes] | bytes:
+        if extra and "peername" in extra.keys():
+            self._peername = extra["peername"]
+
         _, tag = CN.deglose(element.tag)
         return self._handlers[tag](element)
 
@@ -75,6 +80,7 @@ class SASL(FeatureInterface):
 
         if hash_pwd:
             if hash_pwd[0] == keyhash:
+                self._connections.set_jid(self._peername, jid)
                 return Signal.RESET, self.success()
             
         return self.not_authorized()

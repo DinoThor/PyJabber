@@ -6,5 +6,5 @@ from abc import abstractmethod
 
 class FeatureInterface(metaclass = ABCMeta):
     @abstractmethod
-    def feed(element: ET.Element):
+    def feed(element: ET.Element, extra: dict[str, any] = None):
         pass

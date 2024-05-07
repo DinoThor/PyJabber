@@ -1,6 +1,6 @@
 CREATE TABLE `roster`(
     `jid` VARCHAR(255) NOT NULL,
-    `rosterList` VARCHAR(255) NOT NULL,
+    `rosterItem` VARCHAR(255) NOT NULL,
     PRIMARY KEY(`jid`)
 );
 CREATE TABLE `credentials`(

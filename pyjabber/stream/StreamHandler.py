@@ -1,8 +1,8 @@
 from enum import Enum
-
 from loguru import logger
 from uuid import uuid4
 from xml.etree import ElementTree as ET
+
 from pyjabber.features import InBandRegistration as IBR
 from pyjabber.features.StartTLSFeature import StartTLSFeature
 from pyjabber.features.StreamFeature import StreamFeature
@@ -10,6 +10,7 @@ from pyjabber.features.SASLFeature import SASLFeature, SASL
 from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionsManager import ConectionsManager
 from pyjabber.utils import ClarkNotation as CN
+
 
 class Stage(Enum):
     """
@@ -78,7 +79,7 @@ class StreamHandler():
         
         # SASL
         elif self._stage == Stage.SASL:
-            res = SASL().feed(elem)
+            res = SASL().feed(elem, {"peername": self._buffer.get_extra_info('peername')})
             if type(res) is tuple:
                 if res[0].value == Signal.RESET.value:
                     self._buffer.write(res[1])
@@ -102,8 +103,8 @@ class StreamHandler():
         elif self._stage == Stage.BIND:
             if "iq" in elem.tag:
                 if elem.attrib["type"] == "set":
-                    bindElem = elem.find(CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "bind")))
-                    resouce = bindElem.find(CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "resource")))
+                    bindElem    = elem.find(CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "bind")))
+                    resouce     = bindElem.find(CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "resource")))
 
                     if resouce is not None:   
                         resource_id = resouce.text   
@@ -118,17 +119,18 @@ class StreamHandler():
                         }
                     )
                     
-                    bindRes = ET.Element(
+                    bindRes = ET.SubElement(
+                        iqRes,
                         "bind",
                         attrib = {
                             "xmlns": "urn:ietf:params:xml:ns:xmpp-bind"
                         }
                     )
 
-                    jidRes = ET.Element("jid")
-                    jidRes.text = f"{self._jid}@localhost/{resource_id}"
-                    bindRes.append(jidRes)
-                    iqRes.append(bindRes)
+                    jidRes      = ET.SubElement(bindRes, "jid")
+
+                    currentJid  = self._connections.get_jid(self._buffer.get_extra_info('peername'))
+                    jidRes.text = f"{currentJid}@localhost/{resource_id}"
 
                     self._buffer.write(ET.tostring(iqRes))
 

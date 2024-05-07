@@ -44,10 +44,11 @@ class ConectionsManager(metaclass = Singleton):
         except KeyError:
             pass
 
-    def set_jid(self, peer, jid, transport):
+    def set_jid(self, peer, jid, transport = None):
         try:
-            self._peerList[peer][self.JID]         = jid
-            self._peerList[peer][self.TRANSPORT]   = transport
+            self._peerList[peer][self.JID] = jid
+            if transport:
+                self._peerList[peer][self.TRANSPORT] = transport
         except KeyError:
             raise Exception()
 

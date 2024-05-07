@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET
 
 import xmlschema
 
+from pyjabber.features.PresenceFeature import Presence
 from pyjabber.network.ConnectionsManager import ConectionsManager
 from pyjabber.plugins.PluginManager import PluginManager
 from pyjabber.stanzas.Message import Message
@@ -14,15 +15,17 @@ class StanzaHandler():
         print(peername)
         
         
-        self._buffer = buffer
+        self._buffer        = buffer
         self._connections   = ConectionsManager()
-        print(self._connections.get_jid(peername))
         self._pluginManager = PluginManager(self._connections.get_jid(peername))
+
         self._functions     = {
             "{jabber:client}iq"          : self.handleIQ,
             "{jabber:client}message"     : self.handleMsg,
             "{jabber:client}presence"    : self.handlePre
         }
+
+        self._PresenceManager = Presence()
         
         with open("./pyjabber/schemas/schemas.pkl", "rb") as schemasDump:
             self._schemas = pickle.load(schemasDump)
@@ -40,10 +43,13 @@ class StanzaHandler():
         except KeyError:
             raise Exception()
         
+    ############################################################
+    ############################################################
+
     def handleIQ(self, element: ET.Element):
         res = self._pluginManager.feed(element)
-        self._buffer.write(res)
-
+        if res:
+            self._buffer.write(res)
 
     def handleMsg(self, element: ET.Element):
         try:
@@ -65,4 +71,6 @@ class StanzaHandler():
     def handlePre(self, element: ET.Element):
         if "type" in element.attrib.keys():
             if element.attrib["type"] == "subscribe":
-                print("ajsdaskjkdlasKLDJK")
+                res = self._PresenceManager.feed(element)
+                print(res)
+
