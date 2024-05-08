@@ -64,14 +64,14 @@ Features
      - Status
      - Description
    * - TLS
-     - IMPLEMENTED
+     - Implemented
      - v1.2, with localhost certificate included
    * - SASL
-     - IMPLEMENTED
+     - Implemented
      - PLAIN
    * - Roster
-     - Partially implemented
-     - Retriving roster from server avaliable. Missing add/update/delete roster
+     - Implemented
+     - CRUD avaliable
    * - Presence
      - Not implemented
      - Working on it

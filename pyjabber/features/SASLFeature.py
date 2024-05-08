@@ -121,9 +121,8 @@ def SASLFeature(
     )
 
     for m in mechanismList:
-        mechanism       = ET.Element("mechanism")
+        mechanism       = ET.SubElement(element, "mechanism")
         mechanism.text  = m.value
-        element.append(mechanism)  
 
     return element
 

@@ -93,7 +93,7 @@ class Server():
     def start(self, debug:bool = False):
         loop = asyncio.get_event_loop()
         loop.set_debug(debug)
-        adminPage = serverInstance()
+        # adminPage = serverInstance()
 
         try:
             loop.add_signal_handler(signal.SIGINT, self.raise_exit)
@@ -120,7 +120,7 @@ class Server():
             loop.run_until_complete(asyncio.gather(*tasks, return_exceptions = True))
 
             #Close admin page
-            adminPage.server_close()
+            # adminPage.server_close()
 
             # Close the server
             close_task = loop.create_task(self.stop(), name="close_server")

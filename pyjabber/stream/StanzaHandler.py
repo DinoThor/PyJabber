@@ -11,9 +11,7 @@ from pyjabber.utils import ClarkNotation as CN
 
 class StanzaHandler():
     def __init__(self, buffer) -> None:
-        peername = buffer.get_extra_info('peername')
-        print(peername)
-        
+        peername = buffer.get_extra_info('peername')        
         
         self._buffer        = buffer
         self._connections   = ConectionsManager()

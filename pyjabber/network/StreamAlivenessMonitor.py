@@ -1,6 +1,5 @@
 import asyncio
-
-from loguru import logger
+import warnings
 
 class StreamAlivenessMonitor:
     '''
@@ -9,18 +8,18 @@ class StreamAlivenessMonitor:
     
     __slots__ = ["_timeout", "_timeout_callback", "_timeout_task", "_reset_event"]
 
-    def __init__(self, timeout=60, callback=None):
-        self._timeout = timeout
-        self._timeout_callback = callback
-        self._timeout_task = None
-        self._reset_event = asyncio.Event()
+    def __init__(self, timeout = 60, callback = None):
+        self._timeout           = timeout
+        self._timeout_callback  = callback
+        self._timeout_task      = None
+        self._reset_event       = asyncio.Event()
 
     def __del__(self):
         if self._timeout_task is not None:
             self._timeout_task.cancel()
 
     async def _timeout_task_coro(self):
-        await asyncio.wait([self._reset_event.wait()], timeout=self._timeout)
+        await asyncio.wait([self._reset_event.wait()], timeout = self._timeout)
         if self._timeout_callback is not None:
             self._timeout_callback()
 
@@ -29,5 +28,6 @@ class StreamAlivenessMonitor:
             self._reset_event.set()
             self._timeout_task.cancel()
         self._reset_event.clear()
-        self._timeout_task = asyncio.create_task(self._timeout_task_coro())
+        with warnings.catch_warnings(action = "ignore"):
+            self._timeout_task = asyncio.create_task(self._timeout_task_coro())
     

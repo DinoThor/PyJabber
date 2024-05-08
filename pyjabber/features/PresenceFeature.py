@@ -22,7 +22,7 @@ class Presence(FeatureInterface):
             }
         )
         return f"<presence from='test@localhost' id='{element.attrib['id']}' to='demo@localhost' type='subscribe'/>"
-        jid = element.attrib["to"]
-        jid = jid.split("/")[0]
-        roster = self._roster.retriveRoster(jid)
-        print(roster)
+        # jid = element.attrib["to"]
+        # jid = jid.split("/")[0]
+        # roster = self._roster.retriveRoster(jid)
+        # print(roster)

@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyjabber"
-version = "0.1.0"
-description = "Python Boilerplate contains all the boilerplate you need to create a Python package."
+version = "0.0.1"
+description = "A Python XMPP server."
 readme = "README.rst"
 authors = [
-  {name = "Aarón Raya", email = "araylop@inf.upv.es"}
+  {name = "Aarón Raya", email = "aaron.raya.lopez@gmail.com"}
 ]
 maintainers = [
-  {name = "Aarón Raya", email = "araylop@inf.upv.es"}
+  {name = "Aarón Raya", email = "aaron.raya.lopez@gmail.com"}
 ]
 classifiers = [
 
@@ -36,7 +36,7 @@ changelog = "https://github.com/dinothor/pyjabber/blob/master/changelog.md"
 homepage = "https://github.com/dinothor/pyjabber"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = {"" = "pyjabber"}
 
 [tool.setuptools.package-data]
 "*" = ["*.*"]

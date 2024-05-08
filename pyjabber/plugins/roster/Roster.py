@@ -1,12 +1,10 @@
 import pyjabber.stanzas.error.StanzaError as SE
-import pyjabber.utils.ClarkNotation as CN
 import xml.etree.ElementTree as ET
 
 from contextlib import closing
 from pyjabber.db.database import connection
 from pyjabber.plugins.PluginInterface import Plugin
 from pyjabber.stanzas.IQ import IQ
-from sqlite3 import IntegrityError
 
 
 class Roster(Plugin):
@@ -14,7 +12,6 @@ class Roster(Plugin):
         self._handlers = {
             "get"   : self.handleGet,
             "set"   : self.handleSet,
-            "result": self.handleResult
         }
         self._ns = {
             "ns"    : "jabber:iq:roster",
@@ -24,8 +21,8 @@ class Roster(Plugin):
 
     def retriveRoster(self, jid: str):
         with closing(connection()) as con:
-            res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
-            roster = res.fetchone()
+            res     = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
+            roster  = res.fetchall()
         return roster
     
     def feed(self, jid: str, element: ET.Element):
@@ -36,10 +33,11 @@ class Roster(Plugin):
         
 
     def handleGet(self, element: ET.Element, jid):
+        jid = jid.split("/")[0]
         try:
             with closing(connection()) as con:
-                res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
-                roster = res.fetchone()
+                res     = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
+                roster  = res.fetchall()
 
             iq_res = IQ(
                 type = IQ.TYPE.RESULT.value,
@@ -52,8 +50,8 @@ class Roster(Plugin):
                 attrib = {"xmlns": self._ns["ns"]}
             )
 
-            if roster:
-                query.append(ET.fromstring(roster))                
+            for item in roster:
+                query.append(ET.fromstring(item[-1]))                
             
             return ET.tostring(iq_res)
                 
@@ -69,10 +67,11 @@ class Roster(Plugin):
             raise Exception()
 
         new_item = query.findall(self._ns["item"])
+
         if len(new_item) != 1:
             raise Exception()
-        new_item    = new_item[0]
         
+        new_item    = new_item[0]
         if "subscription" in new_item.attrib.keys():
             remove = new_item.attrib["subscription"] == "remove"
         
@@ -81,14 +80,12 @@ class Roster(Plugin):
             res = res.fetchall()
 
         roster      = res
-        roster      = [ET.fromstring(r[1]) for r in roster]
-        print(roster[0].attrib["jid"])
+        roster      = [ET.fromstring(r[-1]) for r in roster]
         match_item  = [i for i in roster if i.attrib["jid"] == new_item.attrib["jid"]]
 
         if match_item:
             # Delete roster item
             if remove:
-                print(jid, ET.tostring(match_item[0]))
                 with closing(connection()) as con:
                     con.execute("""
                                 DELETE FROM roster 
@@ -106,16 +103,17 @@ class Roster(Plugin):
                                 SET rosterItem = ? 
                                 WHERE jid = ? AND rosterItem = ?
                                 """, 
-                                (ET.tostring(new_item).decode(),
+                                (ET.tostring(new_item),
                                 jid, 
                                 ET.tostring(match_item[0])))
                     con.commit()
             
         else:
             # New roster item
-            with closing(connection()) as con:
-                con.execute("INSERT INTO roster(jid, rosterItem) VALUES (?, ?)", (jid, ET.tostring(new_item)))
-                con.commit()
+            if not remove:
+                with closing(connection()) as con:
+                    con.execute("INSERT INTO roster(jid, rosterItem) VALUES (?, ?)", (jid, ET.tostring(new_item)))
+                    con.commit()
 
         res = ET.Element(
             "iq",
@@ -126,15 +124,3 @@ class Roster(Plugin):
         )
 
         return ET.tostring(res)
-        
-
-    def handleResult(self, element):
-        pass
-
-    
-    def rosterPush(self, element):
-        pass
-
-
-def retriveRoster(jid: str):
-    pass
