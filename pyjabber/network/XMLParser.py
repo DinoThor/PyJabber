@@ -4,8 +4,6 @@ from loguru import logger
 from xml.sax import ContentHandler
 from xml.etree import ElementTree as ET
 
-import pyjabber.stream.Stream
-
 from pyjabber.stream import Stream
 from pyjabber.stream .StreamHandler import StreamHandler, Signal
 from pyjabber.stream .StanzaHandler import StanzaHandler
@@ -122,7 +120,3 @@ class XMPPStreamHandler(ContentHandler):
 
         else :
             elem.text = (elem.text or '') + content
-
-    # def tagToString(self, tag):
-    #     return "#".join(map(str, tag))
-

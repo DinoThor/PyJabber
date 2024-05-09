@@ -1,14 +1,16 @@
 import base64
-from contextlib import closing
 import hashlib
-from pyjabber.network.ConnectionsManager import ConectionsManager
-import pyjabber.utils.ClarkNotation as CN
 
+from contextlib import closing
 from enum import Enum
-from pyjabber.features.FeatureInterface import FeatureInterface
 from typing import Tuple
 from xml.etree import ElementTree as ET
+
 from pyjabber.db.database import connection
+from pyjabber.features.FeatureInterface import FeatureInterface
+from pyjabber.network.ConnectionsManager import ConectionsManager
+from pyjabber.stanzas.error import StanzaError as SE
+from pyjabber.utils import ClarkNotation as CN
 
 
 class mechanismEnum(Enum):
@@ -55,7 +57,7 @@ class SASL(FeatureInterface):
                 credentials = res.fetchone()
 
             if credentials:
-                return Signal.RESET, self.conflict_error(element.attrib["id"])
+                return Signal.RESET, SE.conflict_error(element.attrib["id"])
             else:
                 pwd         = query.find(CN.clarkFromTuple((self._ns, "password"))).text
                 hash_pwd    = hashlib.sha256(pwd.encode()).hexdigest()
@@ -81,32 +83,31 @@ class SASL(FeatureInterface):
         if hash_pwd:
             if hash_pwd[0] == keyhash:
                 self._connections.set_jid(self._peername, jid)
-                return Signal.RESET, self.success()
+                return Signal.RESET, SE.success()
             
-        return self.not_authorized()
+        return SE.not_authorized()
 
-    def success(self) -> bytes:
-        elem = ET.Element("success", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
-        return ET.tostring(elem)
+    # def success(self) -> bytes:
+    #     elem = ET.Element("success", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
+    #     return ET.tostring(elem)
     
-    def not_authorized(self) -> bytes:
-        elem = ET.Element("failure", attrib = {"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
-        ET.SubElement(elem, "not-authorized")
-        return ET.tostring(elem)
+    # def not_authorized(self) -> bytes:
+    #     elem = ET.Element("failure", attrib = {"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
+    #     ET.SubElement(elem, "not-authorized")
+    #     return ET.tostring(elem)
     
-    def conflict_error(self, id: str) -> bytes:
-        iq = ET.Element("iq", attrib = {"id": id, "type": "error", "from": "localhost"})
-        error = ET.SubElement(iq, "error", attrib = {"type": "cancel"})
-        ET.SubElement(error, "conflict", attrib = {"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
-        text = ET.SubElement(error, "text", attrib = {"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
-        text.text = "The requested username already exists"
-        return ET.tostring(iq)
-        # return f"<iq id='{id}' type='error' from='localhost'><error type='cancel'><conflict xmlns='urn:ietf:params:xml:ns:xmpp-stanzas' /><text xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'>The requested username already exists.</text></error></iq>".encode()
+    # def conflict_error(self, id: str) -> bytes:
+    #     iq = ET.Element("iq", attrib = {"id": id, "type": "error", "from": "localhost"})
+    #     error = ET.SubElement(iq, "error", attrib = {"type": "cancel"})
+    #     ET.SubElement(error, "conflict", attrib = {"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
+    #     text = ET.SubElement(error, "text", attrib = {"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
+    #     text.text = "The requested username already exists"
+    #     return ET.tostring(iq)
+    #     # return f"<iq id='{id}' type='error' from='localhost'><error type='cancel'><conflict xmlns='urn:ietf:params:xml:ns:xmpp-stanzas' /><text xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'>The requested username already exists.</text></error></iq>".encode()
 
     def iq_register_result(self, id: str) -> bytes:
         iq = ET.Element("iq", attrib = {"type": "result", "id": id, "from": "localhost"})
         return ET.tostring(iq)
-        # return f"<iq type='result' id='{id}' from='localhost'/>".encode()
 
 def SASLFeature(
         mechanismList: list[mechanismEnum] = [
@@ -127,12 +128,12 @@ def SASLFeature(
     return element
 
 
-def success() -> bytes:
-    elem = ET.Element("success", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
-    return ET.tostring(elem)
+# def success() -> bytes:
+#     elem = ET.Element("success", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
+#     return ET.tostring(elem)
 
-def not_authorized() -> bytes:
-    elem = ET.Element("failure", attrib = {"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
-    ET.SubElement(elem, "not-authorized")
-    return ET.tostring(elem)
+# def not_authorized() -> bytes:
+#     elem = ET.Element("failure", attrib = {"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
+#     ET.SubElement(elem, "not-authorized")
+#     return ET.tostring(elem)
             

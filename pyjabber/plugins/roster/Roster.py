@@ -1,9 +1,9 @@
-import pyjabber.stanzas.error.StanzaError as SE
 import xml.etree.ElementTree as ET
-
 from contextlib import closing
+
 from pyjabber.db.database import connection
 from pyjabber.plugins.PluginInterface import Plugin
+from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
 
 

@@ -13,6 +13,7 @@ from pyjabber.admin.adminPage import serverInstance
 
 CLIENT_PORT = 5222
 CLIENT_NS   = "jabber:client"
+
 SERVER_PORT = 5269
 SERVER_NS   = "jabber:server"
 

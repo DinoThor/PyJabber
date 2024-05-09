@@ -33,16 +33,36 @@ class StanzaError(ET.Element):
 
 XMLNS = "urn:ietf:params:xml:ns:xmpp-stanzas"
 
-def feature_not_implemented(xmlns, feature):
+def conflict_error(id: str) -> bytes:
+        iq = ET.Element("iq", attrib = {"id": id, "type": "error", "from": "localhost"})
+        error = ET.SubElement(iq, "error", attrib = {"type": "cancel"})
+        ET.SubElement(error, "conflict", attrib = {"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
+        text = ET.SubElement(error, "text", attrib = {"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
+        text.text = "The requested username already exists"
+        return ET.tostring(iq)
+
+def feature_not_implemented(xmlns, feature) -> bytes:
     return f"<error type='cancel'><feature-not-implemented xmlns='{XMLNS}'/><unsupported xmlns='{xmlns}#errors'feature='{feature}'/></error>".encode()
+
+def invalid_xml() -> bytes:
+    return f"<stream:error><invalid-xmlxmlns='{XMLNS}'/></stream:error></stream:stream>".encode()
+
+def item_not_found() -> bytes:
+    return f"<error type='cancel'><item-not-found xmlns='{XMLNS}'/></error>".encode()
+
+def not_authorized() -> bytes:
+    elem = ET.Element("failure", attrib = {"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
+    ET.SubElement(elem, "not-authorized")
+    return ET.tostring(elem)
+
+def result(id: str) -> bytes:
+    return f"<iq type='result' id='{id}' from='localhost'/>".encode()
 
 def service_unavaliable(type: StanzaError.StanzaKind, from_: str, to: str):
     error = StanzaError(type, from_, to)
     error.append(ET.fromstring(f"<error type='cancel'><service-unavailable xmlns='{XMLNS}'/></error>"))
     return ET.tostring(error)
 
-def invalid_xml():
-    return f"<stream:error><invalid-xmlxmlns='{XMLNS}'/></stream:error></stream:stream>".encode()
-
-def item_not_found():
-    return f"<error type='cancel'><item-not-found xmlns='{XMLNS}'/></error>".encode()
+def success() -> bytes:
+        elem = ET.Element("success", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
+        return ET.tostring(elem)

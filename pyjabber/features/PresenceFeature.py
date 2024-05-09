@@ -1,6 +1,8 @@
 from pyjabber.features.FeatureInterface import FeatureInterface
 from pyjabber.plugins.roster.Roster import Roster
+
 import xml.etree.ElementTree as ET
+
 
 class Presence(FeatureInterface):
     def __init__(self) -> None:

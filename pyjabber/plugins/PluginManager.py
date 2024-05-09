@@ -1,11 +1,13 @@
-from pyjabber.plugins.roster.Roster import Roster
+import xml.etree.ElementTree as ET
+
 from pyjabber.plugins.PluginInterface import Plugin
-import pyjabber.stanzas.error.StanzaError as SE
+from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.utils import ClarkNotation as CN
 
+# Plugins
+from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.plugins.xep_0077 import inBandRegistration
 
-import xml.etree.ElementTree as ET
 
 class PluginManager():
     def __init__(self, jid) -> None:

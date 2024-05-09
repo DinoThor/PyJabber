@@ -1,26 +1,7 @@
 from enum import Enum
-from xml.etree import ElementTree
-from xml.etree.ElementTree import Element
+from xml.etree import ElementTree as ET
 
 from pyjabber.features.FeatureInterface import FeatureInterface
-import xml.etree.ElementTree as ET
-
-
-# # TCP Connection opened
-#         if self._stage == Stage.CONNECTED:
-#             self._streamFeature.reset()
-#             self._streamFeature.register(StartTLSFeature())
-#             self._buffer.write(self._streamFeature.tobytes())
-            
-#             self._stage = Stage.OPENED
-
-#         # TLS feature sended
-#         elif self._stage == Stage.OPENED:
-#             if "starttls" in elem.tag:
-#                 self._buffer.write(StartTLSFeature().proceedResponse())
-#                 self._starttls()
-#                 self._stage = Stage.SSL
-#                 return Signal.RESET
 
 
 class Signal(Enum):
@@ -36,7 +17,7 @@ class TLS(FeatureInterface):
         pass
 
 
-class StartTLSFeature(ElementTree.Element):
+class StartTLSFeature(ET.Element):
     def __init__(
             self, 
             tag     : str = "starttls", 
@@ -49,8 +30,8 @@ class StartTLSFeature(ElementTree.Element):
         super().__init__(tag, attrib, **extra)
 
         if required: 
-            self.append(Element("required"))
+            self.append(ET.Element("required"))
 
     def proceedResponse(self) -> bytes:
-        elem = Element("proceed", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-tls"})
-        return ElementTree.tostring(elem)
+        elem = ET.Element("proceed", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-tls"})
+        return ET.tostring(elem)
