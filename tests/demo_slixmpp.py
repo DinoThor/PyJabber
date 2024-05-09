@@ -74,7 +74,7 @@ class TestClientBot(ClientXMPP):
 
 
 if __name__ == "__main__":
-    # logging.basicConfig(level=logging.DEBUG, format="%(levelname)-8s %(message)s")
+    logging.basicConfig(level=logging.DEBUG, format="%(levelname)-8s %(message)s")
     if sys.argv[1] == "t":
         xmpp = TestClientBot("test@127.0.0.1", "1234")
     else:    
