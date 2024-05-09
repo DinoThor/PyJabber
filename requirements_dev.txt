@@ -1,4 +1,4 @@
-aiohttp==3.8.4
+aiohttp==3.9.5
 pip>=21.1
 black==23.3.0
 bump2version==1.0.1
