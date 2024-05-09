@@ -24,6 +24,12 @@ PyJabber
 * Free software: MIT license
 * Documentation: https://pyjabber.readthedocs.io.
 
+Installation
+------------
+.. code-block::
+  
+        pip install -i https://test.pypi.org/simple/ pyjabber
+
 Quick start
 -----------
 .. code-block:: python
