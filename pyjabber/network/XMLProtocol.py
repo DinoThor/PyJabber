@@ -111,12 +111,12 @@ class XMLProtocol(asyncio.Protocol):
         I probably should change the parser
         '''
         data = data.replace(b"<?xml version=\"1.0\"?>", b"")
-        try:
-            self._xml_parser.feed(data)
-        except sax.SAXParseException as e:
-            logger.error(f"SAXParser Error parsing XML: {e}")
-        except Exception as e:
-            logger.error(f"Error parsing XML: {e}")
+        # try:
+        self._xml_parser.feed(data)
+        # except sax.SAXParseException as e:
+        #     logger.error(f"SAXParser Error parsing XML: {e}")
+        # except Exception as e:
+        #     logger.error(f"Error parsing XML: {e}")
 
 
     def eof_received(self):

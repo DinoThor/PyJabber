@@ -32,7 +32,7 @@ class Server():
 
     def __init__(
         self,
-        host                = "localhost",
+        host                = ["localhost",],
         client_port         = CLIENT_PORT,
         server_port         = SERVER_PORT,
         family              = socket.AF_INET,

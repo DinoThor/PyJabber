@@ -11,11 +11,11 @@ from pyjabber.utils import ClarkNotation as CN
 
 class StanzaHandler():
     def __init__(self, buffer) -> None:
-        peername = buffer.get_extra_info('peername')        
-        
         self._buffer        = buffer
         self._connections   = ConectionsManager()
-        self._pluginManager = PluginManager(self._connections.get_jid(peername))
+        self._peername      = buffer.get_extra_info('peername')
+        self._jid           = self._connections.get_jid_by_peer(self._peername)
+        self._pluginManager = PluginManager(self._jid)
 
         self._functions     = {
             "{jabber:client}iq"          : self.handleIQ,
@@ -58,17 +58,18 @@ class StanzaHandler():
             raise Exception()
         
         reciverBuffer = self._connections.get_buffer_by_jid(element.attrib["to"])
-        res = Message(
-            mto     = element.attrib["to"],
-            mfrom   = element.attrib["from"],
-            id      = element.attrib["id"],
-            body    = element.find(CN.clarkFromTuple(("jabber:client", "body"))).text
-        ) 
-        reciverBuffer.write(ET.tostring(res))
+        for buffer in reciverBuffer:
+            res = Message(
+                mto     = element.attrib["to"],
+                mfrom   = element.attrib["from"],
+                id      = element.attrib["id"],
+                body    = element.find(CN.clarkFromTuple(("jabber:client", "body"))).text
+            ) 
+            buffer.write(ET.tostring(res))
 
     def handlePre(self, element: ET.Element):
         if "type" in element.attrib.keys():
             if element.attrib["type"] == "subscribe":
-                res = self._PresenceManager.feed(element)
+                res = self._PresenceManager.feed(element, self._jid)
                 print(res)
 

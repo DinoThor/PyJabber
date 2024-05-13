@@ -1,3 +1,4 @@
+from enum import Enum
 import xml.etree.ElementTree as ET
 from contextlib import closing
 
@@ -5,6 +6,13 @@ from pyjabber.db.database import connection
 from pyjabber.plugins.PluginInterface import Plugin
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
+
+
+class subscriptionType(Enum):
+    NONE    = "none"
+    TO      = "to"
+    FROM    = "from"
+    BOTH    = "both"
 
 
 class Roster(Plugin):
@@ -25,6 +33,11 @@ class Roster(Plugin):
             roster  = res.fetchall()
         return roster
     
+    def update(self, jid: str, oldItem: ET.Element, item: ET.Element):
+        with closing(connection()) as con:
+            con.execute("UPDATE roster SET rosterItem = ? WHERE jid = ? and rosterItem = ?", (item, jid, oldItem))
+            con.commit()
+
     def feed(self, jid: str, element: ET.Element):
         if len(element) != 1:
             return SE.invalid_xml()

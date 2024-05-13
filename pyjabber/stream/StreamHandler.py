@@ -69,9 +69,7 @@ class StreamHandler():
         elif self._stage == Stage.SSL:
             self._streamFeature.reset()
 
-            if self._connections.autoRegister():
-                self._streamFeature.register(IBR.InBandRegistration())
-
+            self._streamFeature.register(IBR.InBandRegistration())
             self._streamFeature.register(SASLFeature())
             self._buffer.write(self._streamFeature.tobytes())
 
@@ -129,7 +127,7 @@ class StreamHandler():
 
                     jidRes      = ET.SubElement(bindRes, "jid")
 
-                    currentJid  = self._connections.get_jid(self._buffer.get_extra_info('peername'))
+                    currentJid  = self._connections.get_jid_by_peer(self._buffer.get_extra_info('peername'))
                     jidRes.text = f"{currentJid}@localhost/{resource_id}"
 
                     self._buffer.write(ET.tostring(iqRes))
