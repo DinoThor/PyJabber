@@ -33,9 +33,9 @@ class Roster(Plugin):
             roster  = res.fetchall()
         return roster
     
-    def update(self, jid: str, oldItem: ET.Element, item: ET.Element):
+    def update(self, id: int, item: ET.Element):
         with closing(connection()) as con:
-            con.execute("UPDATE roster SET rosterItem = ? WHERE jid = ? and rosterItem = ?", (item, jid, oldItem))
+            con.execute("UPDATE roster SET rosterItem = ? WHERE id = ?", (item, id))
             con.commit()
 
     def feed(self, jid: str, element: ET.Element):
@@ -44,6 +44,10 @@ class Roster(Plugin):
         
         return self._handlers[element.attrib["type"]](element, jid)
         
+
+    ############################################################
+    ############################################################
+
 
     def handleGet(self, element: ET.Element, jid):
         jid = jid.split("/")[0]

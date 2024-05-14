@@ -24,41 +24,129 @@ class Presence(FeatureInterface):
     def handleSubscribe(self, element: ET.Element):
         to      = element.attrib["to"]
         jid     = self._jid.split("/")[0]
-        print(to)
+
         if to.split("@")[1] == "localhost":
-            if "from" not in element.attrib:
-                element.attrib["from"] = self._jid
-
             roster  = self._roster.retriveRoster(jid)
-            roster  = list(map(lambda r: ET.fromstring(r[2]), roster))
-            item    = [item for item in roster if item.attrib["jid"] == to]
-            if item:
-                item = item[0]
 
-            if item.attrib["subscription"] in ["to", "both"]:
-                return f"<presence from='{element.attrib['to']}' id='{element.attrib['id']}' to='{element.attrib['from']}' type='subscribed'/>".encode()
+            if to.split("@")[0] == jid:
+                item = [item for item in roster 
+                        if ET.fromstring(item[2]).attrib["jid"] == from_]
+                
+                if item:
+                    print(item)
+
+            item = [item for item in roster 
+                    if ET.fromstring(item[2]).attrib["jid"] == to]
+
+            if item:
+                item    = item[0]
+                ETitem  = ET.fromstring(item[2])
+
+                if ETitem.attrib["subscription"] in ["to", "both"]:
+                    res = ET.Element(
+                        "presence",
+                        attrib = {
+                            "from"  : element.attrib['to'],
+                            "to"    : element.attrib['from'],
+                            "id"    : element.attrib['id'],
+                            "type"  : "subscribed"
+                        }
+                    )
+                    return ET.tostring(res)
             
-            newItem = item.__copy__()
-            newItem.attrib["ask"] = "subscribe"
-            
-            self._roster.update(jid, item = ET.tostring(newItem), oldItem = ET.tostring(item))
+                if "ask" not in ETitem.attrib:
+                    newItem = ETitem.__copy__()
+                    newItem.attrib["ask"] = "subscribe"
+                    
+                    self._roster.update(item = ET.tostring(newItem), id = item[0])
 
             if "from" not in element.attrib:
                 element.attrib["from"] = self._jid
 
             buffer = self._connections.get_buffer_by_jid(to)
-            print(buffer)
+
             if buffer is not None:
-                print(buffer)
+                petition = ET.Element(
+                    "presence",
+                    attrib = {
+                        "from"  : element.attrib['from'],
+                        "to"    : element.attrib['to'],
+                        "id"    : element.attrib['id'],
+                        "type"  : "subscribe"
+                    }
+                )
                 for b in buffer:
-                    b.write(
-                        f"<presence from='{element.attrib['from']}' id='{element.attrib['id']}' to='{element.attrib['to']}' type='subscribe'/>".encode()
-                    )
+                    data = ET.tostring(petition)
+                    b.write(data)
+                    # b.write(
+                    #     f"<presence from='{element.attrib['from']}' id='{element.attrib['id']}' to='{element.attrib['to']}' type='subscribe'/>".encode()
+                    # )
 
         return f"<presence from='test@localhost' id='{element.attrib['id']}' to='demo@localhost' type='subscribe'/>"
     
-    def handleSubscribed(self):
-        pass
+    def handleSubscribed(self, element: ET.Element):
+        to      = element.attrib["to"]
+        jid     = self._jid.split("/")[0]
+
+        if to.split("@")[1] == "localhost":
+            if "from" not in element.attrib:
+                element.attrib["from"] = self._jid
+
+            roster  = self._roster.retriveRoster(jid)
+            item    = [item for item in roster 
+                       if ET.fromstring(item[2]).attrib["jid"] == to]
+
+            if item:
+                item    = item[0]
+                ETitem  = ET.fromstring(item[2])
+
+                if ETitem.attrib["subscription"] in ["to", "both"]:
+                    res = ET.Element(
+                        "presence",
+                        attrib = {
+                            "from"  : element.attrib['to'],
+                            "to"    : element.attrib['from'],
+                            "id"    : element.attrib['id'],
+                            "type"  : "subscribed"
+                        }
+                    )
+                    return ET.tostring(res)
+                
+                newItem = ETitem.__copy__()
+
+                if ETitem.attrib["subscription"] in ["from"]:
+                    newItem.attrib["subscription"] = "both"
+
+                if ETitem.attrib["subscription"] in ["none"]:
+                    newItem.attrib["subscription"] = "to"
+            
+                if "ask" in ETitem.attrib:
+                    newItem = ETitem.__copy__()
+                    newItem.attrib.pop("ask")
+                    
+                self._roster.update(item = ET.tostring(newItem), id = item[0])
+
+            if "from" not in element.attrib:
+                element.attrib["from"] = self._jid
+
+            buffer = self._connections.get_buffer_by_jid(to)
+
+            if buffer is not None:
+                petition = ET.Element(
+                    "presence",
+                    attrib = {
+                        "from"  : element.attrib['from'],
+                        "to"    : element.attrib['to'],
+                        "id"    : element.attrib['id'],
+                        "type"  : "subscribed"
+                    }
+                )
+                for b in buffer:
+                    data = ET.tostring(petition)
+                    b.write(data)
+                    # b.write(
+                    #     f"<presence from='{element.attrib['from']}' id='{element.attrib['id']}' to='{element.attrib['to']}' type='subscribe'/>".encode()
+                    # )
 
     def setSubscription(self, item: ET.Element):
         jid     = self._jid.split("/")[0]
