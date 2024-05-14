@@ -1,10 +1,23 @@
-from xml.etree import ElementTree
-from xml.etree.ElementTree import Element
+from enum import Enum
+from xml.etree import ElementTree as ET
 
-class StartTLSFeature(ElementTree.Element):
-    name = "starttls"
-    description = "RFC 6120: Stream feature: StartTLS"
+from pyjabber.features.FeatureInterface import FeatureInterface
 
+
+class Signal(Enum):
+    RESET   = 0
+    DONE    = 1
+
+
+class TLS(FeatureInterface):
+    def __init__(self):
+        pass
+
+    def feed(element: ET.Element):
+        pass
+
+
+class StartTLSFeature(ET.Element):
     def __init__(
             self, 
             tag     : str = "starttls", 
@@ -17,8 +30,8 @@ class StartTLSFeature(ElementTree.Element):
         super().__init__(tag, attrib, **extra)
 
         if required: 
-            self.append(Element("required"))
+            self.append(ET.Element("required"))
 
     def proceedResponse(self) -> bytes:
-        elem = Element("proceed", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-tls"})
-        return ElementTree.tostring(elem)
+        elem = ET.Element("proceed", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-tls"})
+        return ET.tostring(elem)

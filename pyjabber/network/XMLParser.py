@@ -4,12 +4,11 @@ from loguru import logger
 from xml.sax import ContentHandler
 from xml.etree import ElementTree as ET
 
-from pyjabber.XMLObject import responseStream
-
 from pyjabber.stream import Stream
 from pyjabber.stream .StreamHandler import StreamHandler, Signal
 from pyjabber.stream .StanzaHandler import StanzaHandler
 from pyjabber.network.ConnectionsManager import ConectionsManager
+from pyjabber.utils import ClarkNotation as CN
 
 
 class StreamState(Enum):
@@ -59,18 +58,18 @@ class XMPPStreamHandler(ContentHandler):
 
         if self._stack:     # "<stream:stream>" tag already present in the data stack
             elem = ET.Element(
-                self.tagToString(name),
-                attrib  = {key[1]:item for key, item in dict(attrs).items()}
+                CN.clarkFromTuple(name),
+                attrib  = {CN.clarkFromTuple(key):item for key, item in dict(attrs).items()}
             )
             self._stack.append(elem)
 
         elif name[1] == "stream" and name[0] == "http://etherx.jabber.org/streams":
-            self._buffer.write(b"<?xml version='1.0'?>")
-            self._buffer.write(responseStream(attrs).open_tag())
+            # self._buffer.write(b"<?xml version='1.0'?>")
+            self._buffer.write(Stream.responseStream(attrs))
             
             elem = ET.Element(
-                self.tagToString(name),
-                attrib  = {key[1]:item for key, item in dict(attrs).items()}
+                CN.clarkFromTuple(name),
+                attrib  = {CN.clarkFromTuple(key):item for key, item in dict(attrs).items()}
             )
 
             self._stack.append(elem)
@@ -92,7 +91,7 @@ class XMPPStreamHandler(ContentHandler):
 
         elem = self._stack.pop()
 
-        if elem.tag != self.tagToString(name):
+        if elem.tag != CN.clarkFromTuple(name):
             raise Exception() #TODO: INVALID STANZA/MESSAGE
 
         if "stream" not in self._stack[-1].tag:
@@ -121,7 +120,3 @@ class XMPPStreamHandler(ContentHandler):
 
         else :
             elem.text = (elem.text or '') + content
-
-    def tagToString(self, tag):
-        return "#".join(map(str, tag))
-

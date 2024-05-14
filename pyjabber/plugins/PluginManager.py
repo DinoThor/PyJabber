@@ -1,8 +1,13 @@
-from pyjabber.plugins.roster.Roster import Roster
-from pyjabber.plugins.PluginInterface import Plugin
-import pyjabber.stanzas.error.StanzaError as SE
-
 import xml.etree.ElementTree as ET
+
+from pyjabber.plugins.PluginInterface import Plugin
+from pyjabber.stanzas.error import StanzaError as SE
+from pyjabber.utils import ClarkNotation as CN
+
+# Plugins
+from pyjabber.plugins.roster.Roster import Roster
+from pyjabber.plugins.xep_0077 import inBandRegistration
+
 
 class PluginManager():
     def __init__(self, jid) -> None:
@@ -10,6 +15,7 @@ class PluginManager():
         self._jid = jid
         self._plugins: dict[str, Plugin] = {
             'jabber:iq:roster'      : Roster,
+            # 'jabber:iq:register'    : inBandRegistration
         }
         self._activePlugins: dict[str, Plugin] = {}
 
@@ -18,8 +24,7 @@ class PluginManager():
             return SE.invalid_xml()
         
         child = element[0]
-        tag = child.tag.split("#")[0]
-        print(self._plugins[tag])
+        tag, _ = CN.deglose(child.tag)
 
         try:
             plugin = self._activePlugins[tag]       #Plugin already instanced

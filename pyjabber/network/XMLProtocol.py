@@ -1,6 +1,6 @@
 import asyncio
-import ssl
 import os
+import ssl
 
 from loguru import logger
 from xml import sax
@@ -96,7 +96,7 @@ class XMLProtocol(asyncio.Protocol):
         try:
             logger.debug(f"Data received: {data.decode()}")
         except:
-            return
+            logger.debug(f"Binary data recived")
 
         self._timeout_monitor.reset()
 
@@ -114,7 +114,7 @@ class XMLProtocol(asyncio.Protocol):
         # try:
         self._xml_parser.feed(data)
         # except sax.SAXParseException as e:
-        #     logger.error(f"Error parsing XML: {e}")
+        #     logger.error(f"SAXParser Error parsing XML: {e}")
         # except Exception as e:
         #     logger.error(f"Error parsing XML: {e}")
 
@@ -149,7 +149,6 @@ class XMLProtocol(asyncio.Protocol):
         task.add_done_callback(self.handleSTARTTLS)
 
     async def enableTLS(self):
-        print(os.getcwd() + 'pyjabber/network/certs/localhost.pem')
         loop        = asyncio.get_running_loop()
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
         ssl_context.load_cert_chain(

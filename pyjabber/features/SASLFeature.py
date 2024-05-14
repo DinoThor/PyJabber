@@ -1,36 +1,139 @@
+import base64
+import hashlib
+
+from contextlib import closing
 from enum import Enum
-from xml.etree import ElementTree
-from xml.etree.ElementTree import Element
+from typing import Tuple
+from xml.etree import ElementTree as ET
+
+from pyjabber.db.database import connection
+from pyjabber.features.FeatureInterface import FeatureInterface
+from pyjabber.network.ConnectionsManager import ConectionsManager
+from pyjabber.stanzas.error import StanzaError as SE
+from pyjabber.utils import ClarkNotation as CN
 
 
 class mechanismEnum(Enum):
     PLAIN       = "PLAIN"
     SCRAM_SHA_1 = "SCRAM-SHA-1"
 
-class SASLFeature(ElementTree.Element):
-    
-    def __init__(
-            self, 
-            tag         : str = "mechanisms", 
-            attrib      : dict[str, str] = {
-                "xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"
-            },
-            mechanism   : list[mechanismEnum] = [mechanismEnum.PLAIN],
-            **extra : str) -> None:
-        super().__init__(tag, attrib, **extra)
 
-        for m in mechanism:
-            mechanism       = Element("mechanism")
-            mechanism.text  = m.value
-            self.append(mechanism)
+class Signal(Enum):
+    RESET   = 0
+    DONE    = 1
 
-    def success(self) -> bytes:
-        elem = Element("success", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
-        return ElementTree.tostring(elem)
+
+class SASL(FeatureInterface):
+    def __init__(self):
+        self._handlers = {
+            "iq"    : self.handleIQ,
+            "auth"  : self.handleAuth
+        }
+        self._ns = "jabber:iq:register"
+        self._connections = ConectionsManager()
+        self._peername = None
+
+    def feed(self, element: ET, extra: dict[str, any] = None) -> Tuple[Signal, bytes] | bytes:
+        if extra and "peername" in extra.keys():
+            self._peername = extra["peername"]
+
+        _, tag = CN.deglose(element.tag)
+        return self._handlers[tag](element)
+
+    def handleIQ(self, element: ET.Element) -> Tuple[Signal, bytes] | bytes:
+        query = element.find(CN.clarkFromTuple((self._ns, "query")))
+        
+        if query is None:
+            raise Exception()
+        
+        if element.attrib["type"] == "get":
+            pass #TODO XEP-0077 form data
+
+        elif element.attrib["type"] == "set":
+            new_jid     = query.find(CN.clarkFromTuple((self._ns, "username"))).text
+
+            with closing(connection()) as con:
+                res = con.execute("SELECT * FROM credentials WHERE jid = ?", (new_jid,))
+                credentials = res.fetchone()
+
+            if credentials:
+                return Signal.RESET, SE.conflict_error(element.attrib["id"])
+            else:
+                pwd         = query.find(CN.clarkFromTuple((self._ns, "password"))).text
+                hash_pwd    = hashlib.sha256(pwd.encode()).hexdigest()
+
+                with closing(connection()) as con:
+                    con.execute("INSERT INTO credentials(jid, hash_pwd) VALUES (?, ?)", (new_jid, hash_pwd))
+                    con.commit()
+                return Signal.RESET, self.iq_register_result(element.attrib["id"])
+            
+        else:
+            raise Exception()
+
+
+    def handleAuth(self, element: ET.Element) -> Tuple[Signal, bytes] | bytes:
+        data    = base64.b64decode(element.text).split("\x00".encode())
+        jid     = data[1].decode()
+        keyhash = hashlib.sha256(data[2]).hexdigest()
+
+        with closing(connection()) as con:
+            res = con.execute("SELECT hash_pwd FROM credentials WHERE jid = ?", (jid,))
+            hash_pwd = res.fetchone()
+
+        if hash_pwd:
+            if hash_pwd[0] == keyhash:
+                self._connections.set_jid(self._peername, jid)
+                return Signal.RESET, SE.success()
+            
+        return SE.not_authorized()
+
+    # def success(self) -> bytes:
+    #     elem = ET.Element("success", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
+    #     return ET.tostring(elem)
     
-    def not_authorized(self) -> bytes:
-        elem    = Element("failure", attrib = {"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
-        forbid  = Element("not-authorized")
-        elem.append(forbid)
-        return ElementTree.tostring(elem)
+    # def not_authorized(self) -> bytes:
+    #     elem = ET.Element("failure", attrib = {"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
+    #     ET.SubElement(elem, "not-authorized")
+    #     return ET.tostring(elem)
+    
+    # def conflict_error(self, id: str) -> bytes:
+    #     iq = ET.Element("iq", attrib = {"id": id, "type": "error", "from": "localhost"})
+    #     error = ET.SubElement(iq, "error", attrib = {"type": "cancel"})
+    #     ET.SubElement(error, "conflict", attrib = {"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
+    #     text = ET.SubElement(error, "text", attrib = {"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
+    #     text.text = "The requested username already exists"
+    #     return ET.tostring(iq)
+    #     # return f"<iq id='{id}' type='error' from='localhost'><error type='cancel'><conflict xmlns='urn:ietf:params:xml:ns:xmpp-stanzas' /><text xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'>The requested username already exists.</text></error></iq>".encode()
+
+    def iq_register_result(self, id: str) -> bytes:
+        iq = ET.Element("iq", attrib = {"type": "result", "id": id, "from": "localhost"})
+        return ET.tostring(iq)
+
+def SASLFeature(
+        mechanismList: list[mechanismEnum] = [
+            mechanismEnum.PLAIN
+        ]):
+
+    element = ET.Element(
+        "mechanisms",
+        attrib  = {
+            "xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"
+        }
+    )
+
+    for m in mechanismList:
+        mechanism       = ET.SubElement(element, "mechanism")
+        mechanism.text  = m.value
+
+    return element
+
+
+# def success() -> bytes:
+#     elem = ET.Element("success", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
+#     return ET.tostring(elem)
+
+# def not_authorized() -> bytes:
+#     elem = ET.Element("failure", attrib = {"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
+#     ET.SubElement(elem, "not-authorized")
+#     return ET.tostring(elem)
             

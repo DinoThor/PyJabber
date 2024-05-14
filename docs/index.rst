@@ -1,4 +1,4 @@
-Welcome to PyJabber's documentation!
+PyJabber
 ======================================
 
 .. toctree::
@@ -7,7 +7,7 @@ Welcome to PyJabber's documentation!
 
    readme
    installation
-   usage
+   architecture
    modules
    contributing
    authors

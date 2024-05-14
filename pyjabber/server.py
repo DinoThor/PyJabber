@@ -1,14 +1,19 @@
 import asyncio
+import os
 import signal
 import socket
 
+from contextlib import closing
 from loguru import logger
 
+from pyjabber.db.database import connection
 from pyjabber.network.XMLProtocol  import XMLProtocol
 from pyjabber.network.ConnectionsManager import ConectionsManager
+from pyjabber.admin.adminPage import serverInstance
 
 CLIENT_PORT = 5222
 CLIENT_NS   = "jabber:client"
+
 SERVER_PORT = 5269
 SERVER_NS   = "jabber:server"
 
@@ -27,7 +32,7 @@ class Server():
 
     def __init__(
         self,
-        host                = "localhost",
+        host                = ["localhost",],
         client_port         = CLIENT_PORT,
         server_port         = SERVER_PORT,
         family              = socket.AF_INET,
@@ -44,8 +49,15 @@ class Server():
 
         self._connections           = ConectionsManager()
 
-    async def start(self):
+    async def run_server(self):
         logger.info("Starting server...")
+
+        if os.path.isfile("./pyjabber/db/server.db") is False:
+            logger.debug("No database found. Initializing one...")
+            with closing(connection()) as con:
+                with open("./pyjabber/db/schema.sql", "r") as schema:
+                    con.cursor().executescript(schema.read())
+                con.commit()
 
         loop = asyncio.get_running_loop()
 
@@ -79,9 +91,10 @@ class Server():
     def raise_exit(self):
         raise SystemExit(1)
 
-    def run_server(self, debug:bool = False):
+    def start(self, debug:bool = False):
         loop = asyncio.get_event_loop()
         loop.set_debug(debug)
+        # adminPage = serverInstance()
 
         try:
             loop.add_signal_handler(signal.SIGINT, self.raise_exit)
@@ -91,9 +104,11 @@ class Server():
             pass
 
         try:        
-            main_task = loop.create_task(self.start(), name="main_server")
+            main_task   = loop.create_task(self.run_server(), name="main_server")
             loop.run_until_complete(main_task)
+            loop.run_until_complete(serverInstance())
             loop.run_forever()
+            
 
         except (SystemExit, KeyboardInterrupt):  # pragma: no cover
             pass
@@ -104,6 +119,9 @@ class Server():
             for task in tasks:
                 task.cancel()
             loop.run_until_complete(asyncio.gather(*tasks, return_exceptions = True))
+
+            #Close admin page
+            # adminPage.server_close()
 
             # Close the server
             close_task = loop.create_task(self.stop(), name="close_server")

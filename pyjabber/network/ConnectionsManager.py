@@ -1,56 +1,54 @@
 import re
-from pyjabber.utils import Singleton
+from asyncio import Transport
 from loguru import logger
 
+from pyjabber.utils import Singleton
+
+
 class ConectionsManager(metaclass = Singleton):
-    __slots__ = [
-        "_peerList",
-        "_autoRegister"
-    ]
+    __slots__ = ["_peerList"]
     
-    JID = "jid"
-    TRANSPORT = "transport"
+    JID         = "jid"
+    TRANSPORT   = "transport"
 
-    def __init__(self, autoRegister = True) -> None:
+    def __init__(self) -> None:
         self._peerList = {} 
-        self._autoRegister = autoRegister
 
-    def get_users_connected(self):
+    def get_users_connected(self) -> dict[str, tuple[str, int]]:
         return self._peerList
     
-    def get_buffer_by_jid(self, jid):
+    def get_buffer_by_jid(self, jid) -> list[Transport] | None:
+        res = []
         for key, values in self._peerList.items():
             if re.search(f"{jid}/*", values[self.JID]):
-                return self._peerList[key][self.TRANSPORT]
-            
+                res.append(self._peerList[key][self.TRANSPORT])            
+        if res:
+            return res
         return None
+    
+    def get_jid_by_peer(self, peer) -> str | None:
+        try:
+            return self._peerList[peer][self.JID]
+        except KeyError:
+            return None
+        
+    def set_jid(self, peer, jid, transport = None) -> None | bool:
+        try:
+            self._peerList[peer][self.JID] = jid
+            if transport:
+                self._peerList[peer][self.TRANSPORT] = transport
+        except KeyError:
+            return False
 
-    def connection(self, peer):
+    def connection(self, peer) -> None:
         if peer not in self._peerList:
             self._peerList[peer] = {
                 self.JID       : None,
                 self.TRANSPORT : None
             } 
 
-    def disconnection(self, peer):
+    def disconnection(self, peer) -> None:
         try:
             self._peerList.pop(peer)
         except KeyError:
             logger.error(f"{peer} not present in the online list")
-
-    def get_jid(self, peer):
-        try:
-            return self._peerList[peer][self.JID]
-        except KeyError:
-            pass
-
-    def set_jid(self, peer, jid, transport):
-        try:
-            self._peerList[peer][self.JID]         = jid
-            self._peerList[peer][self.TRANSPORT]   = transport
-        except KeyError:
-            raise Exception()
-
-    def autoRegister(self):
-        return self._autoRegister
-

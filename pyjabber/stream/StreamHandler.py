@@ -1,16 +1,16 @@
-import base64
 from enum import Enum
-import hashlib
-import shelve
-
 from loguru import logger
 from uuid import uuid4
 from xml.etree import ElementTree as ET
+
+from pyjabber.features import InBandRegistration as IBR
 from pyjabber.features.StartTLSFeature import StartTLSFeature
 from pyjabber.features.StreamFeature import StreamFeature
-from pyjabber.features.SASLFeature import SASLFeature
+from pyjabber.features.SASLFeature import SASLFeature, SASL
 from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionsManager import ConectionsManager
+from pyjabber.utils import ClarkNotation as CN
+
 
 class Stage(Enum):
     """
@@ -57,7 +57,7 @@ class StreamHandler():
             
             self._stage = Stage.OPENED
 
-        # TLS feature sended
+        # TLS feature offered
         elif self._stage == Stage.OPENED:
             if "starttls" in elem.tag:
                 self._buffer.write(StartTLSFeature().proceedResponse())
@@ -65,74 +65,44 @@ class StreamHandler():
                 self._stage = Stage.SSL
                 return Signal.RESET
         
+        # TLS Handshake made. Starting SASL
         elif self._stage == Stage.SSL:
             self._streamFeature.reset()
+
+            self._streamFeature.register(IBR.InBandRegistration())
             self._streamFeature.register(SASLFeature())
             self._buffer.write(self._streamFeature.tobytes())
 
             self._stage = Stage.SASL
         
+        # SASL
         elif self._stage == Stage.SASL:
-            if "iq" in elem.tag:
-                query = elem.find("jabber:iq:register#query")
-                if query:
-                    iq = ET.Element(
-                        "iq", 
-                        attrib = {
-                            "type": "error", 
-                            "id": elem.attrib["id"]
-                        }
-                    )
-                    error = ET.Element(
-                        "error",
-                        attrib = {"type": "cancel"}
-                    )
-                    msg = ET.Element(
-                        "service-unavailable",
-                        attrib = {
-                            "xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"
-                        }
-                    )
-                    error.append(msg)
-                    iq.append(error)
-                    self._buffer.write(ET.tostring(iq))
-            if "auth" in elem.tag:
-                with shelve.open("./pyjabber/network/users/credentials") as credStorage:
+            res = SASL().feed(elem, {"peername": self._buffer.get_extra_info('peername')})
+            if type(res) is tuple:
+                if res[0].value == Signal.RESET.value:
+                    self._buffer.write(res[1])
+                    self._stage = Stage.AUTH
+                    return Signal.RESET
+                else:
+                    self._buffer.write(res[1])
+                    self._stage = Stage.AUTH
+                    return
+                
+            self._buffer.write(res)
 
-                    data        = base64.b64decode(elem.text).split("\x00".encode())
-                    self._jid   = data[1].decode()
-                    keyhash     = hashlib.sha256(data[2]).hexdigest()
-
-                    try:
-
-                        if credStorage[data[1].decode()] == keyhash:
-                            self._buffer.write(SASLFeature().success())
-                            self._stage = Stage.AUTH
-                        else:
-                            self._buffer.write(SASLFeature().not_authorized())
-
-                    except KeyError:
-                        if self._connections.autoRegister:
-                            credStorage[data[1].decode()] = keyhash
-                            self._buffer.write(SASLFeature().success())
-                            self._stage = Stage.AUTH
-                        else:
-                            logger.info("Auth tag without credentials")
-                            self._buffer.write(SASLFeature().not_authorized())
-
-                return Signal.RESET
-            
+        # User register/authenticated. Starting resource binding
         elif self._stage == Stage.AUTH:
             self._streamFeature.reset()
             self._streamFeature.register(ResourceBinding())
             self._buffer.write(self._streamFeature.tobytes())
+            
             self._stage = Stage.BIND
 
         elif self._stage == Stage.BIND:
             if "iq" in elem.tag:
                 if elem.attrib["type"] == "set":
-                    bindElem = elem.find("urn:ietf:params:xml:ns:xmpp-bind#bind")
-                    resouce = bindElem.find("urn:ietf:params:xml:ns:xmpp-bind#resource")
+                    bindElem    = elem.find(CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "bind")))
+                    resouce     = bindElem.find(CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "resource")))
 
                     if resouce is not None:   
                         resource_id = resouce.text   
@@ -147,17 +117,18 @@ class StreamHandler():
                         }
                     )
                     
-                    bindRes = ET.Element(
+                    bindRes = ET.SubElement(
+                        iqRes,
                         "bind",
                         attrib = {
                             "xmlns": "urn:ietf:params:xml:ns:xmpp-bind"
                         }
                     )
 
-                    jidRes = ET.Element("jid")
-                    jidRes.text = f"{self._jid}@localhost/{resource_id}"
-                    bindRes.append(jidRes)
-                    iqRes.append(bindRes)
+                    jidRes      = ET.SubElement(bindRes, "jid")
+
+                    currentJid  = self._connections.get_jid_by_peer(self._buffer.get_extra_info('peername'))
+                    jidRes.text = f"{currentJid}@localhost/{resource_id}"
 
                     self._buffer.write(ET.tostring(iqRes))
 

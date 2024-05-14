@@ -1,5 +1,4 @@
-from xml.etree import ElementTree
-from xml.etree.ElementTree import Element
+from xml.etree import ElementTree as ET
 
 class NonUniqueFeature(Exception):
     """
@@ -7,7 +6,7 @@ class NonUniqueFeature(Exception):
     """
     pass
 
-class StreamFeature(Element):
+class StreamFeature(ET.Element):
     """Class to manage server features."""
     __slots__ = [
         "_features"
@@ -21,9 +20,9 @@ class StreamFeature(Element):
             }, 
             **extra : str) -> None:
         super().__init__(tag, attrib, **extra)
-        self._features: dict[str, Element] = {}
+        self._features: dict[str, ET.Element] = {}
 
-    def register(self, feature: Element):
+    def register(self, feature: ET.Element):
         """
         Register a new feature
         """
@@ -60,4 +59,4 @@ class StreamFeature(Element):
         for _, feature in self._features.items():
             res.append(feature)
 
-        return ElementTree.tostring(res)
+        return ET.tostring(res)

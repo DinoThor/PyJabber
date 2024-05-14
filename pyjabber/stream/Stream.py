@@ -1,7 +1,6 @@
 import enum
 from uuid import uuid4
 import xml.etree.ElementTree as ET
-from slixmpp.xmlstream import tostring
 
 class Namespaces(enum.Enum):
     '''
@@ -12,23 +11,13 @@ class Namespaces(enum.Enum):
     SERVER = "jabber:server"
 
 
-    
-    # def open_tag(self):
-    #     '''
-    #     Return the open tag of the element.
-    #     '''
-    #     tag = '<' + self.tag + ' '
-    #     for a in self.attrib:
-    #         tag += a + '="' + self.attrib[a] + '" '
-    #     tag += '>'
-    #     return tag.encode()
-
-        
-
 class Stream(ET.Element):
-    '''
-    Stream open tag to open a stream connection.
-    '''
+
+    class Namespaces(enum.Enum):
+        XMLSTREAM = "http://etherx.jabber.org/streams"
+        CLIENT = "jabber:client"
+        SERVER = "jabber:server"
+
     def __init__(
             self, 
             id_         = None, 
@@ -44,25 +33,30 @@ class Stream(ET.Element):
                 ("from", from_), 
                 ("to", to), 
                 ("version", version), 
-                ("xml:lang", xml_lang), 
+                ("xml:lang", xml_lang),
                 ("xmlns", xmlns)) if v is not None
         }
 
+        attrib["xmlns:stream"] = Namespaces.XMLSTREAM.value
+
         super().__init__("stream:stream", attrib)
 
+    def open_tag(self) -> bytes:
+        tag = f'<{self.tag}'
+        for a in self.attrib:
+            tag += f" {a}='{self.attrib[a]}'"
+        tag += '>'
+        return tag.encode()
 
 def responseStream(attrs):
-    # Load attributes
     attrs = dict(attrs)
 
-    # Get attributes
     id_     = str(uuid4())
     from_   = attrs.pop((None, "from"), None)
     to      = attrs.pop((None, "to"), None)
     version = attrs.pop((None, "version"), "1.0")
     lang    = attrs.pop(("http://www.w3.org/XML/1998/namespace", "lang"), None)
 
-    # Create response attributes
     stream = Stream(
         id_         = id_,
         from_       = to,
@@ -71,20 +65,4 @@ def responseStream(attrs):
         xml_lang    = lang
     )
 
-    return tostring(stream, open_only = True).encode(encoding='utf-8')
-
-def recivedStream(attrs):
-    attrs = dict(attrs)
-
-    from_   = attrs.pop((None, "from"), None)
-    to      = attrs.pop((None, "to"), None)
-    version = tuple(map(int, attrs.pop((None, "version"), "0.9").split(".")))
-    lang    = attrs.pop(("http://www.w3.org/XML/1998/namespace", "lang"), None)
-
-    return Stream(
-        from_       = from_,
-        to          = to,
-        version     = version,
-        xml_lang    = lang,
-        xmlns       = "jabber:client"
-    )
+    return stream.open_tag()
