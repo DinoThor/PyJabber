@@ -111,3 +111,6 @@ ENV/
 # Data persistance
 *.db
 *.plk
+
+# Node modules
+node_modules/
