@@ -1,4 +1,6 @@
 import { Table, Button } from 'rsuite';
+import { useState, useEffect } from 'react';
+
 
 const { Column, HeaderCell, Cell } = Table;
 
@@ -31,6 +33,20 @@ const mockData = [
 ]
 
 export default function Contact() {
+  const [users, setUsers] = useState([]);
+
+  useEffect(() => {
+    console.log("JASDASHD")
+    fetch('http://localhost:9090/api/users')
+      .then((res) => {
+        return res.json();
+      })
+      .then((data) => {
+        console.log(data);
+        setUsers(data);
+      });
+  }, []);
+
   return (
     <Table
       height={400}
