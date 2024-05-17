@@ -35,22 +35,19 @@ const mockData = [
 export default function Contact() {
   const [users, setUsers] = useState([]);
 
-
-  // useEffect(() => {
-  //   console.log("JASDASHD")
-  //   fetch('http://localhost:9090/api/users')
-  //     .then((res) => {
-  //       return res.json();
-  //     })
-  //     .then((data) => {
-  //       console.log(data);
-  //       setUsers(data);
-  //     });
-  // }, []);
+  useEffect(() => {
+    fetch('http://localhost:9090/api/users')
+      .then((res) => {
+        return res.json();
+      })
+      .then((data) => {
+        setUsers(data);
+      });
+  }, []);
 
   return (
     <Table height={500}
-          data={mockData}
+          data={users}
     >
       <Column align="center" fixed>
         <HeaderCell>Id</HeaderCell>

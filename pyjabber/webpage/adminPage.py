@@ -1,80 +1,42 @@
 import asyncio
+from contextlib import closing
 import os
 from aiohttp import web
-import aiohttp
-# from pyjabber.db.database import connection
+from pyjabber.db.database import connection
 import json
-import aiohttp_cors
-import logging
-import yarl
-
+from loguru import logger
 
 
 async def handleUser(request):
-    data = {
-        "users": [
-            {"id": 1, "jid": "demo", "hash": 132131},
-            {"id": 2, "jid": "demo", "hash": 132131},
-            {"id": 3, "jid": "demo", "hash": 132131},
-            {"id": 3, "jid": "demo", "hash": 132131},
-            {"id": 1, "jid": "demo", "hash": 132131},
-            {"id": 2, "jid": "demo", "hash": 132131},
-            {"id": 3, "jid": "demo", "hash": 132131},
-            {"id": 3, "jid": "demo", "hash": 132131}
-        ]
-    }
-    data = json.dumps(data)
-    return web.Response(text=data)
-# app = web.Application()
-# app.router.add_static('/static/',
-#                           path=os.getcwd() + "/pyjabber/webpage/build/",
-#                           show_index=True
-#                           )
+    with closing(connection()) as con:
+        res = con.execute("SELECT jid FROM credentials")
+        res = res.fetchall()
 
-# app.add_routes([web.static('/', os.getcwd() + "/pyjabber/webpage/build",  follow_symlinks=True)])
+    users = []
+    for index, r in enumerate(res):
+        users.append(
+            {
+                "id"    : index,
+                "jid"   : r 
+            }
+        )
+    
+    return web.Response(text=json.dumps(users))
 
-# app.add_routes([web.get('/', htmlPage),
-#                 web.get('/static/css/main.985302ea.cs', cssPage)])
-
+async def handle(request):
+    return web.FileResponse(os.getcwd() + '/pyjabber/webpage/build/index.html')
 
 async def serverInstance():
-    logging.getLogger('aiohttp.server')
-    logging.basicConfig(level=logging.DEBUG)
-    # app = web.Application()
-    # app.add_routes([web.static('/prefix/', os.getcwd() + "/pyjabber/webpage/build/", name="prefix")])
-
-    # runner = web.AppRunner(app)
-    # await runner.setup()
-    # site = web.TCPSite(runner, host='localhost', port=9090)
-    # await site.start()
-
     app = web.Application()
-    app.add_routes([web.static('/prefix/', "/home/aaron/Escritorio/build", name="prefix")])
+    app.router.add_get('/', handle)
+    app.router.add_get('/api/users', handleUser)
+    app.router.add_static('/static', os.getcwd() + '/pyjabber/webpage/build/static')
+
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, 'localhost', 8080)
+    site = web.TCPSite(runner, 'localhost', 9090)
     await site.start()
-    print("======= Serving on http://localhost:8080/ =======")
+
+    logger.info("Serving admin webpage on http://localhost:9090")
     while True:
-        await asyncio.sleep(3600)  # Mantiene el servidor en funcionamiento
-
-async def other_task():
-    while True:
-        print("Running other task...")
-        await asyncio.sleep(5)
-
-
-async def main():
-    await asyncio.gather(
-        serverInstance(),
-        other_task()
-    )
-
-
-    # app = web.Application()
-    # app.add_routes([web.static('/prefix/', os.getcwd() + "/pyjabber/webpage/build/", name="prefix")])
-    # await web.run_app(app)
-
-if __name__ == "__main__":
-    # serverInstance()
-    asyncio.run(main())
+        await asyncio.sleep(3600)  # Keep alive the server
