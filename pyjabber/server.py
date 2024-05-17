@@ -1,10 +1,15 @@
 import asyncio
+import http
 import os
 import signal
 import socket
 
+from http.server import SimpleHTTPRequestHandler
+
 from contextlib import closing
+import socketserver
 from loguru import logger
+
 
 from pyjabber.db.database import connection
 from pyjabber.network.XMLProtocol  import XMLProtocol
@@ -24,6 +29,7 @@ class Server():
         "_client_port",
         "_server_port",
         "_family",
+        "_adminServer",
         "_client_listener",
         "_server_listener",
         "_connection_timeout",
@@ -45,9 +51,17 @@ class Server():
         self._family                = family
         self._client_listener       = None
         self._server_listener       = None
+        self._adminServer           = None
         self._connection_timeout    = connection_timeout
 
         self._connections           = ConectionsManager()
+
+    async def launch_admin_page(self):
+        Handler = SimpleHTTPRequestHandler
+
+        with socketserver.TCPServer(("", 9090), Handler) as httpd:
+            print("serving at port", 9090)
+            httpd.serve_forever()
 
     async def run_server(self):
         logger.info("Starting server...")
@@ -94,7 +108,6 @@ class Server():
     def start(self, debug:bool = False):
         loop = asyncio.get_event_loop()
         loop.set_debug(debug)
-        adminPage = serverInstance()
 
         try:
             loop.add_signal_handler(signal.SIGINT, self.raise_exit)
@@ -121,7 +134,7 @@ class Server():
             loop.run_until_complete(asyncio.gather(*tasks, return_exceptions = True))
 
             #Close admin page
-            adminPage.server_close()
+            # adminPage.server_close()
 
             # Close the server
             close_task = loop.create_task(self.stop(), name="close_server")
