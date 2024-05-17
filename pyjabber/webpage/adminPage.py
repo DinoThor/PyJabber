@@ -1,12 +1,14 @@
+import asyncio
+import os
 from aiohttp import web
-from pyjabber.db.database import connection
+import aiohttp
+# from pyjabber.db.database import connection
 import json
 import aiohttp_cors
+import logging
+import yarl
 
-async def handle(request):
-    name = request.match_info.get('name', "Anonymous")
-    text = "Hello, " + name
-    return web.Response(text=text)
+
 
 async def handleUser(request):
     data = {
@@ -23,15 +25,56 @@ async def handleUser(request):
     }
     data = json.dumps(data)
     return web.Response(text=data)
-app = web.Application()
-app.add_routes([web.get('/', handle)])
+# app = web.Application()
+# app.router.add_static('/static/',
+#                           path=os.getcwd() + "/pyjabber/webpage/build/",
+#                           show_index=True
+#                           )
 
-cors = aiohttp_cors.setup(app)
-resource = cors.add(app.router.add_resource("/api/users"))
+# app.add_routes([web.static('/', os.getcwd() + "/pyjabber/webpage/build",  follow_symlinks=True)])
+
+# app.add_routes([web.get('/', htmlPage),
+#                 web.get('/static/css/main.985302ea.cs', cssPage)])
 
 
 async def serverInstance():
+    logging.getLogger('aiohttp.server')
+    logging.basicConfig(level=logging.DEBUG)
+    # app = web.Application()
+    # app.add_routes([web.static('/prefix/', os.getcwd() + "/pyjabber/webpage/build/", name="prefix")])
+
+    # runner = web.AppRunner(app)
+    # await runner.setup()
+    # site = web.TCPSite(runner, host='localhost', port=9090)
+    # await site.start()
+
+    app = web.Application()
+    app.add_routes([web.static('/prefix/', "/home/aaron/Escritorio/build", name="prefix")])
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, host='localhost', port=9090)
+    site = web.TCPSite(runner, 'localhost', 8080)
     await site.start()
+    print("======= Serving on http://localhost:8080/ =======")
+    while True:
+        await asyncio.sleep(3600)  # Mantiene el servidor en funcionamiento
+
+async def other_task():
+    while True:
+        print("Running other task...")
+        await asyncio.sleep(5)
+
+
+async def main():
+    await asyncio.gather(
+        serverInstance(),
+        other_task()
+    )
+
+
+    # app = web.Application()
+    # app.add_routes([web.static('/prefix/', os.getcwd() + "/pyjabber/webpage/build/", name="prefix")])
+    # await web.run_app(app)
+
+if __name__ == "__main__":
+    # serverInstance()
+    asyncio.run(main())

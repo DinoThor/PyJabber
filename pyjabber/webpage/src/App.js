@@ -1,9 +1,6 @@
-// import logo from './logo.svg';
-// import './App.css';
 import 'rsuite/dist/rsuite.min.css';
 import SideBar from './components/sidebar/sidebar';
 import { Outlet } from 'react-router-dom';
-import Contact from './routes/userList/userList';
 
 
 function App() {

@@ -1,6 +1,6 @@
 import { Table, Button } from 'rsuite';
 import { useState, useEffect } from 'react';
-
+import TrashIcon from '@rsuite/icons/Trash';
 
 const { Column, HeaderCell, Cell } = Table;
 
@@ -10,23 +10,23 @@ const mockData = [
     "jid": "demo",
     "hash": 13213213
   }, {
-    "id": 1,
+    "id": 2,
+    "jid": "test",
+    "hash": 13213213
+  }, {
+    "id": 3,
+    "jid": "miguel",
+    "hash": 13213213
+  }, {
+    "id": 4,
+    "jid": "agent1",
+    "hash": 13213213
+  }, {
+    "id": 5,
     "jid": "demo",
     "hash": 13213213
   }, {
-    "id": 1,
-    "jid": "demo",
-    "hash": 13213213
-  }, {
-    "id": 1,
-    "jid": "demo",
-    "hash": 13213213
-  }, {
-    "id": 1,
-    "jid": "demo",
-    "hash": 13213213
-  }, {
-    "id": 1,
+    "id": 6,
     "jid": "demo",
     "hash": 13213213
   }
@@ -35,71 +35,49 @@ const mockData = [
 export default function Contact() {
   const [users, setUsers] = useState([]);
 
-  useEffect(() => {
-    console.log("JASDASHD")
-    fetch('http://localhost:9090/api/users')
-      .then((res) => {
-        return res.json();
-      })
-      .then((data) => {
-        console.log(data);
-        setUsers(data);
-      });
-  }, []);
+
+  // useEffect(() => {
+  //   console.log("JASDASHD")
+  //   fetch('http://localhost:9090/api/users')
+  //     .then((res) => {
+  //       return res.json();
+  //     })
+  //     .then((data) => {
+  //       console.log(data);
+  //       setUsers(data);
+  //     });
+  // }, []);
 
   return (
-    <Table
-      height={400}
-      data={mockData}
-      onRowClick={rowData => {
-        console.log(rowData);
-      }}
+    <Table height={500}
+          data={mockData}
     >
-      <Column width={60} align="center" fixed>
+      <Column align="center" fixed>
         <HeaderCell>Id</HeaderCell>
         <Cell dataKey="id" />
       </Column>
 
-      <Column width={150}>
-        <HeaderCell>First Name</HeaderCell>
+      <Column align="center" fixed>
+        <HeaderCell>JID</HeaderCell>
         <Cell dataKey="jid" />
       </Column>
 
-      <Column width={150}>
-        <HeaderCell>Last Name</HeaderCell>
-        <Cell dataKey="hash" />
-      </Column>
-      {/* 
-      <Column width={100}>
-        <HeaderCell>Gender</HeaderCell>
-        <Cell dataKey="gender" />
-      </Column>
-
-      <Column width={100}>
-        <HeaderCell>Age</HeaderCell>
-        <Cell dataKey="age" />
-      </Column>
-
-      <Column width={150}>
-        <HeaderCell>Postcode</HeaderCell>
-        <Cell dataKey="postcode" />
-      </Column>
-
-      <Column width={300}>
-        <HeaderCell>Email</HeaderCell>
-        <Cell dataKey="email" />
-      </Column> */}
-      {/* <Column width={80} fixed="right">
-        <HeaderCell>...</HeaderCell>
-
+      <Column align="center">
+        <HeaderCell />
         <Cell style={{ padding: '6px' }}>
           {rowData => (
-            <Button appearance="link" onClick={() => alert(`id:${rowData.id}`)}>
-              Edit
+            <Button appearance="link" onClick={() => {
+              let a = window.confirm(`¿Estas seguro de eliminar ID:${rowData.id}?`)
+              console.log(a)
+            }}>
+              <TrashIcon style={{
+                fontSize: 15,
+                color: "red"
+              }} />
             </Button>
           )}
         </Cell>
-      </Column> */}
+      </Column>
     </Table>
   );
 };
