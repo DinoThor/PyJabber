@@ -1,0 +1,7 @@
+logging:
+    level: DEBUG
+
+# CUSTOM DATA BASE FILE CAN BE USED
+# INDICATING THE ABSOLUTE PATH
+# ---------------------------------
+# data_base_path: "~/PJServer/database.db"
