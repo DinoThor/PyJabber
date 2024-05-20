@@ -1,9 +1,7 @@
 import { Sidenav, Nav } from 'rsuite';
 import DashboardIcon from '@rsuite/icons/legacy/Dashboard';
 import GroupIcon from '@rsuite/icons/legacy/Group';
-import MagicIcon from '@rsuite/icons/legacy/Magic';
 import GearCircleIcon from '@rsuite/icons/legacy/GearCircle';
-import { Link } from 'react-router-dom';
 import { useNavigate } from "react-router-dom";
 import { useState } from 'react';
 
@@ -14,7 +12,7 @@ export default function SideBar() {
 
   return (
     <div style={{ width: 240 }}>
-      <Sidenav appearance='inverse' style={{ height: "100vh" }}>
+      <Sidenav appearance='inverse' style={{ height: "100%" }}>
         <Sidenav.Header>
           <div style={{ padding: 20, fontSize: 16, }}>
             PyJabber
@@ -33,7 +31,6 @@ export default function SideBar() {
             <Nav.Item eventKey="3" icon={<GearCircleIcon />} onClick={() => { setActivate(3); navigate("/settings")}}>
               Settings
             </Nav.Item>
-
           </Nav>
         </Sidenav.Body>
       </Sidenav>

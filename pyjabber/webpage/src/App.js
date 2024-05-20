@@ -5,20 +5,27 @@ import { Outlet } from 'react-router-dom';
 
 function App() {
   return (
-    <div style={{
-      display: "flex",
-      flexDirection: "row",
+    <div
+    style={{
       height: "100vh"
     }}>
-      <SideBar/>
       <div style={{
+        display: "flex",
         flex: 1,
-        padding: 30,
-        borderRadius: 2,
-        borderWidth: 2,
-        borderColor: "red"
+        flexDirection: "row",
+        alignItems: "stretch",
+        height: "100%"
       }}>
-        <Outlet/>
+        <SideBar />
+        <div style={{
+          flex: 1,
+          padding: 30,
+          borderRadius: 2,
+          borderWidth: 2,
+          borderColor: "red"
+        }}>
+          <Outlet />
+        </div>
       </div>
     </div>
   );

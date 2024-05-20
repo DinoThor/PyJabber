@@ -1,35 +1,17 @@
 import asyncio
-from contextlib import closing
 import os
+
 from aiohttp import web
-from pyjabber.db.database import connection
-import json
 from loguru import logger
+from pyjabber.webpage.api import api 
 
-
-async def handleUser(request):
-    with closing(connection()) as con:
-        res = con.execute("SELECT jid FROM credentials")
-        res = res.fetchall()
-
-    users = []
-    for index, r in enumerate(res):
-        users.append(
-            {
-                "id"    : index,
-                "jid"   : r 
-            }
-        )
-    
-    return web.Response(text=json.dumps(users))
-
-async def handle(request):
-    return web.FileResponse(os.getcwd() + '/pyjabber/webpage/build/index.html')
 
 async def serverInstance():
     app = web.Application()
-    app.router.add_get('/', handle)
-    app.router.add_get('/api/users', handleUser)
+    app.router.add_get('/', api.handle)
+    app.router.add_get('/api/users', api.handleUser)
+    app.router.add_post('/api/createuser', api.handleRegister)
+    app.router.add_delete('/api/users/{id}', api.handleDelete)
     app.router.add_static('/static', os.getcwd() + '/pyjabber/webpage/build/static')
 
     runner = web.AppRunner(app)

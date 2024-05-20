@@ -111,3 +111,4 @@ ENV/
 # Data persistance
 *.db
 *.plk
+*.sql
