@@ -1,5 +1,4 @@
 import asyncio
-import http
 import os
 import signal
 import socket

@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyjabber"
-version = "0.1.0"
+name = "PyJabber"
+version = "0.1.2"
 description = "A Python XMPP server."
 readme = "README.rst"
 authors = [
@@ -18,7 +18,7 @@ classifiers = [
 ]
 license = {text = "MIT license"}
 dependencies = [
-  "typer"
+
 ]
 
 [project.optional-dependencies]

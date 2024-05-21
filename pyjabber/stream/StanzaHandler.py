@@ -59,13 +59,7 @@ class StanzaHandler():
         
         reciverBuffer = self._connections.get_buffer_by_jid(element.attrib["to"])
         for buffer in reciverBuffer:
-            res = Message(
-                mto     = element.attrib["to"],
-                mfrom   = element.attrib["from"],
-                id      = element.attrib["id"],
-                body    = element.find(CN.clarkFromTuple(("jabber:client", "body"))).text
-            ) 
-            buffer.write(ET.tostring(res))
+            buffer.write(ET.tostring(element))
 
     def handlePre(self, element: ET.Element):
         if "type" in element.attrib.keys():
