@@ -28,6 +28,7 @@ class StreamAlivenessMonitor:
             self._reset_event.set()
             self._timeout_task.cancel()
         self._reset_event.clear()
-        with warnings.catch_warnings(action = "ignore"):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
             self._timeout_task = asyncio.create_task(self._timeout_task_coro())
     

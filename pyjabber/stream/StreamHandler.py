@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Union
 from loguru import logger
 from uuid import uuid4
 from xml.etree import ElementTree as ET
@@ -48,7 +49,7 @@ class StreamHandler():
     def buffer(self, value):
         self._buffer = value
 
-    def handle_open_stream(self, elem:ET.Element = None) -> Signal | None:
+    def handle_open_stream(self, elem:ET.Element = None) -> Union[Signal, None]:
         # TCP Connection opened
         if self._stage == Stage.CONNECTED:
             self._streamFeature.reset()
