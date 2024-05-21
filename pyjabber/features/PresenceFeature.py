@@ -29,11 +29,12 @@ class Presence(FeatureInterface):
             roster  = self._roster.retriveRoster(jid)
 
             if to.split("@")[0] == jid:
-                item = [item for item in roster 
-                        if ET.fromstring(item[2]).attrib["jid"] == from_]
+                # item = [item for item in roster 
+                #         if ET.fromstring(item[2]).attrib["jid"] == from_]
                 
-                if item:
-                    print(item)
+                # if item:
+                #     print(item)
+                pass
 
             item = [item for item in roster 
                     if ET.fromstring(item[2]).attrib["jid"] == to]
