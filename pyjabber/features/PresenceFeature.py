@@ -1,3 +1,4 @@
+import sys
 from pyjabber.features.FeatureInterface import FeatureInterface
 from pyjabber.network.ConnectionsManager import ConectionsManager
 from pyjabber.plugins.roster.Roster import Roster
@@ -16,14 +17,22 @@ class Presence(FeatureInterface):
         self._connections   = ConectionsManager()
         self._jid           = None
 
+        self._counter = 0
+
     def feed(self, element: ET.Element, jid: str, extra: dict[str, any] = None):
         if "type" in element.attrib:
             self._jid = jid
             self._handlers[element.attrib["type"]](element)
 
     def handleSubscribe(self, element: ET.Element):
+        self._counter += 1
+        if self._counter > 10:
+            return
         to      = element.attrib["to"]
         jid     = self._jid.split("/")[0]
+
+        if "from" not in element.attrib:
+            element.attrib["from"] = self._jid
 
         if to.split("@")[1] == "localhost":
             roster  = self._roster.retriveRoster(jid)
@@ -36,6 +45,8 @@ class Presence(FeatureInterface):
                 #     print(item)
                 pass
 
+            buffer = self._connections.get_buffer_by_jid(to)
+
             item = [item for item in roster 
                     if ET.fromstring(item[2]).attrib["jid"] == to]
 
@@ -43,8 +54,8 @@ class Presence(FeatureInterface):
                 item    = item[0]
                 ETitem  = ET.fromstring(item[2])
 
-                if ETitem.attrib["subscription"] in ["to", "both"]:
-                    res = ET.Element(
+                if ETitem.attrib["subscription"] in ["from", "both"]:
+                    petition = ET.Element(
                         "presence",
                         attrib = {
                             "from"  : element.attrib['to'],
@@ -53,20 +64,20 @@ class Presence(FeatureInterface):
                             "type"  : "subscribed"
                         }
                     )
-                    return ET.tostring(res)
+                    for b in buffer:
+                        data = ET.tostring(petition)
+                        b.write(data)
+
+                newItem = ETitem.__copy__()
+                newItem.attrib["subscription"] = "from"
             
                 if "ask" not in ETitem.attrib:
-                    newItem = ETitem.__copy__()
                     newItem.attrib["ask"] = "subscribe"
                     
-                    self._roster.update(item = ET.tostring(newItem), id = item[0])
+                self._roster.update(item = ET.tostring(newItem), id = item[0])
+            
 
-            if "from" not in element.attrib:
-                element.attrib["from"] = self._jid
-
-            buffer = self._connections.get_buffer_by_jid(to)
-
-            if buffer is not None:
+            if buffer:
                 petition = ET.Element(
                     "presence",
                     attrib = {
@@ -92,6 +103,8 @@ class Presence(FeatureInterface):
         if to.split("@")[1] == "localhost":
             if "from" not in element.attrib:
                 element.attrib["from"] = self._jid
+
+            buffer = self._connections.get_buffer_by_jid(to)
 
             roster  = self._roster.retriveRoster(jid)
             item    = [item for item in roster 
@@ -125,29 +138,7 @@ class Presence(FeatureInterface):
                     newItem = ETitem.__copy__()
                     newItem.attrib.pop("ask")
                     
-                self._roster.update(item = ET.tostring(newItem), id = item[0])
-
-            if "from" not in element.attrib:
-                element.attrib["from"] = self._jid
-
-            buffer = self._connections.get_buffer_by_jid(to)
-
-            if buffer is not None:
-                petition = ET.Element(
-                    "presence",
-                    attrib = {
-                        "from"  : element.attrib['from'],
-                        "to"    : element.attrib['to'],
-                        "id"    : element.attrib['id'],
-                        "type"  : "subscribed"
-                    }
-                )
-                for b in buffer:
-                    data = ET.tostring(petition)
-                    b.write(data)
-                    # b.write(
-                    #     f"<presence from='{element.attrib['from']}' id='{element.attrib['id']}' to='{element.attrib['to']}' type='subscribe'/>".encode()
-                    # )
+                self._roster.update(item = ET.tostring(newItem), id = item[0])                
 
     def setSubscription(self, item: ET.Element):
         jid     = self._jid.split("/")[0]

@@ -70,7 +70,7 @@ class Roster(Plugin):
             for item in roster:
                 query.append(ET.fromstring(item[-1]))                
             
-            return ET.tostring(iq_res)
+            return [ET.tostring(iq_res)]
                 
         except:
             raise Exception()
@@ -140,4 +140,4 @@ class Roster(Plugin):
             }
         )
 
-        return ET.tostring(res)
+        return [ET.tostring(res)]

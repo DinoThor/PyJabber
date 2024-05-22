@@ -10,6 +10,7 @@ async def serverInstance():
     app = web.Application()
     app.router.add_get('/', api.handle)
     app.router.add_get('/api/users', api.handleUser)
+    app.router.add_get('/api/roster/{id}', api.handleRoster)
     app.router.add_post('/api/createuser', api.handleRegister)
     app.router.add_delete('/api/users/{id}', api.handleDelete)
     app.router.add_static('/static', os.getcwd() + '/pyjabber/webpage/build/static')

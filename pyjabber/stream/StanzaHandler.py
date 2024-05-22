@@ -47,7 +47,8 @@ class StanzaHandler():
     def handleIQ(self, element: ET.Element):
         res = self._pluginManager.feed(element)
         if res:
-            self._buffer.write(res)
+            for r in res:
+                self._buffer.write(r)
 
     def handleMsg(self, element: ET.Element):
         try:
@@ -63,7 +64,7 @@ class StanzaHandler():
 
     def handlePre(self, element: ET.Element):
         if "type" in element.attrib.keys():
-            if element.attrib["type"] == "subscribe":
-                res = self._PresenceManager.feed(element, self._jid)
-                print("RES", res)
+            # if element.attrib["type"] == "subscribe":
+            res = self._PresenceManager.feed(element, self._jid)
+            # print("RES", res)
 

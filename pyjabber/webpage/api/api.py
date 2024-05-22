@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import xml.etree.ElementTree as ET
 
 from aiohttp import web
 from contextlib import closing
@@ -16,6 +17,35 @@ async def handleUser(request):
     users = [{"id": i, "jid": v} for i, v in res]
     return web.Response(text=json.dumps(users))
 
+async def handleRoster(request):
+    try:
+        user_id = int(request.match_info['id'])
+
+        with closing(connection()) as con:
+            res = con.execute("SELECT jid FROM credentials WHERE id = ?", (user_id, ))
+            user_jid = res.fetchone()[0]
+
+            if not res:
+                return web.json_response({"status": "error", "message": "User not found"}, status=404)
+            
+            roster = con.execute("SELECT rosterItem FROM roster WHERE jid LIKE ?", (f"{user_jid}%", ))
+            roster = res.fetchall()
+            
+            response = [{ET.tostring(r)} for r in roster]
+
+
+        logger.info(f"User with ID {user_id} deleted")
+        return web.Response(text=json.dumps(response))
+
+    except ValueError:
+        return web.json_response({"status": "error", "message": "Invalid user ID"}, status=400)
+    except Exception as e:
+        error_response = {
+            "status": "error",
+            "message": str(e)
+        }
+        return web.json_response(error_response, status=500)
+
 async def handleDelete(request):
     try:
         user_id = int(request.match_info['id'])
@@ -27,7 +57,11 @@ async def handleDelete(request):
             if user_id not in [r[0] for r in res]:
                 return web.json_response({"status": "error", "message": "User not found"}, status=404)
             
+            res = con.execute("SELECT jid FROM credentials WHERE id = ?", (user_id, ))
+            user_jid = res.fetchone()[0]
+            
             con.execute("DELETE FROM credentials WHERE id = ?", (user_id, ))
+            con.execute("DELETE FROM roster WHERE jid LIKE ?", (f"{user_jid}%", ))
             con.commit()
 
         logger.info(f"User with ID {user_id} deleted")
