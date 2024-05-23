@@ -35,7 +35,7 @@ class Roster(Plugin):
     
     def update(self, id: int, item: ET.Element):
         with closing(connection()) as con:
-            con.execute("UPDATE roster SET rosterItem = ? WHERE id = ?", (item, id))
+            con.execute("UPDATE roster SET rosterItem = ? WHERE id = ?", (ET.tostring(item).decode(), id))
             con.commit()
 
     def feed(self, jid: str, element: ET.Element):
@@ -109,7 +109,7 @@ class Roster(Plugin):
                                 WHERE jid = ? AND rosterItem = ?
                                 """, 
                                 (jid, 
-                                 ET.tostring(match_item[0])))
+                                 ET.tostring(match_item[0]).decode()))
                     con.commit()
 
             else:
@@ -120,7 +120,7 @@ class Roster(Plugin):
                                 SET rosterItem = ? 
                                 WHERE jid = ? AND rosterItem = ?
                                 """, 
-                                (ET.tostring(new_item),
+                                (ET.tostring(new_item).decode(),
                                 jid, 
                                 ET.tostring(match_item[0])))
                     con.commit()
@@ -129,7 +129,7 @@ class Roster(Plugin):
             # New roster item
             if not remove:
                 with closing(connection()) as con:
-                    con.execute("INSERT INTO roster(jid, rosterItem) VALUES (?, ?)", (jid, ET.tostring(new_item)))
+                    con.execute("INSERT INTO roster(jid, rosterItem) VALUES (?, ?)", (jid, ET.tostring(new_item).decode()))
                     con.commit()
 
         res = ET.Element(

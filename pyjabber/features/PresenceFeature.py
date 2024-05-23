@@ -22,12 +22,9 @@ class Presence(FeatureInterface):
     def feed(self, element: ET.Element, jid: str, extra: dict[str, any] = None):
         if "type" in element.attrib:
             self._jid = jid
-            self._handlers[element.attrib["type"]](element)
+            return self._handlers[element.attrib["type"]](element)
 
     def handleSubscribe(self, element: ET.Element):
-        self._counter += 1
-        if self._counter > 10:
-            return
         to      = element.attrib["to"]
         jid     = self._jid.split("/")[0]
 
@@ -36,25 +33,17 @@ class Presence(FeatureInterface):
 
         if to.split("@")[1] == "localhost":
             roster  = self._roster.retriveRoster(jid)
-
-            if to.split("@")[0] == jid:
-                # item = [item for item in roster 
-                #         if ET.fromstring(item[2]).attrib["jid"] == from_]
-                
-                # if item:
-                #     print(item)
-                pass
-
             buffer = self._connections.get_buffer_by_jid(to)
 
             item = [item for item in roster 
-                    if ET.fromstring(item[2]).attrib["jid"] == to]
+                    if ET.fromstring(item[2]).attrib["jid"] == to]  
 
+            # Petition to a contact present in the roster
             if item:
                 item    = item[0]
                 ETitem  = ET.fromstring(item[2])
 
-                if ETitem.attrib["subscription"] in ["from", "both"]:
+                if ETitem.attrib["subscription"] in ["to", "both"]:
                     petition = ET.Element(
                         "presence",
                         attrib = {
@@ -64,20 +53,14 @@ class Presence(FeatureInterface):
                             "type"  : "subscribed"
                         }
                     )
-                    for b in buffer:
-                        data = ET.tostring(petition)
-                        b.write(data)
+                    return ET.tostring(petition)
 
                 newItem = ETitem.__copy__()
-                newItem.attrib["subscription"] = "from"
-            
+
                 if "ask" not in ETitem.attrib:
                     newItem.attrib["ask"] = "subscribe"
-                    
-                self._roster.update(item = ET.tostring(newItem), id = item[0])
-            
+                    self._roster.update(item = newItem, id = item[0])
 
-            if buffer:
                 petition = ET.Element(
                     "presence",
                     attrib = {
@@ -87,15 +70,14 @@ class Presence(FeatureInterface):
                         "type"  : "subscribe"
                     }
                 )
-                for b in buffer:
-                    data = ET.tostring(petition)
-                    b.write(data)
-                    # b.write(
-                    #     f"<presence from='{element.attrib['from']}' id='{element.attrib['id']}' to='{element.attrib['to']}' type='subscribe'/>".encode()
-                    # )
 
-        return f"<presence from='test@localhost' id='{element.attrib['id']}' to='demo@localhost' type='subscribe'/>"
-    
+                for b in buffer:
+                    b.write(ET.tostring(petition))
+                    return 
+
+            # Petition to a contact NOT present in the roster
+            return self.error(element.attrib["from"], to, element.attrib["id"])
+
     def handleSubscribed(self, element: ET.Element):
         to      = element.attrib["to"]
         jid     = self._jid.split("/")[0]
@@ -125,7 +107,7 @@ class Presence(FeatureInterface):
                         }
                     )
                     return ET.tostring(res)
-                
+
                 newItem = ETitem.__copy__()
 
                 if ETitem.attrib["subscription"] in ["from"]:
@@ -133,12 +115,12 @@ class Presence(FeatureInterface):
 
                 if ETitem.attrib["subscription"] in ["none"]:
                     newItem.attrib["subscription"] = "to"
-            
+
                 if "ask" in ETitem.attrib:
                     newItem = ETitem.__copy__()
                     newItem.attrib.pop("ask")
-                    
-                self._roster.update(item = ET.tostring(newItem), id = item[0])                
+
+                self._roster.update(item = newItem, id = item[0])                
 
     def setSubscription(self, item: ET.Element):
         jid     = self._jid.split("/")[0]
@@ -148,3 +130,11 @@ class Presence(FeatureInterface):
         if item and item[0].attrib["subscription"] in ["from", "to", "both"]:
             return True
         return False
+
+    def error(self, from_, to, id) -> bytes:
+        root = ET.Element("presence", attrib={"from": to, "to": from_, "id": id, "type": "error"})
+        error = ET.SubElement(root, "error", attrib={"type": "modify"})
+        ET.SubElement(error, "not-acceptable", attrib={"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
+        text = ET.SubElement(error, "text", attrib = {"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
+        text.text = "The contact of the presence request is not registed in the roster"
+        return ET.tostring(root)

@@ -18,11 +18,9 @@ class TestClientBot(ClientXMPP):
     async def start(self, event):       
         self.send_presence()
         await self.get_roster()
-        self.update_roster("miguel@localhost")
-        self.plugin["xep_0199"].send_ping("localhost")
-        await asyncio.sleep(2)
-        self.plugin["xep_0199"].send_ping("bob@localhost")
-        # self.send_presence_subscription("bob@localhost")
+        # self.update_roster("bob@localhost")
+        # self.update_roster("miguel@localhost")
+        self.send_presence_subscription("juan@localhost")
 
 
     async def message(self, msg):

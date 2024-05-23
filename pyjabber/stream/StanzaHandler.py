@@ -66,5 +66,6 @@ class StanzaHandler():
         if "type" in element.attrib.keys():
             # if element.attrib["type"] == "subscribe":
             res = self._PresenceManager.feed(element, self._jid)
-            # print("RES", res)
+            if res:
+                self._buffer.write(res)
 
