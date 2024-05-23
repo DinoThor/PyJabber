@@ -112,3 +112,6 @@ ENV/
 *.db
 *.plk
 *.sql
+
+# my testing
+mytesting/
