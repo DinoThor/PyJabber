@@ -28,7 +28,7 @@ Installation
 ------------
 .. code-block::
   
-        pip install -i https://test.pypi.org/simple/ pyjabber
+        pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ pyjabber
 
 Quick start
 -----------
@@ -92,5 +92,8 @@ Plugins
      - Status
      - Description
    * - `XEP-0077 <https://xmpp.org/extensions/xep-0077.html>`_
+     - IMPLEMENTED
+     - 
+   * - `XEP-0199 <https://xmpp.org/extensions/xep-0199.html>`_
      - IMPLEMENTED
      - 
