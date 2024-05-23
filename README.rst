@@ -4,7 +4,7 @@ PyJabber
 
 
 .. image:: https://img.shields.io/pypi/v/pyjabber.svg
-        :target: https://pypi.python.org/pypi/pyjabber
+        :target: https://test.pypi.org/project/pyjabber/
 
 .. image:: https://img.shields.io/travis/dinothor/pyjabber.svg
         :target: https://travis-ci.com/dinothor/pyjabber

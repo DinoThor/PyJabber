@@ -3,6 +3,10 @@ include CONTRIBUTING.rst
 include HISTORY.rst
 include LICENSE
 include README.rst
+include pyjabber/db/schema.sql
+include pyjabber/stream/schemas/schemas.pkl
+recursive-include pyjabber/webpage/build *
+recursive-include pyjabber/network/certs *
 
 recursive-include tests *
 recursive-exclude * __pycache__

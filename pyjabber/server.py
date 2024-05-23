@@ -21,6 +21,7 @@ CLIENT_NS   = "jabber:client"
 SERVER_PORT = 5269
 SERVER_NS   = "jabber:server"
 
+SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 class Server():
     _slots__ = [
@@ -65,10 +66,10 @@ class Server():
     async def run_server(self):
         logger.info("Starting server...")
 
-        if os.path.isfile("./pyjabber/db/server.db") is False:
+        if os.path.isfile(SERVER_FILE_PATH + "/db/server.db") is False:
             logger.debug("No database found. Initializing one...")
             with closing(connection()) as con:
-                with open("./pyjabber/db/schema.sql", "r") as schema:
+                with open(SERVER_FILE_PATH + "/db/schema.sql", "r") as schema:
                     con.cursor().executescript(schema.read())
                 con.commit()
 

@@ -1,3 +1,4 @@
+import os
 import pickle
 import xml.etree.ElementTree as ET
 
@@ -8,6 +9,9 @@ from pyjabber.network.ConnectionsManager import ConectionsManager
 from pyjabber.plugins.PluginManager import PluginManager
 from pyjabber.stanzas.Message import Message
 from pyjabber.utils import ClarkNotation as CN
+
+FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+
 
 class StanzaHandler():
     def __init__(self, buffer) -> None:
@@ -25,7 +29,7 @@ class StanzaHandler():
 
         self._PresenceManager = Presence()
         
-        with open("./pyjabber/schemas/schemas.pkl", "rb") as schemasDump:
+        with open(FILE_PATH + "/schemas/schemas.pkl", "rb") as schemasDump:
             self._schemas = pickle.load(schemasDump)
 
     def feed(self, element: ET.Element):

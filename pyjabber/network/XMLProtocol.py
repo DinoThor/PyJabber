@@ -9,7 +9,7 @@ from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.XMLParser import XMPPStreamHandler
 from pyjabber.network.ConnectionsManager import ConectionsManager
 
-
+FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
 
 class XMLProtocol(asyncio.Protocol):
     '''
@@ -111,12 +111,9 @@ class XMLProtocol(asyncio.Protocol):
         I probably should change the parser
         '''
         data = data.replace(b"<?xml version=\"1.0\"?>", b"")
-        # try:
+        
         self._xml_parser.feed(data)
-        # except sax.SAXParseException as e:
-        #     logger.error(f"SAXParser Error parsing XML: {e}")
-        # except Exception as e:
-        #     logger.error(f"Error parsing XML: {e}")
+
 
 
     def eof_received(self):
@@ -152,8 +149,8 @@ class XMLProtocol(asyncio.Protocol):
         loop        = asyncio.get_running_loop()
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
         ssl_context.load_cert_chain(
-            os.getcwd() + '/pyjabber/network/certs/localhost.pem',     # Cert file
-            os.getcwd() + '/pyjabber/network/certs/localhost-key.pem') # Key file
+            FILE_AUTH + '/certs/localhost.pem',         # Cert file
+            FILE_AUTH + '/certs/localhost-key.pem')     # Key file
 
         return await loop.start_tls(
                                 transport   = self._transport, 
