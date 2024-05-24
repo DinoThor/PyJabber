@@ -56,13 +56,6 @@ class Server():
 
         self._connections           = ConectionsManager()
 
-    async def launch_admin_page(self):
-        Handler = SimpleHTTPRequestHandler
-
-        with socketserver.TCPServer(("", 9090), Handler) as httpd:
-            print("serving at port", 9090)
-            httpd.serve_forever()
-
     async def run_server(self):
         logger.info("Starting server...")
 

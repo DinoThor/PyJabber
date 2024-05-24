@@ -33,10 +33,14 @@ class Roster(Plugin):
             roster  = res.fetchall()
         return roster
     
-    def update(self, id: int, item: ET.Element):
+    def update(self, id: int, item: ET.Element) -> bytes:
         with closing(connection()) as con:
             con.execute("UPDATE roster SET rosterItem = ? WHERE id = ?", (ET.tostring(item).decode(), id))
             con.commit()
+            res = con.execute("SELECT rosterItem from roster WHERE id = ?", (id, ))
+            res = res.fetchone()
+
+        return res[0]
 
     def feed(self, jid: str, element: ET.Element):
         if len(element) != 1:
@@ -70,7 +74,7 @@ class Roster(Plugin):
             for item in roster:
                 query.append(ET.fromstring(item[-1]))                
             
-            return [ET.tostring(iq_res)]
+            return ET.tostring(iq_res)
                 
         except:
             raise Exception()
@@ -140,4 +144,4 @@ class Roster(Plugin):
             }
         )
 
-        return [ET.tostring(res)]
+        return ET.tostring(res)

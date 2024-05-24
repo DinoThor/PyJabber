@@ -18,15 +18,13 @@ class ConectionsManager(metaclass = Singleton):
     def get_users_connected(self) -> dict[str, tuple[str, int]]:
         return self._peerList
     
-    def get_buffer_by_jid(self, jid: str) -> Union[list[Transport], None]:
-        jid = jid.split("/")[0]
+    def get_buffer_by_jid(self, jid: str) -> list[Transport]:
         res = []
         for key, values in self._peerList.items():
-            if re.search(f"{jid}/*", values[self.JID]):
-                res.append(self._peerList[key][self.TRANSPORT])            
-        if res:
-            return res
-        return None
+            if re.match(f"{jid}/*", values[self.JID]):
+                res.append((self._peerList[key][self.JID], self._peerList[key][self.TRANSPORT]))            
+        
+        return res
     
     def get_jid_by_peer(self, peer) -> Union[str, None]:
         try:
