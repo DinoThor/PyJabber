@@ -20,11 +20,13 @@ class PluginManager():
         }
         self._activePlugins: dict[str, Plugin] = {}
 
-    def feed(self, element: ET.Element):
-        if not element:
-            return SE.invalid_xml()
-        
-        child = element[0]
+    def feed(self, element: ET.Element):        
+        try:
+            child = element[0]
+        except IndexError:
+            if element.attrib["type"] == "result":
+                return
+
         tag, _ = CN.deglose(child.tag)
 
         try:

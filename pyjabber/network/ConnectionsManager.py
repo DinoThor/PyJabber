@@ -18,9 +18,12 @@ class ConectionsManager(metaclass = Singleton):
     def get_users_connected(self) -> dict[str, tuple[str, int]]:
         return self._peerList
     
-    def get_buffer_by_jid(self, jid: str) -> list[Transport]:
+    def get_buffer_by_jid(self, jid: str) -> tuple[str | Transport]:
         res = []
         for key, values in self._peerList.items():
+            if values[self.JID] is None:
+                continue
+
             if re.match(f"{jid}/*", values[self.JID]):
                 res.append((self._peerList[key][self.JID], self._peerList[key][self.TRANSPORT]))            
         

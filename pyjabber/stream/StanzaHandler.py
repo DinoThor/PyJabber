@@ -49,6 +49,7 @@ class StanzaHandler():
     ############################################################
 
     def handleIQ(self, element: ET.Element):
+        print(ET.tostring(element))
         res = self._pluginManager.feed(element)
         if res:
             self._buffer.write(res)

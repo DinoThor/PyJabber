@@ -20,6 +20,7 @@ class Roster(Plugin):
         self._handlers = {
             "get"   : self.handleGet,
             "set"   : self.handleSet,
+            "result": self.handleResult
         }
         self._ns = {
             "ns"    : "jabber:iq:roster",
@@ -33,7 +34,7 @@ class Roster(Plugin):
             roster  = res.fetchall()
         return roster
     
-    def update(self, id: int, item: ET.Element) -> bytes:
+    def update(self, id: int, item: ET.Element) -> str:
         with closing(connection()) as con:
             con.execute("UPDATE roster SET rosterItem = ? WHERE id = ?", (ET.tostring(item).decode(), id))
             con.commit()
@@ -145,3 +146,7 @@ class Roster(Plugin):
         )
 
         return ET.tostring(res)
+    
+    def handleResult(self, element: ET.Element, jid: str):
+        # It's safe to ignore this stanza
+        return

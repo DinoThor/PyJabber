@@ -19,16 +19,18 @@ class Presence(FeatureInterface):
         self._jid           = None
 
     def feed(self, element: ET.Element, jid: str, extra: dict[str, any] = None):
+        self._jid = jid
+
         if "type" in element.attrib:
-            self._jid = jid
             return self._handlers[element.attrib["type"]](element)
 
-        # bare <presence/>
-        # ···
+        if "to" not in element.attrib:
+            return self.handleInitialPresence(element)
+
         return None
 
     def handleSubscribe(self, element: ET.Element):
-        to       = element.attrib["to"]
+        to       = element.attrib["to"].split("/")[0]
         bare_jid = self._jid.split("/")[0]
 
         if "from" not in element.attrib:
@@ -42,64 +44,58 @@ class Presence(FeatureInterface):
             item = [item for item in roster 
                     if ET.fromstring(item[2]).attrib["jid"] == to]  
 
-            # Petition to a contact present in the roster
-            print(buffer)
-            if item:
-                item    = item[0]
-                ETitem  = ET.fromstring(item[2])
+            if not item:
+                iq = ET.Element(
+                    "iq", attrib={"from": self._jid, "id": str(uuid4()), "type": "set"}
+                )
+                query = ET.Element("{jabber:iq:roster}query")
+                item = ET.Element("{jabber:iq:roster}item", attrib={"jid": to, "subscription": "none"})
+                query.append(item)
+                iq.append(query)
 
-                if ETitem.attrib["subscription"] in ["to", "both"]:
-                    petition = ET.Element(
-                        "presence",
-                        attrib = {
-                            "from"  : element.attrib['to'],
-                            "to"    : element.attrib['from'],
-                            "id"    : element.attrib['id'],
-                            "type"  : "subscribed"
-                        }
-                    )
-                    return ET.tostring(petition)
+                self._roster.feed(bare_jid, iq)
 
-                if "ask" not in ETitem.attrib:
-                    newItem = ETitem.__copy__()
-                    newItem.attrib["ask"] = "subscribe"
-                    print(self._roster.update(item = newItem, id = item[0]))
+                roster  = self._roster.retriveRoster(bare_jid)
+                buffer = self._connections.get_buffer_by_jid(to)
 
+                item = [item for item in roster 
+                        if ET.fromstring(item[2]).attrib["jid"] == to]
+
+            item = item[0]
+            ETitem  = ET.fromstring(item[2])
+
+            if ETitem.attrib["subscription"] in ["to", "both"]:
                 petition = ET.Element(
                     "presence",
                     attrib = {
-                        "from"  : element.attrib['from'],
-                        "to"    : element.attrib['to'],
+                        "from"  : element.attrib['to'],
+                        "to"    : element.attrib['from'],
                         "id"    : element.attrib['id'],
-                        "type"  : "subscribe"
+                        "type"  : "subscribed"
                     }
                 )
+                return ET.tostring(petition)
 
-                for b in buffer:
-                    b.write(ET.tostring(petition))
-                    return 
+            if "ask" not in ETitem.attrib:
+                newItem = ETitem.__copy__()
+                newItem.attrib["ask"] = "subscribe"
+                print(self._roster.update(item = newItem, id = item[0]))
 
-            # Petition to a contact NOT present in the roster
-            else:
-                error = ET.Element(
+            petition = ET.Element(
                 "presence",
-                attrib={
-                    "from": to,
-                    "to": element.attrib["from"],
-                    "id": element.attrib["id"],
-                    "type": "error",
-                },
-                )
-                error.append(
-                    ET.fromstring(
-                        SE.not_acceptable(
-                            "The contact of the presence request is not registed in the roster"
-                        ).decode()
-                    )
-                )
-
-                return ET.tostring(error)
-
+                attrib = {
+                    "from"  : element.attrib['from'],
+                    "to"    : element.attrib['to'],
+                    "id"    : element.attrib['id'],
+                    "type"  : "subscribe"
+                }
+            )
+            print(buffer)
+            for b in buffer:
+                print(b[-1])
+                b[-1].write(ET.tostring(petition))
+                return 
+            
     def handleSubscribed(self, element: ET.Element):
         to       = element.attrib["to"]
         bare_jid = self._jid.split("/")[0]
@@ -108,12 +104,14 @@ class Presence(FeatureInterface):
             element.attrib["from"] = self._jid
 
         if to.split("@")[1] == "localhost":
-            bufferAlice = self._connections.get_buffer_by_jid(bare_jid)
             bufferBob   = self._connections.get_buffer_by_jid(to)
-            print(bufferBob)
+            bufferAlice   = self._connections.get_buffer_by_jid(bare_jid)
 
             rosterBob = self._roster.retriveRoster(to)
             rosterAlice   = self._roster.retriveRoster(bare_jid)
+
+            rosterPushBob = None
+            rosterPushAlice = None
 
             itemBob = [ # Alice appears in Bob's roster
                 item
@@ -168,7 +166,7 @@ class Presence(FeatureInterface):
                     },
                 )
 
-                bob.write(ET.tostring(res))
+                bob[-1].write(ET.tostring(res))
 
             if rosterPushBob:
                 for bob in bufferBob:
@@ -176,27 +174,50 @@ class Presence(FeatureInterface):
                         "iq",
                         attrib = {
                             "id"    : str(uuid4()),
-                            "to"    : to,
+                            "to"    : bob[0],
                             "type"  : "set"
                         }
                     )
-                    ET.SubElement(res, ET.fromstring(rosterPushBob))
+                    query = ET.Element("query", attrib={"xmlns": "jabber:iq:roster"})
+                    item = ET.fromstring(rosterPushBob)
 
-                    bob.write(ET.tostring(res))
+                    query.append(item)
+                    res.append(query)
+
+                    bob[-1].write(ET.tostring(res))
 
             if rosterPushAlice:
                 for alice in bufferAlice:
                     res = ET.Element(
                         "iq",
-                        attrib={
-                            "id": str(uuid4()),
-                            "to": bare_jid,
-                            "type": "set",
-                        },
+                        attrib = {
+                            "id"    : str(uuid4()),
+                            "to"    : alice[0],
+                            "type"  : "set"
+                        }
                     )
-                    ET.SubElement(res, ET.fromstring(rosterPushBob))
+                    query = ET.Element("query", attrib={"xmlns": "jabber:iq:roster"})
+                    item = ET.fromstring(rosterPushAlice)
 
-                    bob.write(ET.tostring(res))
+                    query.append(item)
+                    res.append(query)
 
-    def roster_push(item: ET.Element):
-        pass
+                    bob[-1].write(ET.tostring(res))
+
+    def handleInitialPresence(self, element: ET.Element):
+        bare_jid = self._jid.split("/")[0]
+        roster = self._roster.retriveRoster(bare_jid)
+
+        print(self._jid, bare_jid)
+
+        presence = ET.Element("presence", attrib={"from": self._jid})
+
+        for r in roster:
+            item    = ET.fromstring(r[-1])
+            jid     = item.attrib["jid"]
+            buffer  = self._connections.get_buffer_by_jid(jid)
+            for b in buffer:
+                presence = ET.Element("presence", attrib={"from": self._jid, "to": b[0].split("/")[0]})
+                b[-1].write(ET.tostring(presence))
+
+        return

@@ -63,7 +63,7 @@ def feature_not_implemented(xmlns, feature) -> bytes:
     return f"<error type='cancel'><feature-not-implemented xmlns='{XMLNS}'/><unsupported xmlns='{xmlns}#errors'feature='{feature}'/></error>".encode()
 
 def invalid_xml() -> bytes:
-    return f"<stream:error><invalid-xmlxmlns='{XMLNS}'/></stream:error></stream:stream>".encode()
+    return f"<stream:error><invalid-xml xmlns='{XMLNS}'/></stream:error></stream:stream>".encode()
 
 def item_not_found() -> bytes:
     return f"<error type='cancel'><item-not-found xmlns='{XMLNS}'/></error>".encode()
