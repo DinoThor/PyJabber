@@ -28,7 +28,7 @@ Installation
 ------------
 .. code-block::
   
-        pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ pyjabber
+        pip install pyjabber
 
 Quick start
 -----------
@@ -91,8 +91,8 @@ Features
      - Implemented
      - CRUD avaliable
    * - Presence
-     - Not implemented
-     - Working on it
+     - Partialy implemented
+     - subscribe, unsubscribed, initial presence and unavailable
 
 Plugins
 -------

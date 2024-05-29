@@ -37,4 +37,4 @@ class PluginManager():
                 self._activePlugins[tag] = plugin()
                 return self._activePlugins[tag].feed(self._jid, element)
             except KeyError: 
-                return SE.service_unavaliable()     #Plugin unavaliable
+                return SE.service_unavaliable()     #Plugin unavailable
