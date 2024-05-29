@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pyjabber',
-    version='0.1.6',
+    version='1.0.0',
     author='Aarón Raya  ',
     author_email='aaron.raya.lopez@gmail.com',
     description='A Python XMPP server',

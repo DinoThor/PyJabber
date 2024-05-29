@@ -83,7 +83,10 @@ class SASL(FeatureInterface):
         if hash_pwd:
             if hash_pwd[0] == keyhash:
                 self._connections.set_jid(self._peername, jid)
-                return Signal.RESET, SE.success()
+                return Signal.RESET, "<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>".encode()
+            
+            elem = ET.Element("success", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
+            return ET.tostring(elem)
             
         return SE.not_authorized()
 

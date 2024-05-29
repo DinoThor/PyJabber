@@ -1,13 +1,18 @@
 import { Table, Button } from 'rsuite';
 import { useEffect, useState } from 'react';
 import TrashIcon from '@rsuite/icons/Trash';
+import VisibleIcon from '@rsuite/icons/Visible';
 import FormModal from '../../components/form/Form';
+import RosterModal from '../../components/rosterModal/rosterModal';
 
 const { Column, HeaderCell, Cell } = Table;
 
+const mockData = [{ "id": 1, "jid": "cram" }, { "id": 2, "jid": "marc" }]
 
 export default function Contact() {
   const [users, setUsers] = useState([]);
+  const [rosterSelected, setRosterSelected] = useState(-1);
+  const [rosterVisible, setRosterVisible] = useState(false);
   const [formVisible, setFormVisible] = useState(false);
 
   function retriveUserList() {
@@ -55,8 +60,14 @@ export default function Contact() {
       height: "100%"
     }}>
 
-      <FormModal formVisible={formVisible} setFormVisible={setFormVisible} retriveUserList={retriveUserList}/>
-      
+      <FormModal formVisible={formVisible} setFormVisible={setFormVisible} />
+      <RosterModal
+        rosterVisible={rosterVisible}
+        rosterSelected={rosterSelected}
+        setRosterSelected={setRosterSelected}
+        setRosterVisible={setRosterVisible}
+      />
+
       <div
         style={{
           justifyContent: "flex-start",
@@ -72,7 +83,7 @@ export default function Contact() {
       <div>
         <Table
         data={users}
-        style={{ flex: 1, width: 300, alignSelf: "center"}}
+        style={{ flex: 1, width: 400, alignSelf: "center"}}
         fillHeight={true}
         bordered={true}
       >
@@ -85,11 +96,24 @@ export default function Contact() {
           <Cell dataKey="jid" />
         </Column>
         <Column align="center">
+          <HeaderCell >Roster</HeaderCell>
+          <Cell style={{ padding: '6px' }}>
+            {rowData => (
+              <Button appearance="link" onClick={() => {
+                setRosterSelected(rowData.id)
+                setRosterVisible(true)
+              }}>
+                  <VisibleIcon style={{ fontSize: 15 }} />
+              </Button>
+            )}
+          </Cell>
+        </Column>
+        <Column align="center">
           <HeaderCell />
           <Cell style={{ padding: '6px' }}>
             {rowData => (
               <Button appearance="link" onClick={() => {
-                let a = window.confirm(`¿Estas seguro de eliminar ID:${rowData.id}?`)
+                let a = window.confirm(`Are you sure to delete ID:${rowData.id}?`)
                 if (a)
                   handleDelete(rowData.id)
               }}>

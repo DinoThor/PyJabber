@@ -7,7 +7,6 @@ from pyjabber.utils import ClarkNotation as CN
 # Plugins
 from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.plugins.xep_0199.xep_0199 import Ping
-from pyjabber.plugins.xep_0077 import inBandRegistration
 
 
 class PluginManager():
@@ -39,5 +38,3 @@ class PluginManager():
                 return self._activePlugins[tag].feed(self._jid, element)
             except KeyError: 
                 return SE.service_unavaliable()     #Plugin unavaliable
-
-      

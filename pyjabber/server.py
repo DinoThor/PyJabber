@@ -3,12 +3,8 @@ import os
 import signal
 import socket
 
-from http.server import SimpleHTTPRequestHandler
-
 from contextlib import closing
-import socketserver
 from loguru import logger
-
 
 from pyjabber.db.database import connection
 from pyjabber.network.XMLProtocol  import XMLProtocol

@@ -25,21 +25,20 @@ async def handleRoster(request):
             res = con.execute("SELECT jid FROM credentials WHERE id = ?", (user_id, ))
             user_jid = res.fetchone()[0]
 
-            if not res:
+            if not user_jid:
                 return web.json_response({"status": "error", "message": "User not found"}, status=404)
             
-            roster = con.execute("SELECT rosterItem FROM roster WHERE jid LIKE ?", (f"{user_jid}%", ))
+            res = con.execute("SELECT rosterItem FROM roster WHERE jid LIKE ?", (f"{user_jid}%", ))
             roster = res.fetchall()
             
-            response = [{ET.tostring(r)} for r in roster]
+            response = [{"item": r[0]} for r in roster]
 
-
-        logger.info(f"User with ID {user_id} deleted")
         return web.Response(text=json.dumps(response))
 
     except ValueError:
         return web.json_response({"status": "error", "message": "Invalid user ID"}, status=400)
     except Exception as e:
+        logger.error(e)
         error_response = {
             "status": "error",
             "message": str(e)

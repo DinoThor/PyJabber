@@ -4,7 +4,6 @@ import EyeIcon from '@rsuite/icons/legacy/Eye';
 import EyeSlashIcon from '@rsuite/icons/legacy/EyeSlash';
 
 
-
 export default function FormModal({formVisible, setFormVisible}) {
   const [visible, setVisible] = useState(false);
   const [jid, setJid] = useState("");
@@ -42,7 +41,7 @@ export default function FormModal({formVisible, setFormVisible}) {
       onClose={setFormVisible}
     >
       <Modal.Header>
-        <Modal.Title>Crear Usuario</Modal.Title>
+        <Modal.Title>Create user</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <Input placeholder="JID" style={{ marginBottom: 10 }} onChange={(value) => setJid(value)}/>

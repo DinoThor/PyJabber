@@ -27,8 +27,8 @@ class XMLProtocol(asyncio.Protocol):
 
     def __init__(
             self, 
-            namespace                       = "jabber:client", 
-            connection_timeout              = None):
+            namespace               = "jabber:client", 
+            connection_timeout      = None):
         
         self._xmlns                 = namespace
         self._transport             = None
@@ -65,9 +65,6 @@ class XMLProtocol(asyncio.Protocol):
 
             logger.info(f"Connection from {self._transport.get_extra_info('peername')}")
         else:
-            self._transport = None
-            self._xml_parser = None
-
             logger.error("Invalid transport")
 
     def connection_lost(self, exc):
@@ -79,6 +76,8 @@ class XMLProtocol(asyncio.Protocol):
         '''
         try:
             logger.info(f"Connection lost from {self._transport.get_extra_info('peername')}: Reason {exc}")
+            self._xml_parser.feed(f"<presence type='unavailable' />".encode())
+
             self._transport     = None
             self._xml_parser    = None
 
@@ -124,6 +123,7 @@ class XMLProtocol(asyncio.Protocol):
 
         logger.debug(f"EOF received from {peer}")
 
+        self._xml_parser.feed(f"<presence type='unavailable' />".encode())
         self._connections.disconnection(peer)
 
         self._transport     = None
@@ -140,6 +140,10 @@ class XMLProtocol(asyncio.Protocol):
 
         self._transport     = None
         self._xml_parser    = None
+
+    ###########################################################################
+    ###########################################################################
+    ###########################################################################
 
     def taskTLS(self):
         task = asyncio.get_running_loop().create_task(self.enableTLS())
