@@ -6,11 +6,11 @@ PyJabber
 .. image:: https://img.shields.io/pypi/v/pyjabber.svg
         :target: https://test.pypi.org/project/pyjabber/
 
-.. image:: https://img.shields.io/travis/dinothor/pyjabber.svg
-        :target: https://travis-ci.com/dinothor/pyjabber
+.. image:: https://img.shields.io/github/actions/workflow/status/dinothor/pyjabber/python-app.yml
+        :target: https://github.com/DinoThor/PyJabber/actions
 
 .. image:: https://readthedocs.org/projects/pyjabber/badge/?version=latest
-        :target: https://pyjabber.readthedocs.io/en/latest/?version=latest
+        :target: https://pyjabber.readthedoc>s.io/en/latest/?version=latest
         :alt: Documentation Status
 
 

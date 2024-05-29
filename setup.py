@@ -1,8 +1,10 @@
 from setuptools import setup, find_packages
 
+import pyjabber
+
 setup(
     name='pyjabber',
-    version='0.1.0',
+    version=pyjabber.__version__,
     author='Aarón Raya  ',
     author_email='aaron.raya.lopez@gmail.com',
     description='A Python XMPP server',
