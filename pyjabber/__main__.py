@@ -13,8 +13,8 @@ from pyjabber.server import Server
 @click.option('--family', type=click.Choice(['ipv4', 'ipv6'], case_sensitive=False), default='ipv4', show_default=True, help='(ipv4 / ipv6)')
 @click.option('--timeout', type=int, default=60, show_default=True, help='Timeout for connection')
 @click.option('--log_level', type=click.Choice(['INFO', 'DEBUG'], case_sensitive=False), default='INFO', show_default=True, help='Log level alert')
-@click.option('--log_path', type=str, help='Path to log dumpfile.')
-@click.option('--debug', '-D', is_flag=True, help='Activa el modo debug.')
+@click.option('--log_path', type=str, help='Path to log dumpfile')
+@click.option('--debug', '-D', is_flag=True, help='Enables debug mode in Asyncio')
 def main(host, client_port, server_port, family, timeout, log_level, log_path, debug):
     
     logger.add(
