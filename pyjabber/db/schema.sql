@@ -5,7 +5,8 @@ CREATE TABLE `roster`(
     PRIMARY KEY(`id`)
 );
 CREATE TABLE `credentials`(
-    `jid` VARCHAR(255) NOT NULL,
+    `id` INTEGER,
+    `jid` VARCHAR(255) NOT NULL UNIQUE,
     `hash_pwd` VARCHAR(255) NOT NULL,
-    PRIMARY KEY(`jid`)
+    PRIMARY KEY(`id`)
 );

@@ -1,3 +1,4 @@
+import os
 import pickle
 import xml.etree.ElementTree as ET
 
@@ -6,35 +7,38 @@ import xmlschema
 from pyjabber.features.PresenceFeature import Presence
 from pyjabber.network.ConnectionsManager import ConectionsManager
 from pyjabber.plugins.PluginManager import PluginManager
+from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.Message import Message
 from pyjabber.utils import ClarkNotation as CN
 
+FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+
+
 class StanzaHandler():
     def __init__(self, buffer) -> None:
-        self._buffer        = buffer
-        self._connections   = ConectionsManager()
-        self._peername      = buffer.get_extra_info('peername')
-        self._jid           = self._connections.get_jid_by_peer(self._peername)
-        self._pluginManager = PluginManager(self._jid)
+        self._buffer            = buffer
+        self._connections       = ConectionsManager()
+        self._peername          = buffer.get_extra_info('peername')
+        self._jid               = self._connections.get_jid_by_peer(self._peername)
+        self._pluginManager     = PluginManager(self._jid)
+        self._presenceManager   = Presence()
 
         self._functions     = {
             "{jabber:client}iq"          : self.handleIQ,
             "{jabber:client}message"     : self.handleMsg,
             "{jabber:client}presence"    : self.handlePre
         }
-
-        self._PresenceManager = Presence()
         
-        with open("./pyjabber/schemas/schemas.pkl", "rb") as schemasDump:
+        with open(FILE_PATH + "/schemas/schemas.pkl", "rb") as schemasDump:
             self._schemas = pickle.load(schemasDump)
 
     def feed(self, element: ET.Element):
         try:
             schema: xmlschema.XMLSchema = self._schemas[CN.deglose(element.tag)[0]]
             if schema.is_valid(ET.tostring(element)) is False:
-                raise Exception()   #Invalid stanza
+                self._buffer.write(SE.bad_request())
         except KeyError:
-            raise Exception()
+            self._buffer.write(SE.feature_not_implemented())
 
         try:
             self._functions[element.tag](element)
@@ -50,26 +54,14 @@ class StanzaHandler():
             self._buffer.write(res)
 
     def handleMsg(self, element: ET.Element):
-        try:
-            schema: xmlschema.XMLSchema = self._schemas[CN.deglose(element.tag)[0]]
-            if schema.is_valid(ET.tostring(element)) is False:
-                raise Exception()   #Invalid stanza
-        except KeyError:
-            raise Exception()
-        
-        reciverBuffer = self._connections.get_buffer_by_jid(element.attrib["to"])
+        bare_jid        = element.attrib["to"].strip("/")[0]
+        reciverBuffer   = self._connections.get_buffer_by_jid(bare_jid)
+
         for buffer in reciverBuffer:
-            res = Message(
-                mto     = element.attrib["to"],
-                mfrom   = element.attrib["from"],
-                id      = element.attrib["id"],
-                body    = element.find(CN.clarkFromTuple(("jabber:client", "body"))).text
-            ) 
-            buffer.write(ET.tostring(res))
+            buffer.write(ET.tostring(element))
 
     def handlePre(self, element: ET.Element):
-        if "type" in element.attrib.keys():
-            if element.attrib["type"] == "subscribe":
-                res = self._PresenceManager.feed(element, self._jid)
-                print("RES", res)
+        res = self._presenceManager.feed(element, self._jid)
+        if res:
+            self._buffer.write(res)
 

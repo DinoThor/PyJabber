@@ -6,7 +6,7 @@ from pyjabber.utils import ClarkNotation as CN
 
 # Plugins
 from pyjabber.plugins.roster.Roster import Roster
-from pyjabber.plugins.xep_0077 import inBandRegistration
+from pyjabber.plugins.xep_0199.xep_0199 import Ping
 
 
 class PluginManager():
@@ -15,15 +15,17 @@ class PluginManager():
         self._jid = jid
         self._plugins: dict[str, Plugin] = {
             'jabber:iq:roster'      : Roster,
-            # 'jabber:iq:register'    : inBandRegistration
+            'urn:xmpp:ping'         : Ping
         }
         self._activePlugins: dict[str, Plugin] = {}
 
-    def feed(self, element: ET.Element):
-        if not element:
-            return SE.invalid_xml()
-        
-        child = element[0]
+    def feed(self, element: ET.Element):        
+        try:
+            child = element[0]
+        except IndexError:
+            if element.attrib["type"] == "result":
+                return
+
         tag, _ = CN.deglose(child.tag)
 
         try:
@@ -35,6 +37,4 @@ class PluginManager():
                 self._activePlugins[tag] = plugin()
                 return self._activePlugins[tag].feed(self._jid, element)
             except KeyError: 
-                return SE.service_unavaliable()     #Plugin unavaliable
-
-      
+                return SE.service_unavaliable()     #Plugin unavailable

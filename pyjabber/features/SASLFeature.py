@@ -3,7 +3,7 @@ import hashlib
 
 from contextlib import closing
 from enum import Enum
-from typing import Tuple
+from typing import Tuple, Union
 from xml.etree import ElementTree as ET
 
 from pyjabber.db.database import connection
@@ -33,14 +33,14 @@ class SASL(FeatureInterface):
         self._connections = ConectionsManager()
         self._peername = None
 
-    def feed(self, element: ET, extra: dict[str, any] = None) -> Tuple[Signal, bytes] | bytes:
+    def feed(self, element: ET, extra: dict[str, any] = None) -> Union[Tuple[Signal, bytes], bytes]:
         if extra and "peername" in extra.keys():
             self._peername = extra["peername"]
 
         _, tag = CN.deglose(element.tag)
         return self._handlers[tag](element)
 
-    def handleIQ(self, element: ET.Element) -> Tuple[Signal, bytes] | bytes:
+    def handleIQ(self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
         query = element.find(CN.clarkFromTuple((self._ns, "query")))
         
         if query is None:
@@ -71,7 +71,7 @@ class SASL(FeatureInterface):
             raise Exception()
 
 
-    def handleAuth(self, element: ET.Element) -> Tuple[Signal, bytes] | bytes:
+    def handleAuth(self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
         data    = base64.b64decode(element.text).split("\x00".encode())
         jid     = data[1].decode()
         keyhash = hashlib.sha256(data[2]).hexdigest()
@@ -83,27 +83,12 @@ class SASL(FeatureInterface):
         if hash_pwd:
             if hash_pwd[0] == keyhash:
                 self._connections.set_jid(self._peername, jid)
-                return Signal.RESET, SE.success()
+                return Signal.RESET, "<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>".encode()
+            
+            elem = ET.Element("success", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
+            return ET.tostring(elem)
             
         return SE.not_authorized()
-
-    # def success(self) -> bytes:
-    #     elem = ET.Element("success", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
-    #     return ET.tostring(elem)
-    
-    # def not_authorized(self) -> bytes:
-    #     elem = ET.Element("failure", attrib = {"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
-    #     ET.SubElement(elem, "not-authorized")
-    #     return ET.tostring(elem)
-    
-    # def conflict_error(self, id: str) -> bytes:
-    #     iq = ET.Element("iq", attrib = {"id": id, "type": "error", "from": "localhost"})
-    #     error = ET.SubElement(iq, "error", attrib = {"type": "cancel"})
-    #     ET.SubElement(error, "conflict", attrib = {"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
-    #     text = ET.SubElement(error, "text", attrib = {"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
-    #     text.text = "The requested username already exists"
-    #     return ET.tostring(iq)
-    #     # return f"<iq id='{id}' type='error' from='localhost'><error type='cancel'><conflict xmlns='urn:ietf:params:xml:ns:xmpp-stanzas' /><text xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'>The requested username already exists.</text></error></iq>".encode()
 
     def iq_register_result(self, id: str) -> bytes:
         iq = ET.Element("iq", attrib = {"type": "result", "id": id, "from": "localhost"})
@@ -126,14 +111,3 @@ def SASLFeature(
         mechanism.text  = m.value
 
     return element
-
-
-# def success() -> bytes:
-#     elem = ET.Element("success", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
-#     return ET.tostring(elem)
-
-# def not_authorized() -> bytes:
-#     elem = ET.Element("failure", attrib = {"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
-#     ET.SubElement(elem, "not-authorized")
-#     return ET.tostring(elem)
-            

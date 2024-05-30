@@ -9,7 +9,7 @@ from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.XMLParser import XMPPStreamHandler
 from pyjabber.network.ConnectionsManager import ConectionsManager
 
-
+FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
 
 class XMLProtocol(asyncio.Protocol):
     '''
@@ -27,8 +27,8 @@ class XMLProtocol(asyncio.Protocol):
 
     def __init__(
             self, 
-            namespace                       = "jabber:client", 
-            connection_timeout              = None):
+            namespace               = "jabber:client", 
+            connection_timeout      = None):
         
         self._xmlns                 = namespace
         self._transport             = None
@@ -65,9 +65,6 @@ class XMLProtocol(asyncio.Protocol):
 
             logger.info(f"Connection from {self._transport.get_extra_info('peername')}")
         else:
-            self._transport = None
-            self._xml_parser = None
-
             logger.error("Invalid transport")
 
     def connection_lost(self, exc):
@@ -79,6 +76,8 @@ class XMLProtocol(asyncio.Protocol):
         '''
         try:
             logger.info(f"Connection lost from {self._transport.get_extra_info('peername')}: Reason {exc}")
+            self._xml_parser.feed(f"<presence type='unavailable' />".encode())
+
             self._transport     = None
             self._xml_parser    = None
 
@@ -111,12 +110,9 @@ class XMLProtocol(asyncio.Protocol):
         I probably should change the parser
         '''
         data = data.replace(b"<?xml version=\"1.0\"?>", b"")
-        # try:
+        
         self._xml_parser.feed(data)
-        # except sax.SAXParseException as e:
-        #     logger.error(f"SAXParser Error parsing XML: {e}")
-        # except Exception as e:
-        #     logger.error(f"Error parsing XML: {e}")
+
 
 
     def eof_received(self):
@@ -127,6 +123,7 @@ class XMLProtocol(asyncio.Protocol):
 
         logger.debug(f"EOF received from {peer}")
 
+        self._xml_parser.feed(f"<presence type='unavailable' />".encode())
         self._connections.disconnection(peer)
 
         self._transport     = None
@@ -144,6 +141,10 @@ class XMLProtocol(asyncio.Protocol):
         self._transport     = None
         self._xml_parser    = None
 
+    ###########################################################################
+    ###########################################################################
+    ###########################################################################
+
     def taskTLS(self):
         task = asyncio.get_running_loop().create_task(self.enableTLS())
         task.add_done_callback(self.handleSTARTTLS)
@@ -152,8 +153,8 @@ class XMLProtocol(asyncio.Protocol):
         loop        = asyncio.get_running_loop()
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
         ssl_context.load_cert_chain(
-            os.getcwd() + '/pyjabber/network/certs/localhost.pem',     # Cert file
-            os.getcwd() + '/pyjabber/network/certs/localhost-key.pem') # Key file
+            FILE_AUTH + '/certs/localhost.pem',         # Cert file
+            FILE_AUTH + '/certs/localhost-key.pem')     # Key file
 
         return await loop.start_tls(
                                 transport   = self._transport, 

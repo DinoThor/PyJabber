@@ -9,7 +9,7 @@ from loguru import logger
 from pyjabber.db.database import connection
 from pyjabber.network.XMLProtocol  import XMLProtocol
 from pyjabber.network.ConnectionsManager import ConectionsManager
-from pyjabber.admin.adminPage import serverInstance
+from pyjabber.webpage.adminPage import serverInstance
 
 CLIENT_PORT = 5222
 CLIENT_NS   = "jabber:client"
@@ -17,6 +17,7 @@ CLIENT_NS   = "jabber:client"
 SERVER_PORT = 5269
 SERVER_NS   = "jabber:server"
 
+SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 class Server():
     _slots__ = [
@@ -24,6 +25,7 @@ class Server():
         "_client_port",
         "_server_port",
         "_family",
+        "_adminServer",
         "_client_listener",
         "_server_listener",
         "_connection_timeout",
@@ -45,6 +47,7 @@ class Server():
         self._family                = family
         self._client_listener       = None
         self._server_listener       = None
+        self._adminServer           = None
         self._connection_timeout    = connection_timeout
 
         self._connections           = ConectionsManager()
@@ -52,10 +55,10 @@ class Server():
     async def run_server(self):
         logger.info("Starting server...")
 
-        if os.path.isfile("./pyjabber/db/server.db") is False:
+        if os.path.isfile(SERVER_FILE_PATH + "/db/server.db") is False:
             logger.debug("No database found. Initializing one...")
             with closing(connection()) as con:
-                with open("./pyjabber/db/schema.sql", "r") as schema:
+                with open(SERVER_FILE_PATH + "/db/schema.sql", "r") as schema:
                     con.cursor().executescript(schema.read())
                 con.commit()
 
@@ -94,7 +97,6 @@ class Server():
     def start(self, debug:bool = False):
         loop = asyncio.get_event_loop()
         loop.set_debug(debug)
-        # adminPage = serverInstance()
 
         try:
             loop.add_signal_handler(signal.SIGINT, self.raise_exit)

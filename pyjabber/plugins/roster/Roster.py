@@ -20,6 +20,7 @@ class Roster(Plugin):
         self._handlers = {
             "get"   : self.handleGet,
             "set"   : self.handleSet,
+            "result": self.handleResult
         }
         self._ns = {
             "ns"    : "jabber:iq:roster",
@@ -33,10 +34,14 @@ class Roster(Plugin):
             roster  = res.fetchall()
         return roster
     
-    def update(self, id: int, item: ET.Element):
+    def update(self, id: int, item: ET.Element) -> str:
         with closing(connection()) as con:
-            con.execute("UPDATE roster SET rosterItem = ? WHERE id = ?", (item, id))
+            con.execute("UPDATE roster SET rosterItem = ? WHERE id = ?", (ET.tostring(item).decode(), id))
             con.commit()
+            res = con.execute("SELECT rosterItem from roster WHERE id = ?", (id, ))
+            res = res.fetchone()
+
+        return res[0]
 
     def feed(self, jid: str, element: ET.Element):
         if len(element) != 1:
@@ -109,7 +114,7 @@ class Roster(Plugin):
                                 WHERE jid = ? AND rosterItem = ?
                                 """, 
                                 (jid, 
-                                 ET.tostring(match_item[0])))
+                                 ET.tostring(match_item[0]).decode()))
                     con.commit()
 
             else:
@@ -120,7 +125,7 @@ class Roster(Plugin):
                                 SET rosterItem = ? 
                                 WHERE jid = ? AND rosterItem = ?
                                 """, 
-                                (ET.tostring(new_item),
+                                (ET.tostring(new_item).decode(),
                                 jid, 
                                 ET.tostring(match_item[0])))
                     con.commit()
@@ -129,7 +134,7 @@ class Roster(Plugin):
             # New roster item
             if not remove:
                 with closing(connection()) as con:
-                    con.execute("INSERT INTO roster(jid, rosterItem) VALUES (?, ?)", (jid, ET.tostring(new_item)))
+                    con.execute("INSERT INTO roster(jid, rosterItem) VALUES (?, ?)", (jid, ET.tostring(new_item).decode()))
                     con.commit()
 
         res = ET.Element(
@@ -141,3 +146,7 @@ class Roster(Plugin):
         )
 
         return ET.tostring(res)
+    
+    def handleResult(self, element: ET.Element, jid: str):
+        # It's safe to ignore this stanza
+        return

@@ -112,5 +112,8 @@ ENV/
 *.db
 *.plk
 
+# my testing
+mytesting/
+
 # Node modules
 node_modules/
