@@ -16,22 +16,24 @@ from pyjabber.server import Server
 @click.option('--log_path', type=str, help='Path to log dumpfile')
 @click.option('--debug', '-D', is_flag=True, help='Enables debug mode in Asyncio')
 def main(host, client_port, server_port, family, timeout, log_level, log_path, debug):
-    
+
     logger.add(
         log_path if log_path else os.devnull,
-        enqueue     = True,
-        format      = "<green>{time}</green> - <level>{level}: {message}</level>",
-        level       = log_level,
+        enqueue=True,
+        format="<green>{time}</green> - <level>{level}: {message}</level>",
+        level=log_level,
     )
+    logger.configure(handlers=[{"sink": sys.stderr, "level": log_level}])
+
 
     server = Server(
-        host                = host,
-        client_port         = client_port,
-        server_port         = server_port,
-        family              = socket.AF_INET if family == 'ipv4' else socket.AF_INET6,
-        connection_timeout  = timeout
+        host=host,
+        client_port=client_port,
+        server_port=server_port,
+        family=socket.AF_INET if family == "ipv4" else socket.AF_INET6,
+        connection_timeout=timeout,
     )
-    
+
     server.start(debug)
 
     return 0

@@ -108,6 +108,3 @@ async def handleRegister(request):
             "message": str(e)
         }
         return web.json_response(error_response, status=500)
-
-async def handle(request):
-    return web.FileResponse(os.getcwd() + '/pyjabber/webpage/build/index.html')

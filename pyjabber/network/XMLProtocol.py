@@ -76,7 +76,6 @@ class XMLProtocol(asyncio.Protocol):
         '''
         try:
             logger.info(f"Connection lost from {self._transport.get_extra_info('peername')}: Reason {exc}")
-            self._xml_parser.feed(f"<presence type='unavailable' />".encode())
 
             self._transport     = None
             self._xml_parser    = None
@@ -123,7 +122,6 @@ class XMLProtocol(asyncio.Protocol):
 
         logger.debug(f"EOF received from {peer}")
 
-        self._xml_parser.feed(f"<presence type='unavailable' />".encode())
         self._connections.disconnection(peer)
 
         self._transport     = None
