@@ -111,7 +111,9 @@ ENV/
 # Data persistance
 *.db
 *.plk
-*.sql
 
 # my testing
 mytesting/
+
+# Node modules
+node_modules/
