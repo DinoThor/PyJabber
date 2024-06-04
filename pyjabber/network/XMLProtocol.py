@@ -29,14 +29,13 @@ class XMLProtocol(asyncio.Protocol):
             self, 
             namespace               = "jabber:client", 
             connection_timeout      = None):
-        
+
         self._xmlns                 = namespace
         self._transport             = None
         self._xml_parser            = None
         self._timeout_monitor       = None
         self._connection_timeout    = connection_timeout
         self._connections           = ConectionsManager()
-
 
     def connection_made(self, transport):
         '''
@@ -83,7 +82,6 @@ class XMLProtocol(asyncio.Protocol):
         except:
             logger.info(f"Connection lost after EOF recived")
 
-
     def data_received(self, data):
         '''
         Called when data is received from the client or another server
@@ -109,10 +107,8 @@ class XMLProtocol(asyncio.Protocol):
         I probably should change the parser
         '''
         data = data.replace(b"<?xml version=\"1.0\"?>", b"")
-        
+
         self._xml_parser.feed(data)
-
-
 
     def eof_received(self):
         '''
@@ -144,26 +140,25 @@ class XMLProtocol(asyncio.Protocol):
     ###########################################################################
 
     def taskTLS(self):
-        task = asyncio.get_running_loop().create_task(self.enableTLS())
-        task.add_done_callback(self.handleSTARTTLS)
+        asyncio.get_running_loop().create_task(self.enableTLS())
 
     async def enableTLS(self):
-        loop        = asyncio.get_running_loop()
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+        loop    = asyncio.get_running_loop()
+        parser  = self._xml_parser.getContentHandler()
+
+        ssl_context = ssl.create_default_context(
+            ssl.Purpose.CLIENT_AUTH, cafile=FILE_AUTH + "/certs/rootCA.pem"
+        )
         ssl_context.load_cert_chain(
-            FILE_AUTH + '/certs/localhost.pem',         # Cert file
-            FILE_AUTH + '/certs/localhost-key.pem')     # Key file
+            certfile = FILE_AUTH + '/certs/localhost.pem',         # Cert file
+            keyfile  = FILE_AUTH + '/certs/localhost-key.pem')     # Key file
 
-        return await loop.start_tls(
-                                transport   = self._transport, 
-                                protocol    = self._transport.get_protocol(), 
-                                sslcontext  = ssl_context,
-                                server_side = True)
-    
-    def handleSTARTTLS(self, task):
-        new_transport   = task.result()
-        self._transport = new_transport
-        parser          = self._xml_parser.getContentHandler()
-        parser.buffer   = new_transport
-        logger.debug("Done TLS")
+        self._transport = await loop.start_tls(
+                            transport   = self._transport, 
+                            protocol    = self, 
+                            sslcontext  = ssl_context,
+                            server_side = True)
 
+        parser.buffer   = self._transport
+        logger.debug(f"Done TLS")
+        
