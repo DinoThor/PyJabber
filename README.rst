@@ -60,16 +60,6 @@ or
           -D, --debug               Enables debug mode in Asyncio.
           --help                    Show this message and exit.
 
-A formated logger can be added, in order to retrive the messages from the INFO, DEBUG and ERROR levels
-
-.. code-block:: python
-    
-    2024-05-03 11:45:51.229 | INFO     | pyjabber.server:run_server:52 - Starting server...
-    2024-05-03 11:45:51.231 | INFO     | pyjabber.server:run_server:73 - Server is listening clients on ('127.0.0.1', 5222)
-    2024-05-03 11:45:51.231 | INFO     | pyjabber.server:run_server:75 - Server started...
-
-
-
 
 Features
 --------
@@ -83,7 +73,7 @@ Features
      - Description
    * - TLS
      - Implemented
-     - v1.2, with localhost certificate included
+     - v1.2, with localhost certificate and CA included
    * - SASL
      - Implemented
      - PLAIN
@@ -92,7 +82,7 @@ Features
      - CRUD avaliable
    * - Presence
      - Partialy implemented
-     - subscribe, unsubscribed, initial presence and unavailable
+     - Subscribe, Unsubscribed, Initial presence and Unavailable
 
 Plugins
 -------
