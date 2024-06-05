@@ -9,7 +9,7 @@ from pyjabber.features.StartTLSFeature import StartTLSFeature
 from pyjabber.features.StreamFeature import StreamFeature
 from pyjabber.features.SASLFeature import SASLFeature, SASL
 from pyjabber.features.ResourceBinding import ResourceBinding
-from pyjabber.network.ConnectionsManager import ConectionsManager
+from pyjabber.network.ConnectionsManager import ConectionManager
 from pyjabber.utils import ClarkNotation as CN
 
 
@@ -35,7 +35,7 @@ class StreamHandler():
         self._starttls      = starttls
 
         self._streamFeature = StreamFeature()
-        self._connections   = ConectionsManager()
+        self._connections   = ConectionManager()
         self._stage         = Stage.CONNECTED
 
         self._elem          = None

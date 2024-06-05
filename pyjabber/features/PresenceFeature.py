@@ -1,6 +1,6 @@
 from uuid import uuid4
 from pyjabber.features.FeatureInterface import FeatureInterface
-from pyjabber.network.ConnectionsManager import ConectionsManager
+from pyjabber.network.ConnectionsManager import ConectionManager
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.plugins.roster.Roster import Roster
 
@@ -16,7 +16,7 @@ class Presence(FeatureInterface):
             "unavailable"   : self.handleUnavailable
         }
         self._roster        = Roster()
-        self._connections   = ConectionsManager()
+        self._connections   = ConectionManager()
         self._jid           = None
 
     def feed(self, element: ET.Element, jid: str, extra: dict[str, any] = None):

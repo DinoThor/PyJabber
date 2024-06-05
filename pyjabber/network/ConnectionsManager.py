@@ -6,7 +6,7 @@ from loguru import logger
 from pyjabber.utils import Singleton
 
 
-class ConectionsManager(metaclass = Singleton):
+class ConectionManager(metaclass = Singleton):
     __slots__ = ["_peerList"]
     
     JID         = "jid"

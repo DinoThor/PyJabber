@@ -8,7 +8,7 @@ from xml.etree import ElementTree as ET
 
 from pyjabber.db.database import connection
 from pyjabber.features.FeatureInterface import FeatureInterface
-from pyjabber.network.ConnectionsManager import ConectionsManager
+from pyjabber.network.ConnectionsManager import ConectionManager
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.utils import ClarkNotation as CN
 
@@ -30,7 +30,7 @@ class SASL(FeatureInterface):
             "auth"  : self.handleAuth
         }
         self._ns = "jabber:iq:register"
-        self._connections = ConectionsManager()
+        self._connections = ConectionManager()
         self._peername = None
 
     def feed(self, element: ET, extra: dict[str, any] = None) -> Union[Tuple[Signal, bytes], bytes]:

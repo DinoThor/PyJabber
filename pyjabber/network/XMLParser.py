@@ -7,7 +7,7 @@ from xml.etree import ElementTree as ET
 from pyjabber.stream import Stream
 from pyjabber.stream .StreamHandler import StreamHandler, Signal
 from pyjabber.stream .StanzaHandler import StanzaHandler
-from pyjabber.network.ConnectionsManager import ConectionsManager
+from pyjabber.network.ConnectionsManager import ConectionManager
 from pyjabber.utils import ClarkNotation as CN
 
 
@@ -40,7 +40,7 @@ class XMPPStreamHandler(ContentHandler):
         self._streamHandler = StreamHandler(self._buffer, starttls)
         self._stanzaHandler = None
 
-        self._connectons    = ConectionsManager()
+        self._connectons    = ConectionManager()
 
         self._stack         = []
 

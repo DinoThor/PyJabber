@@ -8,7 +8,7 @@ from loguru import logger
 
 from pyjabber.db.database import connection
 from pyjabber.network.XMLProtocol  import XMLProtocol
-from pyjabber.network.ConnectionsManager import ConectionsManager
+from pyjabber.network.ConnectionsManager import ConectionManager
 from pyjabber.webpage.adminPage import serverInstance
 
 CLIENT_PORT = 5222
@@ -50,7 +50,7 @@ class Server():
         self._adminServer           = None
         self._connection_timeout    = connection_timeout
 
-        self._connections           = ConectionsManager()
+        self._connections           = ConectionManager()
 
     async def run_server(self):
         logger.info("Starting server...")

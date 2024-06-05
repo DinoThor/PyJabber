@@ -7,7 +7,7 @@ from xml import sax
 
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.XMLParser import XMPPStreamHandler
-from pyjabber.network.ConnectionsManager import ConectionsManager
+from pyjabber.network.ConnectionsManager import ConectionManager
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
 
@@ -35,7 +35,7 @@ class XMLProtocol(asyncio.Protocol):
         self._xml_parser            = None
         self._timeout_monitor       = None
         self._connection_timeout    = connection_timeout
-        self._connections           = ConectionsManager()
+        self._connections           = ConectionManager()
 
     def connection_made(self, transport):
         '''

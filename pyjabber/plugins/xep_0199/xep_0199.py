@@ -1,12 +1,12 @@
 from xml.etree import ElementTree as ET
 
-from pyjabber.network.ConnectionsManager import ConectionsManager
+from pyjabber.network.ConnectionsManager import ConectionManager
 from pyjabber.plugins.PluginInterface import Plugin
 
 
 class Ping(Plugin):
     def __init__(self) -> None:
-        self._connections = ConectionsManager()
+        self._connections = ConectionManager()
 
     def feed(self, jid: str, element: ET.Element):
         if "to" in element.attrib and element.attrib["to"] == "localhost":
