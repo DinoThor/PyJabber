@@ -2,13 +2,15 @@ import asyncio
 import os
 import signal
 import socket
+import nest_asyncio
 
 from contextlib import closing
 from loguru import logger
 
 from pyjabber.db.database import connection
 from pyjabber.network.XMLProtocol  import XMLProtocol
-from pyjabber.network.ConnectionsManager import ConectionManager
+from pyjabber.network.ConectionManager import ConectionManager
+from pyjabber.utils import Singleton
 from pyjabber.webpage.adminPage import serverInstance
 
 CLIENT_PORT = 5222
@@ -52,6 +54,13 @@ class Server():
 
         self._connections           = ConectionManager()
 
+    async def server_connection(self, jid):
+        return asyncio.get_event_loop().create_connection(
+            lambda: XMLProtocol(namespace="jabber:server", connection_timeout=60),
+            host=jid,
+            port=5269,
+        )
+
     async def run_server(self):
         logger.info("Starting server...")
 
@@ -62,7 +71,7 @@ class Server():
                     con.cursor().executescript(schema.read())
                 con.commit()
 
-        loop = asyncio.get_running_loop()
+        loop = asyncio.get_event_loop()
 
         self._client_listener = await loop.create_server(
             lambda: XMLProtocol(
@@ -75,6 +84,18 @@ class Server():
         )
 
         logger.info(f"Server is listening clients on {self._client_listener.sockets[0].getsockname()}")
+
+        self._server_listener = await loop.create_server(
+            lambda: XMLProtocol(
+                namespace           = SERVER_NS,
+                connection_timeout  = self._connection_timeout,
+            ),
+            host    = self._host,
+            port    = self._server_port,
+            family  = self._family
+        )
+
+        logger.info(f"Server is listening servers on {self._server_listener.sockets[0].getsockname()}")
 
         logger.info("Server started...")
 
@@ -98,6 +119,8 @@ class Server():
         loop = asyncio.get_event_loop()
         loop.set_debug(debug)
 
+        nest_asyncio.apply(loop)
+
         try:
             loop.add_signal_handler(signal.SIGINT, self.raise_exit)
             loop.add_signal_handler(signal.SIGABRT, self.raise_exit)
@@ -109,8 +132,7 @@ class Server():
             main_task   = loop.create_task(self.run_server(), name="main_server")
             loop.run_until_complete(main_task)
             loop.run_until_complete(serverInstance())
-            loop.run_forever()
-            
+            # loop.run_forever()
 
         except (SystemExit, KeyboardInterrupt):  # pragma: no cover
             pass
@@ -121,7 +143,6 @@ class Server():
             for task in tasks:
                 task.cancel()
             loop.run_until_complete(asyncio.gather(*tasks, return_exceptions = True))
-
 
             # Close the server
             close_task = loop.create_task(self.stop(), name="close_server")

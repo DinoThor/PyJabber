@@ -29,7 +29,7 @@ class Signal(Enum):
     RESET   = 0
     DONE    = 1
 
-class StreamHandler():
+class ServerStreamHandler():
     def __init__(self, buffer, starttls) -> None:
         self._buffer        = buffer
         self._starttls      = starttls

@@ -6,8 +6,8 @@ from loguru import logger
 from xml import sax
 
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
-from pyjabber.network.XMLParser import XMPPStreamHandler
-from pyjabber.network.ConnectionsManager import ConectionManager
+from pyjabber.network.XMLParser import XMLParser
+from pyjabber.network.ConectionManager import ConectionManager
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
 
@@ -25,11 +25,7 @@ class XMLProtocol(asyncio.Protocol):
         "_connections"
     ]
 
-    def __init__(
-            self, 
-            namespace               = "jabber:client", 
-            connection_timeout      = None):
-
+    def __init__(self, namespace, connection_timeout = None):
         self._xmlns                 = namespace
         self._transport             = None
         self._xml_parser            = None
@@ -51,7 +47,7 @@ class XMLProtocol(asyncio.Protocol):
             self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
             self._xml_parser.setFeature(sax.handler.feature_external_ges, False)
             self._xml_parser.setContentHandler(
-                XMPPStreamHandler(self._transport, self.taskTLS)
+                XMLParser(self._transport, self.taskTLS)
             )
 
             if self._connection_timeout:

@@ -5,8 +5,8 @@ from xml.sax import ContentHandler
 from xml.etree import ElementTree as ET
 
 from pyjabber.stream import Stream
-from pyjabber.stream .StreamHandler import StreamHandler, Signal
-from pyjabber.stream .StanzaHandler import StanzaHandler
+from pyjabber.stream.StreamHandler import StreamHandler, Signal
+from pyjabber.stream.server.StanzaServerHandler import StanzaServerHandler
 from pyjabber.utils import ClarkNotation as CN
 
 
@@ -18,7 +18,7 @@ class StreamState(Enum):
     READY       = 1
 
 
-class XMLParser(ContentHandler):
+class XMLServerParser(ContentHandler):
     """
     Manages the stream data an process the XML objects.
     Inheriting from sax.ContentHandler
@@ -40,6 +40,8 @@ class XMLParser(ContentHandler):
         self._stanzaHandler = None
 
         self._stack         = []
+
+        self._buffer.write("<stream:stream from='miguel' to='gtirouter.dsic.upv.es' version='1.0' xmlns='jabber:server' xmlns:stream='http://etherx.jabber.org/streams'>".encode())
 
     @property
     def buffer(self) -> BaseProtocol:
@@ -101,7 +103,7 @@ class XMLParser(ContentHandler):
                 if signal == Signal.RESET and "stream" in self._stack[-1].tag:
                     self._stack.pop()
                 elif signal == Signal.DONE:        
-                    self._stanzaHandler = StanzaHandler(self._buffer)
+                    self._stanzaHandler = StanzaServerHandler(self._buffer)
                     self._state = StreamState.READY
 
 
