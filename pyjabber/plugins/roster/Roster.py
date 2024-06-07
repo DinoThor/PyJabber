@@ -16,7 +16,7 @@ class subscriptionType(Enum):
 
 
 class Roster(Plugin):
-    def __init__(self) -> None:
+    def __init__(self, db_connection_factory) -> None:
         self._handlers = {
             "get"   : self.handleGet,
             "set"   : self.handleSet,
@@ -27,15 +27,16 @@ class Roster(Plugin):
             "query" : "{jabber:iq:roster}query",
             "item"  : "{jabber:iq:roster}item"
         }
+        self._db_connection_factory = db_connection_factory
 
     def retriveRoster(self, jid: str):
-        with closing(connection()) as con:
-            res     = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
-            roster  = res.fetchall()
+        with closing(self._db_connection_factory()) as con:
+            res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
+            roster = res.fetchall()
         return roster
-    
+
     def update(self, id: int, item: ET.Element) -> str:
-        with closing(connection()) as con:
+        with closing(self._db_connection_factory()) as con:
             con.execute("UPDATE roster SET rosterItem = ? WHERE id = ?", (ET.tostring(item).decode(), id))
             con.commit()
             res = con.execute("SELECT rosterItem from roster WHERE id = ?", (id, ))
@@ -46,9 +47,9 @@ class Roster(Plugin):
     def feed(self, jid: str, element: ET.Element):
         if len(element) != 1:
             return SE.invalid_xml()
-        
+
         return self._handlers[element.attrib["type"]](element, jid)
-        
+
 
     ############################################################
     ############################################################
@@ -57,9 +58,9 @@ class Roster(Plugin):
     def handleGet(self, element: ET.Element, jid):
         jid = jid.split("/")[0]
         try:
-            with closing(connection()) as con:
-                res     = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
-                roster  = res.fetchall()
+            with closing(self._db_connection_factory()) as con:
+                res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
+                roster = res.fetchall()
 
             iq_res = IQ(
                 type = IQ.TYPE.RESULT.value,
@@ -73,10 +74,10 @@ class Roster(Plugin):
             )
 
             for item in roster:
-                query.append(ET.fromstring(item[-1]))                
-            
+                query.append(ET.fromstring(item[-1]))
+
             return ET.tostring(iq_res)
-                
+
         except:
             raise Exception()
 
@@ -92,11 +93,11 @@ class Roster(Plugin):
 
         if len(new_item) != 1:
             raise Exception()
-        
+
         new_item    = new_item[0]
         if "subscription" in new_item.attrib.keys():
             remove = new_item.attrib["subscription"] == "remove"
-        
+
         with closing(connection()) as con:
             res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
             res = res.fetchall()
@@ -110,10 +111,10 @@ class Roster(Plugin):
             if remove:
                 with closing(connection()) as con:
                     con.execute("""
-                                DELETE FROM roster 
+                                DELETE FROM roster
                                 WHERE jid = ? AND rosterItem = ?
-                                """, 
-                                (jid, 
+                                """,
+                                (jid,
                                  ET.tostring(match_item[0]).decode()))
                     con.commit()
 
@@ -121,15 +122,15 @@ class Roster(Plugin):
                 # Update roster item
                 with closing(connection()) as con:
                     con.execute("""
-                                UPDATE roster 
-                                SET rosterItem = ? 
+                                UPDATE roster
+                                SET rosterItem = ?
                                 WHERE jid = ? AND rosterItem = ?
-                                """, 
+                                """,
                                 (ET.tostring(new_item).decode(),
-                                jid, 
+                                jid,
                                 ET.tostring(match_item[0])))
                     con.commit()
-            
+
         else:
             # New roster item
             if not remove:
@@ -146,7 +147,7 @@ class Roster(Plugin):
         )
 
         return ET.tostring(res)
-    
+
     def handleResult(self, element: ET.Element, jid: str):
         # It's safe to ignore this stanza
         return
