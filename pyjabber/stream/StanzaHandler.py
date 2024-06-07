@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 import xmlschema
 
 from pyjabber.features.PresenceFeature import Presence
-# from pyjabber.network.ConectionManager import ConectionManager
+from pyjabber.network.ConectionManager import ConectionManager
 from pyjabber.network.server.OpenConnection import open_server_connection
 from pyjabber.plugins.PluginManager import PluginManager
 from pyjabber.stanzas.error import StanzaError as SE
@@ -18,9 +18,9 @@ FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 class StanzaHandler():
     def __init__(self, buffer) -> None:
         self._buffer            = buffer
-        # self._connections       = ConectionManager()
+        self._connections       = ConectionManager()
         self._peername          = buffer.get_extra_info('peername')
-        self._jid               = "marc"#self._connections.get_jid_by_peer(self._peername)
+        self._jid               = self._connections.get_jid_by_peer(self._peername)
         self._pluginManager     = PluginManager(self._jid)
         self._presenceManager   = Presence()
 
@@ -57,7 +57,7 @@ class StanzaHandler():
     def handleMsg(self, element: ET.Element):
         bare_jid        = element.attrib["to"].split("/")[0]
 
-        if False:#"localhost" in bare_jid:
+        if "localhost" in bare_jid:
             reciverBuffer   = self._connections.get_buffer_by_jid(bare_jid)
 
             for buffer in reciverBuffer:

@@ -20,16 +20,19 @@ class Stream(ET.Element):
 
     def __init__(
             self, 
-            id_         = None, 
+            id         = None, 
             from_       = None, 
             to          = None, 
             version     = "1.0", 
             xml_lang    = "en", 
             xmlns       = Namespaces.CLIENT.value):
         
+        if not id:
+            id = str(uuid4())
+        
         attrib = {
             k: v for k, v in (
-                ("id", id_), 
+                ("id", id), 
                 ("from", from_), 
                 ("to", to), 
                 ("version", version), 
@@ -51,14 +54,14 @@ class Stream(ET.Element):
 def responseStream(attrs):
     attrs = dict(attrs)
 
-    id_     = str(uuid4())
+    id      = str(uuid4())
     from_   = attrs.pop((None, "from"), None)
     to      = attrs.pop((None, "to"), None)
     version = attrs.pop((None, "version"), "1.0")
     lang    = attrs.pop(("http://www.w3.org/XML/1998/namespace", "lang"), None)
 
     stream = Stream(
-        id_         = id_,
+        id          = id,
         from_       = to,
         to          = from_,
         version     = version,
