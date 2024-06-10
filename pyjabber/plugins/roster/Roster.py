@@ -81,10 +81,9 @@ class Roster(Plugin):
         except:
             raise Exception()
 
-
     def handleSet(self, element: ET.Element, jid: str):
-        query   = element.find(self._ns["query"])
-        jid     = jid.split("/")[0]
+        query = element.find(self._ns["query"])
+        jid = jid.split("/")[0]
 
         if query is None:
             raise Exception()
@@ -94,55 +93,44 @@ class Roster(Plugin):
         if len(new_item) != 1:
             raise Exception()
 
-        new_item    = new_item[0]
-        if "subscription" in new_item.attrib.keys():
-            remove = new_item.attrib["subscription"] == "remove"
+        new_item = new_item[0]
+        remove = new_item.attrib.get("subscription") == "remove"
 
-        with closing(connection()) as con:
+        with closing(self._db_connection_factory()) as con:
             res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
-            res = res.fetchall()
+            roster = res.fetchall()
+            roster = [ET.fromstring(r[-1]) for r in roster]
+            match_item = [i for i in roster if i.attrib["jid"] == new_item.attrib["jid"]]
 
-        roster      = res
-        roster      = [ET.fromstring(r[-1]) for r in roster]
-        match_item  = [i for i in roster if i.attrib["jid"] == new_item.attrib["jid"]]
-
-        if match_item:
-            # Delete roster item
-            if remove:
-                with closing(connection()) as con:
+            if match_item:
+                if remove:
                     con.execute("""
                                 DELETE FROM roster
                                 WHERE jid = ? AND rosterItem = ?
                                 """,
-                                (jid,
-                                 ET.tostring(match_item[0]).decode()))
+                                (jid, ET.tostring(match_item[0]).decode()))
                     con.commit()
-
-            else:
-                # Update roster item
-                with closing(connection()) as con:
+                else:
                     con.execute("""
                                 UPDATE roster
                                 SET rosterItem = ?
                                 WHERE jid = ? AND rosterItem = ?
                                 """,
                                 (ET.tostring(new_item).decode(),
-                                jid,
-                                ET.tostring(match_item[0])))
+                                 jid,
+                                 ET.tostring(match_item[0]).decode()))
                     con.commit()
-
-        else:
-            # New roster item
-            if not remove:
-                with closing(connection()) as con:
-                    con.execute("INSERT INTO roster(jid, rosterItem) VALUES (?, ?)", (jid, ET.tostring(new_item).decode()))
+            else:
+                if not remove:
+                    con.execute("INSERT INTO roster(jid, rosterItem) VALUES (?, ?)",
+                                (jid, ET.tostring(new_item).decode()))
                     con.commit()
 
         res = ET.Element(
             "iq",
-            attrib = {
-                "id"    : element.attrib["id"],
-                "type"  : "result"
+            attrib={
+                "id": element.attrib["id"],
+                "type": "result"
             }
         )
 
