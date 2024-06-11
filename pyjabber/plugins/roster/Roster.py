@@ -16,7 +16,7 @@ class subscriptionType(Enum):
 
 
 class Roster(Plugin):
-    def __init__(self, db_connection_factory) -> None:
+    def __init__(self, db_connection_factory=connection()) -> None:
         self._handlers = {
             "get"   : self.handleGet,
             "set"   : self.handleSet,
