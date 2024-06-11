@@ -18,9 +18,11 @@ PyJabber
         :alt: Documentation Status
 
 .. image:: https://img.shields.io/pypi/dm/pyjabber
+        :target: https://www.pepy.tech/projects/pyjabber
         :alt: Monthly downloads
 
 .. image:: https://img.shields.io/pepy/dt/pyjabber
+        :target: https://www.pepy.tech/projects/pyjabber
         :alt: Total downloads
 
 
