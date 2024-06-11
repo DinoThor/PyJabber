@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 import xmlschema
 
 from pyjabber.features.PresenceFeature import Presence
-# from pyjabber.network.ConectionManager import ConectionManager
+# from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.server.OpenConnection import open_server_connection
 from pyjabber.plugins.PluginManager import PluginManager
 from pyjabber.stanzas.error import StanzaError as SE
@@ -18,7 +18,7 @@ FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 class StanzaHandler():
     def __init__(self, buffer) -> None:
         self._buffer            = buffer
-        # self._connections       = ConectionManager()
+        # self._connections       = ConnectionManager()
         self._peername          = buffer.get_extra_info('peername')
         self._jid               = "marc"#self._connections.get_jid_by_peer(self._peername)
         self._pluginManager     = PluginManager(self._jid)
@@ -29,7 +29,7 @@ class StanzaHandler():
             "{jabber:client}message"     : self.handleMsg,
             "{jabber:client}presence"    : self.handlePre
         }
-        
+
         with open(FILE_PATH + "/schemas/schemas.pkl", "rb") as schemasDump:
             self._schemas = pickle.load(schemasDump)
 
@@ -45,7 +45,7 @@ class StanzaHandler():
             self._functions[element.tag](element)
         except KeyError:
             raise Exception()
-        
+
     ############################################################
     ############################################################
 

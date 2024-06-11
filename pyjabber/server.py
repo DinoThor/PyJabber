@@ -8,20 +8,21 @@ from contextlib import closing
 from loguru import logger
 
 from pyjabber.db.database import connection
-from pyjabber.network.XMLProtocol  import XMLProtocol
-from pyjabber.network.ConectionManager import ConectionManager
+from pyjabber.network.XMLProtocol import XMLProtocol
+from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.utils import Singleton
 from pyjabber.webpage.adminPage import serverInstance
 
 CLIENT_PORT = 5222
-CLIENT_NS   = "jabber:client"
+CLIENT_NS = "jabber:client"
 
 SERVER_PORT = 5269
-SERVER_NS   = "jabber:server"
+SERVER_NS = "jabber:server"
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
-class Server():
+
+class Server:
     _slots__ = [
         "_host",
         "_client_port",
@@ -36,23 +37,23 @@ class Server():
 
     def __init__(
         self,
-        host                = ["localhost",],
-        client_port         = CLIENT_PORT,
-        server_port         = SERVER_PORT,
-        family              = socket.AF_INET,
-        connection_timeout  = 60,
+        host=["localhost", ],
+        client_port=CLIENT_PORT,
+        server_port=SERVER_PORT,
+        family=socket.AF_INET,
+        connection_timeout=60,
 
     ):
-        self._host                  = host
-        self._client_port           = client_port
-        self._server_port           = server_port
-        self._family                = family
-        self._client_listener       = None
-        self._server_listener       = None
-        self._adminServer           = None
-        self._connection_timeout    = connection_timeout
+        self._host = host
+        self._client_port = client_port
+        self._server_port = server_port
+        self._family = family
+        self._client_listener = None
+        self._server_listener = None
+        self._adminServer = None
+        self._connection_timeout = connection_timeout
 
-        self._connections           = ConectionManager()
+        self._connections = ConnectionManager()
 
     async def server_connection(self, jid):
         return asyncio.get_event_loop().create_connection(
@@ -75,24 +76,24 @@ class Server():
 
         self._client_listener = await loop.create_server(
             lambda: XMLProtocol(
-                namespace           = CLIENT_NS,
-                connection_timeout  = self._connection_timeout,
+                namespace=CLIENT_NS,
+                connection_timeout=self._connection_timeout,
             ),
-            host    = self._host,
-            port    = self._client_port,
-            family  = self._family
+            host=self._host,
+            port=self._client_port,
+            family=self._family
         )
 
         logger.info(f"Server is listening clients on {self._client_listener.sockets[0].getsockname()}")
 
         self._server_listener = await loop.create_server(
             lambda: XMLProtocol(
-                namespace           = SERVER_NS,
-                connection_timeout  = self._connection_timeout,
+                namespace=SERVER_NS,
+                connection_timeout=self._connection_timeout,
             ),
-            host    = self._host,
-            port    = self._server_port,
-            family  = self._family
+            host=self._host,
+            port=self._server_port,
+            family=self._family
         )
 
         logger.info(f"Server is listening servers on {self._server_listener.sockets[0].getsockname()}")
@@ -115,7 +116,7 @@ class Server():
     def raise_exit(self):
         raise SystemExit(1)
 
-    def start(self, debug:bool = False):
+    def start(self, debug: bool = False):
         loop = asyncio.get_event_loop()
         loop.set_debug(debug)
 
@@ -128,8 +129,8 @@ class Server():
         except NotImplementedError:  # pragma: no cover
             pass
 
-        try:        
-            main_task   = loop.create_task(self.run_server(), name="main_server")
+        try:
+            main_task = loop.create_task(self.run_server(), name="main_server")
             loop.run_until_complete(main_task)
             loop.run_until_complete(serverInstance())
             # loop.run_forever()
@@ -142,7 +143,7 @@ class Server():
             tasks = asyncio.all_tasks(loop)
             for task in tasks:
                 task.cancel()
-            loop.run_until_complete(asyncio.gather(*tasks, return_exceptions = True))
+            loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
 
             # Close the server
             close_task = loop.create_task(self.stop(), name="close_server")
