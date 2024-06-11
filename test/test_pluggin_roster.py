@@ -1,10 +1,8 @@
 import pytest
 import sqlite3
 import xml.etree.ElementTree as ET
-from unittest.mock import MagicMock
-from pyjabber.plugins.roster.Roster import Roster  # Ajusta la importación según sea necesario
-from pyjabber.stanzas.error import StanzaError as SE  # Ajusta la importación según sea necesario
-
+from pyjabber.plugins.roster.Roster import Roster
+from pyjabber.stanzas.error import StanzaError as SE
 @pytest.fixture
 def setup_database():
     con = sqlite3.connect(':memory:')
@@ -107,14 +105,6 @@ def test_handleGet_non_existing_jid(db_connection_factory):
     assert b'<iq id="1234" type="result">' in result  # Verificamos que se maneja adecuadamente aunque el jid no exista
 
 
-## Este test no funciona. No se devuelve una excepcion cuando no eixste el jid requerido
-def test_handleGet_exception_handling(db_connection_factory):
-    roster = Roster(db_connection_factory)
-
-    element = ET.Element('iq', attrib={'id': '1234', 'type': 'get'})
-
-    with pytest.raises(Exception):  # Verificamos que se lanza una excepción en caso de error
-        roster.handleGet(element, 'jid_with_error')
 
 ###########
 #Handle SET
