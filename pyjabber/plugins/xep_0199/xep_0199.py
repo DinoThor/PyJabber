@@ -5,10 +5,10 @@ from pyjabber.plugins.PluginInterface import Plugin
 
 
 class Ping(Plugin):
-    def __init__(self) -> None:
-        self._connections = ConnectionManager()
+    def __init__(self, jid: str) -> None:
+        self._jid = jid
 
-    def feed(self, jid: str, element: ET.Element):
+    def feed(self, element: ET.Element):
         if "to" in element.attrib and element.attrib["to"] == "localhost":
             res = ET.tostring(
                 ET.Element(

@@ -11,6 +11,7 @@ from pyjabber.network.ConnectionManager import ConnectionManager
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
 
+
 class XMLServerProtocol(asyncio.Protocol):
     '''
     Protocol to manage the network connection between nodes in the XMPP network. Handles the transport layer.
@@ -25,13 +26,13 @@ class XMLServerProtocol(asyncio.Protocol):
         "_connections"
     ]
 
-    def __init__(self, namespace, connection_timeout = None):
-        self._xmlns                 = namespace
-        self._transport             = None
-        self._xml_parser            = None
-        self._timeout_monitor       = None
-        self._connection_timeout    = connection_timeout
-        self._connections           = ConnectionManager()
+    def __init__(self, namespace, connection_timeout=None):
+        self._xmlns = namespace
+        self._transport = None
+        self._xml_parser = None
+        self._timeout_monitor = None
+        self._connection_timeout = connection_timeout
+        self._connections = ConnectionManager()
 
     def connection_made(self, transport):
         '''
@@ -52,8 +53,8 @@ class XMLServerProtocol(asyncio.Protocol):
 
             if self._connection_timeout:
                 self._timeout_monitor = StreamAlivenessMonitor(
-                    timeout     = self._connection_timeout,
-                    callback    = self.connection_timeout
+                    timeout=self._connection_timeout,
+                    callback=self.connection_timeout
                 )
 
             self._connections.connection(self._transport.get_extra_info('peername'))
@@ -76,8 +77,8 @@ class XMLServerProtocol(asyncio.Protocol):
         try:
             logger.info(f"Connection lost from {self._transport.get_extra_info('peername')}: Reason {exc}")
 
-            self._transport     = None
-            self._xml_parser    = None
+            self._transport = None
+            self._xml_parser = None
 
         except:
             logger.info(f"Connection lost after EOF recived")
@@ -120,8 +121,8 @@ class XMLServerProtocol(asyncio.Protocol):
 
         self._connections.disconnection(peer)
 
-        self._transport     = None
-        self._xml_parser    = None
+        self._transport = None
+        self._xml_parser = None
 
     def connection_timeout(self):
         '''
@@ -132,8 +133,8 @@ class XMLServerProtocol(asyncio.Protocol):
         self._transport.write("<connection-timeout/>".encode())
         self._transport.close()
 
-        self._transport     = None
-        self._xml_parser    = None
+        self._transport = None
+        self._xml_parser = None
 
     ###########################################################################
     ###########################################################################
@@ -143,21 +144,22 @@ class XMLServerProtocol(asyncio.Protocol):
         asyncio.get_running_loop().create_task(self.enableTLS())
 
     async def enableTLS(self):
-        loop    = asyncio.get_running_loop()
-        parser  = self._xml_parser.getContentHandler()
+        loop = asyncio.get_running_loop()
+        parser = self._xml_parser.getContentHandler()
 
         ssl_context = ssl.create_default_context(
-            ssl.Purpose.CLIENT_AUTH, cafile=FILE_AUTH + "/certs/rootCA.pem"
+            ssl.Purpose.CLIENT_AUTH, cafile=os.path.join(FILE_AUTH + "/certs/rootCA.pem")
         )
         ssl_context.load_cert_chain(
-            certfile = FILE_AUTH + '/certs/localhost.pem',         # Cert file
-            keyfile  = FILE_AUTH + '/certs/localhost-key.pem')     # Key file
+            certfile=os.path.join(FILE_AUTH + '/certs/localhost.pem'),  # Cert file
+            keyfile=os.path.join(FILE_AUTH + '/certs/localhost-key.pem')  # Key file
+        )
 
         self._transport = await loop.start_tls(
-                            transport   = self._transport,
-                            protocol    = self,
-                            sslcontext  = ssl_context,
-                            server_side = True)
+            transport=self._transport,
+            protocol=self,
+            sslcontext=ssl_context,
+            server_side=True)
 
-        parser.buffer   = self._transport
+        parser.buffer = self._transport
         logger.debug(f"Done TLS")

@@ -40,7 +40,7 @@ class Presence(FeatureInterface):
 
         # Handle presence locally
         if to.split("@")[1] == "localhost":
-            roster = self._roster.retriveRoster(bare_jid)
+            roster = self._roster.retrieve_roster(bare_jid)
             buffer = self._connections.get_buffer_by_jid(to)
 
             item = [item for item in roster
@@ -57,7 +57,7 @@ class Presence(FeatureInterface):
 
                 self._roster.feed(bare_jid, iq)
 
-                roster = self._roster.retriveRoster(bare_jid)
+                roster = self._roster.retrieve_roster(bare_jid)
                 buffer = self._connections.get_buffer_by_jid(to)
 
                 item = [item for item in roster
@@ -107,8 +107,8 @@ class Presence(FeatureInterface):
             bufferBob = self._connections.get_buffer_by_jid(to)
             bufferAlice = self._connections.get_buffer_by_jid(bare_jid)
 
-            rosterBob = self._roster.retriveRoster(to)
-            rosterAlice = self._roster.retriveRoster(bare_jid)
+            rosterBob = self._roster.retrieve_roster(to)
+            rosterAlice = self._roster.retrieve_roster(bare_jid)
 
             rosterPushBob = None
             rosterPushAlice = None
@@ -206,7 +206,7 @@ class Presence(FeatureInterface):
 
     def handle_initial_presence(self, element: ET.Element):
         bare_jid = self._jid.split("/")[0]
-        roster = self._roster.retriveRoster(bare_jid)
+        roster = self._roster.retrieve_roster(bare_jid)
 
         for r in roster:
             item = ET.fromstring(r[-1])
@@ -227,7 +227,7 @@ class Presence(FeatureInterface):
 
         # Handle locally
         if to.split("@")[1] == "localhost":
-            roster = self._roster.retriveRoster(bare_jid)
+            roster = self._roster.retrieve_roster(bare_jid)
             buffer = self._connections.get_buffer_by_jid(to)
 
             item = [item for item in roster
@@ -288,7 +288,7 @@ class Presence(FeatureInterface):
         if "from" not in element.attrib:
             element.attrib["from"] = self._jid
 
-        roster = self._roster.retriveRoster(bare_jid)
+        roster = self._roster.retrieve_roster(bare_jid)
 
         for item in roster:
             to = ET.fromstring(item[-1]).attrib["jid"]
