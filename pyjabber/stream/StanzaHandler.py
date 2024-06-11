@@ -6,7 +6,6 @@ import xmlschema
 
 from pyjabber.features.PresenceFeature import Presence
 from pyjabber.network.ConnectionsManager import ConectionsManager
-from pyjabber.plugins.PluginManager import PluginManager
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.Message import Message
 from pyjabber.utils import ClarkNotation as CN
@@ -20,7 +19,6 @@ class StanzaHandler():
         self._connections       = ConectionsManager()
         self._peername          = buffer.get_extra_info('peername')
         self._jid               = self._connections.get_jid_by_peer(self._peername)
-        self._pluginManager     = PluginManager(self._jid)
         self._presenceManager   = Presence()
 
         self._functions     = {
@@ -28,7 +26,7 @@ class StanzaHandler():
             "{jabber:client}message"     : self.handleMsg,
             "{jabber:client}presence"    : self.handlePre
         }
-        
+
         with open(FILE_PATH + "/schemas/schemas.pkl", "rb") as schemasDump:
             self._schemas = pickle.load(schemasDump)
 
@@ -44,11 +42,13 @@ class StanzaHandler():
             self._functions[element.tag](element)
         except KeyError:
             raise Exception()
-        
+
     ############################################################
     ############################################################
 
     def handleIQ(self, element: ET.Element):
+        from pyjabber.plugins.PluginManager import PluginManager
+        self._pluginManager = PluginManager(self._jid)
         res = self._pluginManager.feed(element)
         if res:
             self._buffer.write(res)
