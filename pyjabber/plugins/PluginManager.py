@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+from typing import Dict
 
 from pyjabber.plugins.PluginInterface import Plugin
 from pyjabber.stanzas.error import StanzaError as SE
@@ -11,15 +12,15 @@ from pyjabber.plugins.xep_0199.xep_0199 import Ping
 
 class PluginManager():
     def __init__(self, jid) -> None:
-        
+
         self._jid = jid
-        self._plugins: dict[str, Plugin] = {
-            'jabber:iq:roster'      : Roster,
-            'urn:xmpp:ping'         : Ping
+        self._plugins: Dict[str, Plugin] = {
+            'jabber:iq:roster' : Roster,
+            'urn:xmpp:ping' : Ping
         }
         self._activePlugins: dict[str, Plugin] = {}
 
-    def feed(self, element: ET.Element):        
+    def feed(self, element: ET.Element):
         try:
             child = element[0]
         except IndexError:
@@ -36,5 +37,5 @@ class PluginManager():
                 plugin = self._plugins[tag]         #Retrive plugin from list and instance
                 self._activePlugins[tag] = plugin()
                 return self._activePlugins[tag].feed(self._jid, element)
-            except KeyError: 
+            except KeyError:
                 return SE.service_unavaliable()     #Plugin unavailable

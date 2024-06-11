@@ -1,6 +1,7 @@
 from xml.etree import ElementTree as ET
 from typing import Dict
 
+
 class InBandRegistration(ET.Element):
     def __init__(
         self,

@@ -11,15 +11,15 @@ class Ping(Plugin):
     def feed(self, jid: str, element: ET.Element):
         if "to" in element.attrib and element.attrib["to"] == "localhost":
             res = ET.tostring(
-                    ET.Element(
-                        "iq",
-                        attrib={
-                            "from"  : "localhost",
-                            "id"    : element.attrib["id"],
-                            "to"    : element.attrib["to"],
-                            "type"  : "result",
-                        },
-                    )
+                ET.Element(
+                    "iq",
+                    attrib={
+                        "from": "localhost",
+                        "id": element.attrib["id"],
+                        "to": element.attrib["to"],
+                        "type": "result",
+                    },
                 )
+            )
 
             return [res]

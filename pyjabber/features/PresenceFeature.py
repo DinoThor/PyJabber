@@ -11,10 +11,10 @@ from typing import Dict
 class Presence(FeatureInterface):
     def __init__(self) -> None:
         self._handlers = {
-            "subscribe": self.handleSubscribe,
-            "subscribed": self.handleSubscribed,
-            "unsubscribed": self.handleUnsubscribed,
-            "unavailable": self.handleUnavailable
+            "subscribe": self.handle_subscribe,
+            "subscribed": self.handle_subscribed,
+            "unsubscribed": self.handle_unsubscribed,
+            "unavailable": self.handle_unavailable
         }
         self._roster = Roster()
         self._connections = ConnectionManager()
@@ -27,11 +27,11 @@ class Presence(FeatureInterface):
             return self._handlers[element.attrib["type"]](element)
 
         if "to" not in element.attrib:
-            return self.handleInitialPresence(element)
+            return self.handle_initial_presence(element)
 
         return None
 
-    def handleSubscribe(self, element: ET.Element):
+    def handle_subscribe(self, element: ET.Element):
         to = element.attrib["to"].split("/")[0]
         bare_jid = self._jid.split("/")[0]
 
@@ -96,7 +96,7 @@ class Presence(FeatureInterface):
                 b[-1].write(ET.tostring(petition))
                 return
 
-    def handleSubscribed(self, element: ET.Element):
+    def handle_subscribed(self, element: ET.Element):
         to = element.attrib["to"]
         bare_jid = self._jid.split("/")[0]
 
@@ -204,7 +204,7 @@ class Presence(FeatureInterface):
 
                     bob[-1].write(ET.tostring(res))
 
-    def handleInitialPresence(self, element: ET.Element):
+    def handle_initial_presence(self, element: ET.Element):
         bare_jid = self._jid.split("/")[0]
         roster = self._roster.retriveRoster(bare_jid)
 
@@ -218,7 +218,7 @@ class Presence(FeatureInterface):
                 )
                 b[-1].write(ET.tostring(presence))
 
-    def handleUnsubscribed(self, element: ET.Element):
+    def handle_unsubscribed(self, element: ET.Element):
         to = element.attrib["to"].split("/")[0]
         bare_jid = self._jid.split("/")[0]
 
@@ -282,7 +282,7 @@ class Presence(FeatureInterface):
                 b[-1].write(ET.tostring(presence))
                 b[-1].write(ET.tostring(roster_push))
 
-    def handleUnavailable(self, element: ET.Element):
+    def handle_unavailable(self, element: ET.Element):
         bare_jid = self._jid.split("/")[0]
 
         if "from" not in element.attrib:
