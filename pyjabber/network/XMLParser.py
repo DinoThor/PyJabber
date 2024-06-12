@@ -6,7 +6,6 @@ from xml.etree import ElementTree as ET
 
 from pyjabber.stream import Stream
 from pyjabber.stream .StreamHandler import StreamHandler, Signal
-from pyjabber.stream .StanzaHandler import StanzaHandler
 from pyjabber.network.ConnectionsManager import ConectionsManager
 from pyjabber.utils import ClarkNotation as CN
 
@@ -26,8 +25,8 @@ class XMPPStreamHandler(ContentHandler):
     """
 
     __slots__ = [
-        "_state", 
-        "_buffer", 
+        "_state",
+        "_buffer",
         "_elementStack",
         "_streamHandler",
         "_stanzaHandler"
@@ -54,7 +53,7 @@ class XMPPStreamHandler(ContentHandler):
         self._streamHandler.buffer  = value
 
     def startElementNS(self, name, qname, attrs):
-        logger.debug(f"Start element NS: {name}")   
+        logger.debug(f"Start element NS: {name}")
 
         if self._stack:     # "<stream:stream>" tag already present in the data stack
             elem = ET.Element(
@@ -65,7 +64,7 @@ class XMPPStreamHandler(ContentHandler):
 
         elif name[1] == "stream" and name[0] == "http://etherx.jabber.org/streams":
             self._buffer.write(Stream.responseStream(attrs))
-            
+
             elem = ET.Element(
                 CN.clarkFromTuple(name),
                 attrib  = {CN.clarkFromTuple(key):item for key, item in dict(attrs).items()}
@@ -84,7 +83,7 @@ class XMPPStreamHandler(ContentHandler):
             self._buffer.write(b'</stream:stream>')
             self._stack.clear()
             return
-        
+
         if not self._stack:
             raise Exception()
 
@@ -103,15 +102,16 @@ class XMPPStreamHandler(ContentHandler):
                 signal = self._streamHandler.handle_open_stream(elem)
                 if signal == Signal.RESET and "stream" in self._stack[-1].tag:
                     self._stack.pop()
-                elif signal == Signal.DONE:        
+                elif signal == Signal.DONE:
+                    from pyjabber.stream.StanzaHandler import StanzaHandler
                     self._stanzaHandler = StanzaHandler(self._buffer)
                     self._state = StreamState.READY
 
 
-    def characters(self, content: str) -> None:
+def characters(self, content: str) -> None:
         if not self._stack:
             raise Exception()
-        
+
         elem = self._stack[-1]
         if len(elem) != 0:
             child = elem[-1]
