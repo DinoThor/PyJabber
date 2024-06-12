@@ -9,7 +9,7 @@ from pyjabber.features.StartTLSFeature import StartTLSFeature
 from pyjabber.features.StreamFeature import StreamFeature
 from pyjabber.features.SASLFeature import SASLFeature, SASL
 from pyjabber.features.ResourceBinding import ResourceBinding
-from pyjabber.network.ConectionManager import ConectionManager
+from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.utils import ClarkNotation as CN
 
 
@@ -35,7 +35,7 @@ class ServerStreamHandler():
         self._starttls      = starttls
 
         self._streamFeature = StreamFeature()
-        self._connections   = ConectionManager()
+        self._connections   = ConnectionManager()
         self._stage         = Stage.CONNECTED
 
         self._elem          = None
@@ -54,28 +54,28 @@ class ServerStreamHandler():
         if self._stage == Stage.CONNECTED:
             self._streamFeature.reset()
             self._streamFeature.register(StartTLSFeature())
-            self._buffer.write(self._streamFeature.tobytes())
-            
+            self._buffer.write(self._streamFeature.to_bytes())
+
             self._stage = Stage.OPENED
 
         # TLS feature offered
         elif self._stage == Stage.OPENED:
             if "starttls" in elem.tag:
-                self._buffer.write(StartTLSFeature().proceedResponse())
+                self._buffer.write(StartTLSFeature().proceed_response())
                 self._starttls()
                 self._stage = Stage.SSL
                 return Signal.RESET
-        
+
         # TLS Handshake made. Starting SASL
         elif self._stage == Stage.SSL:
             self._streamFeature.reset()
 
             self._streamFeature.register(IBR.InBandRegistration())
             self._streamFeature.register(SASLFeature())
-            self._buffer.write(self._streamFeature.tobytes())
+            self._buffer.write(self._streamFeature.to_bytes())
 
             self._stage = Stage.SASL
-        
+
         # SASL
         elif self._stage == Stage.SASL:
             res = SASL().feed(elem, {"peername": self._buffer.get_extra_info('peername')})
@@ -88,15 +88,15 @@ class ServerStreamHandler():
                     self._buffer.write(res[1])
                     self._stage = Stage.AUTH
                     return
-                
+
             self._buffer.write(res)
 
         # User register/authenticated. Starting resource binding
         elif self._stage == Stage.AUTH:
             self._streamFeature.reset()
             self._streamFeature.register(ResourceBinding())
-            self._buffer.write(self._streamFeature.tobytes())
-            
+            self._buffer.write(self._streamFeature.to_bytes())
+
             self._stage = Stage.BIND
 
         elif self._stage == Stage.BIND:
@@ -105,19 +105,19 @@ class ServerStreamHandler():
                     bindElem    = elem.find(CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "bind")))
                     resouce     = bindElem.find(CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "resource")))
 
-                    if resouce is not None:   
-                        resource_id = resouce.text   
-                    else:        
+                    if resouce is not None:
+                        resource_id = resouce.text
+                    else:
                         resource_id = uuid4()
 
                     iqRes = ET.Element(
-                        "iq", 
+                        "iq",
                         attrib = {
                             "id": elem.attrib["id"],
                             "type": "result"
                         }
                     )
-                    
+
                     bindRes = ET.SubElement(
                         iqRes,
                         "bind",
@@ -134,11 +134,11 @@ class ServerStreamHandler():
                     self._buffer.write(ET.tostring(iqRes))
 
                     # Stream is negotiated.
-                    # Update the connection register 
+                    # Update the connection register
                     # with the jid and transport
                     self._connections.set_jid(
-                        self._buffer.get_extra_info('peername'), 
+                        self._buffer.get_extra_info('peername'),
                         jidRes.text, self._buffer
                     )
-                        
+
             return Signal.DONE

@@ -9,7 +9,7 @@ from loguru import logger
 
 from pyjabber.db.database import connection
 from pyjabber.network.XMLProtocol import XMLProtocol
-from pyjabber.network.ConectionManager import ConectionManager
+from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.utils import Singleton
 from pyjabber.webpage.adminPage import serverInstance
 
@@ -22,7 +22,7 @@ SERVER_NS = "jabber:server"
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
-class Server():
+class Server:
     _slots__ = [
         "_host",
         "_client_port",
@@ -53,7 +53,14 @@ class Server():
         self._adminServer = None
         self._connection_timeout = connection_timeout
 
-        self._connections = ConectionManager()
+        self._connections = ConnectionManager()
+
+    async def server_connection(self, jid):
+        return asyncio.get_event_loop().create_connection(
+            lambda: XMLProtocol(namespace="jabber:server", connection_timeout=60),
+            host=jid,
+            port=5269,
+        )
 
     async def run_server(self):
         logger.info("Starting server...")

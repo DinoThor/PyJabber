@@ -1,17 +1,18 @@
 import asyncio
 import re
 from asyncio import Transport
-from typing import Union
+from typing import Dict, Union, Tuple
 from loguru import logger
 
 from pyjabber.utils import Singleton
 
-class ConectionManager(metaclass = Singleton):
+
+class ConnectionManager(metaclass=Singleton):
     __slots__ = ["_peerList", "_remoteList"]
-    
-    JID         = "jid"
-    TRANSPORT   = "transport"
-    
+
+    JID = "jid"
+    TRANSPORT = "transport"
+
     # peerList | serverList = {
     #     "(0.0.0.0, 5000)": {
     #         "jid"       : <JID>,
@@ -21,34 +22,35 @@ class ConectionManager(metaclass = Singleton):
     # }
 
     def __init__(self) -> None:
-        self._peerList      = {}
-        self._remoteList    = {} 
+        self._peerList = {}
+        self._remoteList = {}
 
-    ###########################################################################
+        ###########################################################################
+
     ############################### LOCAL BOUND ###############################
     ###########################################################################
 
-    def get_users_connected(self) -> dict[str, tuple[str, int]]:
+    def get_users_connected(self) -> Dict[str, Tuple[str, int]]:
         return self._peerList
-    
-    def get_buffer_by_jid(self, jid: str) -> tuple[str | Transport]:
+
+    def get_buffer_by_jid(self, jid: str) -> Tuple[Union[str, Transport]]:
         res = []
         for key, values in self._peerList.items():
             if values[self.JID] is None:
                 continue
 
             if re.match(f"{jid}/*", values[self.JID]):
-                res.append((self._peerList[key][self.JID], self._peerList[key][self.TRANSPORT]))            
-        
+                res.append((self._peerList[key][self.JID], self._peerList[key][self.TRANSPORT]))
+
         return res
-    
+
     def get_jid_by_peer(self, peer) -> Union[str, None]:
         try:
             return self._peerList[peer][self.JID]
         except KeyError:
             return None
-        
-    def set_jid(self, peer, jid, transport = None) -> Union[None, bool]:
+
+    def set_jid(self, peer, jid, transport=None) -> Union[None, bool]:
         try:
             self._peerList[peer][self.JID] = jid
             if transport:
@@ -59,9 +61,9 @@ class ConectionManager(metaclass = Singleton):
     def connection(self, peer) -> None:
         if peer not in self._peerList:
             self._peerList[peer] = {
-                self.JID       : None,
-                self.TRANSPORT : None
-            } 
+                self.JID: None,
+                self.TRANSPORT: None
+            }
 
     def disconnection(self, peer) -> None:
         try:
@@ -76,10 +78,10 @@ class ConectionManager(metaclass = Singleton):
     def connectionServer(self, peer) -> None:
         if peer not in self._remoteList:
             self._remoteList[peer] = {
-                self.JID       : None,
-                self.TRANSPORT : None
+                self.JID: None,
+                self.TRANSPORT: None
             }
-    
+
     def disconnectionServer(self, peer) -> None:
         try:
             self._remoteList.pop(peer)

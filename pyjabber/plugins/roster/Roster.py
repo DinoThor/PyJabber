@@ -1,5 +1,6 @@
 from enum import Enum
 import xml.etree.ElementTree as ET
+from typing import List
 from contextlib import closing
 
 from pyjabber.db.database import connection
@@ -8,19 +9,13 @@ from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
 
 
-class subscriptionType(Enum):
-    NONE = "none"
-    TO = "to"
-    FROM = "from"
-    BOTH = "both"
-
-
 class Roster(Plugin):
-    def __init__(self) -> None:
+    def __init__(self, jid: str) -> None:
+        self._jid = jid
         self._handlers = {
-            "get": self.handleGet,
-            "set": self.handleSet,
-            "result": self.handleResult
+            "get": self.handle_get,
+            "set": self.handle_set,
+            "result": self.handle_result
         }
         self._ns = {
             "ns": "jabber:iq:roster",
@@ -28,13 +23,15 @@ class Roster(Plugin):
             "item": "{jabber:iq:roster}item"
         }
 
-    def retriveRoster(self, jid: str):
+    @staticmethod
+    def retrieve_roster(jid: str) -> List[str]:
         with closing(connection()) as con:
             res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
             roster = res.fetchall()
         return roster
 
-    def update(self, id: int, item: ET.Element) -> str:
+    @staticmethod
+    def update(id: int, item: ET.Element) -> str:
         with closing(connection()) as con:
             con.execute("UPDATE roster SET rosterItem = ? WHERE id = ?", (ET.tostring(item).decode(), id))
             con.commit()
@@ -43,17 +40,17 @@ class Roster(Plugin):
 
         return res[0]
 
-    def feed(self, jid: str, element: ET.Element):
+    def feed(self, element: ET.Element):
         if len(element) != 1:
             return SE.invalid_xml()
 
-        return self._handlers[element.attrib["type"]](element, jid)
+        return self._handlers[element.attrib["type"]](element)
 
     ############################################################
     ############################################################
 
-    def handleGet(self, element: ET.Element, jid):
-        jid = jid.split("/")[0]
+    def handle_get(self, element: ET.Element):
+        jid = self._jid.split("/")[0]
         try:
             with closing(connection()) as con:
                 res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
@@ -78,9 +75,9 @@ class Roster(Plugin):
         except:
             raise Exception()
 
-    def handleSet(self, element: ET.Element, jid: str):
+    def handle_set(self, element: ET.Element):
         query = element.find(self._ns["query"])
-        jid = jid.split("/")[0]
+        jid = self._jid.split("/")[0]
 
         if query is None:
             raise Exception()
@@ -145,6 +142,6 @@ class Roster(Plugin):
 
         return ET.tostring(res)
 
-    def handleResult(self, element: ET.Element, jid: str):
+    def handle_result(self, element: ET.Element):
         # It's safe to ignore this stanza
         return

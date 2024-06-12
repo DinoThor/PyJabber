@@ -1,10 +1,14 @@
-from abc import ABCMeta
+from abc import ABC
 from abc import abstractmethod
 
 import xml.etree.ElementTree as ET
 
 
-class Plugin(metaclass = ABCMeta):
+class Plugin(ABC):
     @abstractmethod
-    def feed(self, jid:str, element: ET.Element):
+    def __init__(self, jid: str):
+        self.jid = jid
+
+    @abstractmethod
+    def feed(self, element: ET.Element):
         pass
