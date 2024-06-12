@@ -76,7 +76,7 @@ class XMLProtocol(asyncio.Protocol):
             self._transport = None
             self._xml_parser = None
 
-        except (TypeError, ValueError):
+        except AttributeError:
             logger.info(f"Connection lost after EOF recived")
 
     def data_received(self, data):
@@ -150,11 +150,14 @@ class XMLProtocol(asyncio.Protocol):
             certfile=FILE_AUTH + '/certs/localhost.pem',  # Cert file
             keyfile=FILE_AUTH + '/certs/localhost-key.pem')  # Key file
 
-        self._transport = await loop.start_tls(
+        new_transport = await loop.start_tls(
             transport=self._transport,
             protocol=self,
             sslcontext=ssl_context,
             server_side=True)
+
+        # self._transport.close()
+        self._transport = new_transport
 
         parser.buffer = self._transport
         logger.debug(f"Done TLS")

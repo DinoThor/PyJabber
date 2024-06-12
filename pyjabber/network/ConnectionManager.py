@@ -1,7 +1,7 @@
 import asyncio
 import re
 from asyncio import Transport
-from typing import Dict, Union, Tuple
+from typing import Dict, Union, Tuple, List
 from loguru import logger
 
 from pyjabber.utils import Singleton
@@ -13,13 +13,16 @@ class ConnectionManager(metaclass=Singleton):
     JID = "jid"
     TRANSPORT = "transport"
 
-    # peerList | serverList = {
-    #     "(0.0.0.0, 5000)": {
-    #         "jid"       : <JID>,
-    #         "transport" : <transport>
-    #     },
-    #     ...
-    # }
+    """
+    peerList | serverList = {
+        "(0.0.0.0, 5000)": {
+            "jid"       : <JID>,
+            "transport" : <transport>
+        },
+        ...
+    }
+    """
+
 
     def __init__(self) -> None:
         self._peerList = {}
@@ -33,16 +36,21 @@ class ConnectionManager(metaclass=Singleton):
     def get_users_connected(self) -> Dict[str, Tuple[str, int]]:
         return self._peerList
 
-    def get_buffer_by_jid(self, jid: str) -> Tuple[Union[str, Transport]]:
-        res = []
-        for key, values in self._peerList.items():
-            if values[self.JID] is None:
-                continue
+    def get_buffer_by_jid(self, jid: str) -> List[Tuple[Union[str, Transport]]]:
+        # res = []
+        # for key, values in self._peerList.items():
+        #     if values[self.JID] is None:
+        #         continue
+        #
+        #     if re.match(f"{jid}/*", values[self.JID]):
+        #         res.append((self._peerList[key][self.JID], self._peerList[key][self.TRANSPORT]))
 
-            if re.match(f"{jid}/*", values[self.JID]):
-                res.append((self._peerList[key][self.JID], self._peerList[key][self.TRANSPORT]))
-
-        return res
+        return [
+            (self._peerList[key][self.JID], self._peerList[key][self.TRANSPORT])
+               for key, values in self._peerList.items()
+               if values[self.JID] is not None
+               and re.match(f"{jid}/*", values[self.JID])
+        ]
 
     def get_jid_by_peer(self, peer) -> Union[str, None]:
         try:

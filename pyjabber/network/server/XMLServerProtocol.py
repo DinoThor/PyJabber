@@ -7,17 +7,18 @@ from xml import sax
 
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.server.XMLServerParser import XMLServerParser
-from pyjabber.network.ConectionManager import ConectionManager
+from pyjabber.network.ConnectionManager import ConnectionManager
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
 
 
 class XMLServerProtocol(asyncio.Protocol):
-    '''
+    """
     Protocol to manage the network connection between nodes in the XMPP network. Handles the transport layer.
-    '''
+    """
 
     __slots__ = [
+        "_jid",
         "_transport",
         "_xmlns",
         "_xml_parser",
@@ -26,13 +27,14 @@ class XMLServerProtocol(asyncio.Protocol):
         "_connections"
     ]
 
-    def __init__(self, namespace, connection_timeout=None):
+    def __init__(self, jid, namespace, connection_timeout=None):
+        self._jid = jid
         self._xmlns = namespace
         self._transport = None
         self._xml_parser = None
         self._timeout_monitor = None
         self._connection_timeout = connection_timeout
-        self._connections = ConectionManager()
+        self._connections = ConnectionManager()
 
     def connection_made(self, transport):
         '''
@@ -48,7 +50,7 @@ class XMLServerProtocol(asyncio.Protocol):
             self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
             self._xml_parser.setFeature(sax.handler.feature_external_ges, False)
             self._xml_parser.setContentHandler(
-                XMLServerParser(self._transport, self.taskTLS)
+                XMLServerParser(self._jid, self._transport, self.taskTLS)
             )
 
             if self._connection_timeout:
@@ -60,9 +62,6 @@ class XMLServerProtocol(asyncio.Protocol):
             self._connections.connection(self._transport.get_extra_info('peername'))
 
             logger.info(f"Server connection to {self._transport.get_extra_info('peername')}")
-            print(transport)
-
-            # transport.write("<stream:stream from='im.example.com' to='localhost' version='1.0' xmlns='jabber:server' xmlns:stream='http://etherx.jabber.org/streams'>".encode())
 
         else:
             logger.error("Invalid transport")

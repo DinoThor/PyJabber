@@ -17,17 +17,17 @@ FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 class StanzaHandler():
     def __init__(self, buffer) -> None:
-        self._buffer            = buffer
+        self._buffer = buffer
         # self._connections       = ConnectionManager()
-        self._peername          = buffer.get_extra_info('peername')
-        self._jid               = "marc"#self._connections.get_jid_by_peer(self._peername)
-        self._pluginManager     = PluginManager(self._jid)
-        self._presenceManager   = Presence()
+        self._peername = buffer.get_extra_info('peername')
+        self._jid = "marc"  #self._connections.get_jid_by_peer(self._peername)
+        self._pluginManager = PluginManager(self._jid)
+        self._presenceManager = Presence()
 
-        self._functions     = {
-            "{jabber:client}iq"          : self.handleIQ,
-            "{jabber:client}message"     : self.handleMsg,
-            "{jabber:client}presence"    : self.handlePre
+        self._functions = {
+            "{jabber:client}iq": self.handleIQ,
+            "{jabber:client}message": self.handleMsg,
+            "{jabber:client}presence": self.handlePre
         }
 
         with open(FILE_PATH + "/schemas/schemas.pkl", "rb") as schemasDump:
@@ -55,22 +55,18 @@ class StanzaHandler():
             self._buffer.write(res)
 
     def handleMsg(self, element: ET.Element):
-        bare_jid        = element.attrib["to"].split("/")[0]
+        bare_jid = element.attrib["to"].split("/")[0]
 
-        if False:#"localhost" in bare_jid:
-            reciverBuffer   = self._connections.get_buffer_by_jid(bare_jid)
+        if False:  #"localhost" in bare_jid:
+            reciverBuffer = self._connections.get_buffer_by_jid(bare_jid)
 
             for buffer in reciverBuffer:
                 buffer[-1].write(ET.tostring(element))
 
         else:
-            print("HASDHS")
             open_server_connection(bare_jid)
-
-
 
     def handlePre(self, element: ET.Element):
         res = self._presenceManager.feed(element, self._jid)
         if res:
             self._buffer.write(res)
-

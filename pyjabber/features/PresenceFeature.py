@@ -1,8 +1,9 @@
 from uuid import uuid4
 from pyjabber.features.FeatureInterface import FeatureInterface
 from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.plugins.roster.Roster import Roster
+from pyjabber.stanzas.error import StanzaError as SE
+from pyjabber.features.feature_utils import RosterUtils as RU
 
 import xml.etree.ElementTree as ET
 from typing import Dict
@@ -16,7 +17,6 @@ class Presence(FeatureInterface):
             "unsubscribed": self.handle_unsubscribed,
             "unavailable": self.handle_unavailable
         }
-        self._roster = Roster()
         self._connections = ConnectionManager()
         self._jid = None
 
@@ -40,7 +40,7 @@ class Presence(FeatureInterface):
 
         # Handle presence locally
         if to.split("@")[1] == "localhost":
-            roster = self._roster.retrieve_roster(bare_jid)
+            roster = RU.retrieve_roster(bare_jid)
             buffer = self._connections.get_buffer_by_jid(to)
 
             item = [item for item in roster
@@ -55,9 +55,10 @@ class Presence(FeatureInterface):
                 query.append(item)
                 iq.append(query)
 
-                self._roster.feed(bare_jid, iq)
+                roster_manager = Roster(bare_jid)
+                roster_manager.feed(iq)
 
-                roster = self._roster.retrieve_roster(bare_jid)
+                roster = RU.retrieve_roster(bare_jid)
                 buffer = self._connections.get_buffer_by_jid(to)
 
                 item = [item for item in roster
@@ -81,7 +82,7 @@ class Presence(FeatureInterface):
             if "ask" not in ETitem.attrib:
                 newItem = ETitem.__copy__()
                 newItem.attrib["ask"] = "subscribe"
-                self._roster.update(item=newItem, id=item[0])
+                RU.update(item=newItem, id=item[0])
 
             petition = ET.Element(
                 "presence",
@@ -107,8 +108,8 @@ class Presence(FeatureInterface):
             bufferBob = self._connections.get_buffer_by_jid(to)
             bufferAlice = self._connections.get_buffer_by_jid(bare_jid)
 
-            rosterBob = self._roster.retrieve_roster(to)
-            rosterAlice = self._roster.retrieve_roster(bare_jid)
+            rosterBob = RU.retrieve_roster(to)
+            rosterAlice = RU.retrieve_roster(bare_jid)
 
             rosterPushBob = None
             rosterPushAlice = None
@@ -140,7 +141,7 @@ class Presence(FeatureInterface):
                         newItemBob.attrib.pop("ask")
                         newItemBob.attrib["subscription"] = "both"
 
-                rosterPushBob = self._roster.update(item=newItemBob, id=itemBob[0])
+                rosterPushBob = RU.update(item=newItemBob, id=itemBob[0])
 
             if itemAlice:
                 itemAlice = itemAlice[0]
@@ -153,7 +154,7 @@ class Presence(FeatureInterface):
                 if ETitemAlice.attrib["subscription"] == "to":
                     newItemAlice.attrib["subscription"] = "both"
 
-                rosterPushAlice = self._roster.update(item=newItemAlice, id=itemAlice[0])
+                rosterPushAlice = RU.update(item=newItemAlice, id=itemAlice[0])
 
             for bob in bufferBob:
                 res = ET.Element(
@@ -206,7 +207,7 @@ class Presence(FeatureInterface):
 
     def handle_initial_presence(self, element: ET.Element):
         bare_jid = self._jid.split("/")[0]
-        roster = self._roster.retrieve_roster(bare_jid)
+        roster = RU.retrieve_roster(bare_jid)
 
         for r in roster:
             item = ET.fromstring(r[-1])
@@ -227,7 +228,7 @@ class Presence(FeatureInterface):
 
         # Handle locally
         if to.split("@")[1] == "localhost":
-            roster = self._roster.retrieve_roster(bare_jid)
+            roster = RU.retrieve_roster(bare_jid)
             buffer = self._connections.get_buffer_by_jid(to)
 
             item = [item for item in roster
@@ -243,15 +244,15 @@ class Presence(FeatureInterface):
 
             if ETitem.attrib["subscription"] == "to":
                 newItem.attrib["subscription"] = "none"
-                self._roster.update(item=newItem, id=item[0])
+                RU.update(item=newItem, id=item[0])
 
             elif ETitem.attrib["subscription"] == "both":
                 newItem.attrib["subscription"] = "from"
-                self._roster.update(item=newItem, id=item[0])
+                RU.update(item=newItem, id=item[0])
 
             elif "ask" in ETitem.attrib:
                 newItem.attrib.pop("ask")
-                self._roster.update(item=newItem, id=item[0])
+                RU.update(item=newItem, id=item[0])
 
             id = str(uuid4())
 
@@ -288,7 +289,7 @@ class Presence(FeatureInterface):
         if "from" not in element.attrib:
             element.attrib["from"] = self._jid
 
-        roster = self._roster.retrieve_roster(bare_jid)
+        roster = RU.retrieve_roster(bare_jid)
 
         for item in roster:
             to = ET.fromstring(item[-1]).attrib["jid"]

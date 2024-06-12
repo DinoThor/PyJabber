@@ -55,12 +55,6 @@ class Server:
 
         self._connections = ConnectionManager()
 
-    async def server_connection(self, jid):
-        return asyncio.get_event_loop().create_connection(
-            lambda: XMLProtocol(namespace="jabber:server", connection_timeout=60),
-            host=jid,
-            port=5269,
-        )
 
     async def run_server(self):
         logger.info("Starting server...")

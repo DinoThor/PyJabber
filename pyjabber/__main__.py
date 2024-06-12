@@ -20,7 +20,7 @@ def main(host, client_port, server_port, family, timeout, log_level, log_path, d
         log_file = open(os.path.join(log_path, "pyjabber.log"), 'w')
 
     logger.add(
-        log_path if log_path else os.devnull,
+        log_file if log_path else os.devnull,
         enqueue=True,
         format="<green>{time}</green> - <level>{level}: {message}</level>",
         level=log_level,

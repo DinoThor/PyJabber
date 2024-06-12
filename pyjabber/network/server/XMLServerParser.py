@@ -21,7 +21,7 @@ class StreamState(Enum):
 
 class XMLServerParser(ContentHandler):
     """
-    Manages the stream data an process the XML objects.
+    Manages the stream data and process the XML objects.
     Inheriting from sax.ContentHandler
     """
 
@@ -35,8 +35,9 @@ class XMLServerParser(ContentHandler):
         "_serverJid"
     ]
 
-    def __init__(self, buffer, starttls):
+    def __init__(self, jid, buffer, starttls):
         super().__init__()
+        self._jid = jid
         self._state = StreamState.CONNECTED
         self._buffer = buffer
         self._streamHandler = StreamServerHandler(self._buffer, starttls)
@@ -66,7 +67,7 @@ class XMLServerParser(ContentHandler):
 
         clark = CN.clarkFromTuple(name)
         if CN.clarkFromTuple(name) == '{http://etherx.jabber.org/streams}stream' and self._stack:
-            # TODO: ERROR Stream already present in stack
+            # ERROR Stream already present in stack
             raise Exception()
 
         elem = ET.Element(
@@ -74,17 +75,6 @@ class XMLServerParser(ContentHandler):
             attrib={CN.clarkFromTuple(key): item for key, item in dict(attrs).items()}
         )
         self._stack.append(elem)
-
-        # elif name[1] == "stream" and name[0] == "http://etherx.jabber.org/streams":
-        #     self._buffer.write(Stream.responseStream(attrs))
-
-        #     elem = ET.Element(
-        #         CN.clarkFromTuple(name),
-        #         attrib  = {CN.clarkFromTuple(key):item for key, item in dict(attrs).items()}
-        #     )
-
-        #     self._stack.append(elem)
-        #     self._streamHandler.handle_open_stream()
 
     def endElementNS(self, name, qname):
         logger.debug(f"End element NS: {qname} : {name}")
@@ -100,7 +90,7 @@ class XMLServerParser(ContentHandler):
         elem = self._stack.pop()
 
         if elem.tag != CN.clarkFromTuple(name):
-            # TODO: INVALID STANZA/MESSAGE
+            # INVALID STANZA/MESSAGE
             raise Exception()
 
         if self._stack[-1].tag != '{http://etherx.jabber.org/streams}stream':
@@ -132,9 +122,10 @@ class XMLServerParser(ContentHandler):
     def initial_stream(self):
         initial_stream = Stream.Stream(
             from_=None,
-            to="gtirouter.dsic.upv.es",
+            to=self._jid,
             xmlns=Stream.Namespaces.SERVER.value
         )
 
         initial_stream = initial_stream.open_tag()
+        print(initial_stream)
         self._buffer.write(initial_stream)
