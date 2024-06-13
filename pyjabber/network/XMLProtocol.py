@@ -70,14 +70,10 @@ class XMLProtocol(asyncio.Protocol):
         :param exc: Exception that caused the connection to close
         :type exc: Exception
         """
-        try:
-            logger.info(f"Connection lost from {self._transport.get_extra_info('peername')}: Reason {exc}")
+        logger.info(f"Connection lost from {self._transport.get_extra_info('peername')}: Reason {exc}")
 
-            self._transport = None
-            self._xml_parser = None
-
-        except AttributeError:
-            logger.info(f"Connection lost after EOF recived")
+        self._transport = None
+        self._xml_parser = None
 
     def data_received(self, data):
         """
@@ -88,7 +84,7 @@ class XMLProtocol(asyncio.Protocol):
         """
         try:
             logger.debug(f"Data received: {data.decode()}")
-        except :
+        except:
             logger.debug(f"Binary data recived")
 
         self._timeout_monitor.reset()
@@ -117,9 +113,6 @@ class XMLProtocol(asyncio.Protocol):
 
         self._connections.disconnection(peer)
 
-        self._transport = None
-        self._xml_parser = None
-
     def connection_timeout(self):
         """
         Called when the stream is not responding for a long tikem
@@ -143,9 +136,11 @@ class XMLProtocol(asyncio.Protocol):
         loop = asyncio.get_running_loop()
         parser = self._xml_parser.getContentHandler()
 
-        ssl_context = ssl.create_default_context(
-            ssl.Purpose.CLIENT_AUTH, cafile=FILE_AUTH + "/certs/rootCA.pem"
-        )
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+
+        # ssl_context = ssl.create_default_context(
+        #     ssl.Purpose.CLIENT_AUTH
+        # )
         ssl_context.load_cert_chain(
             certfile=FILE_AUTH + '/certs/localhost.pem',  # Cert file
             keyfile=FILE_AUTH + '/certs/localhost-key.pem')  # Key file

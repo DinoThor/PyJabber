@@ -66,7 +66,7 @@ class StreamServerHandler:
                 self._starttls()
                 return
 
-        # if self._stage == Stage.OPENED:
+        # if self._stage == Stage.OPENED:https://camo.githubusercontent.com/a5bb0aafd8b664c6279bc394dbe0bf8d19448cfec7c740d884ba11b74f94ab90/68747470733a2f2f696d672e736869656c64732e696f2f707970692f646d2f70796a6162626572
         #     self._streamFeature.reset()
         #     self._streamFeature.register(StartTLSFeature())
         #     self._buffer.write(self._streamFeature.to_bytes())

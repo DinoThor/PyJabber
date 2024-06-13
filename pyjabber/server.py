@@ -124,7 +124,7 @@ class Server:
             pass
 
         try:
-            main_task = loop.create_task(self.run_server(), name="main_server")
+            main_task = loop.create_task(self.run_server())
             loop.run_until_complete(main_task)
             loop.run_until_complete(serverInstance())
             # loop.run_forever()
@@ -140,7 +140,7 @@ class Server:
             loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
 
             # Close the server
-            close_task = loop.create_task(self.stop(), name="close_server")
+            close_task = loop.create_task(self.stop())
             loop.run_until_complete(close_task)
             loop.close()
             asyncio.set_event_loop(None)
