@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import os
 import signal
 import socket
@@ -13,36 +14,17 @@ from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.utils import Singleton
 from pyjabber.webpage.adminPage import serverInstance
 
-CLIENT_PORT = 5222
-CLIENT_NS = "jabber:client"
-
-SERVER_PORT = 5269
-SERVER_NS = "jabber:server"
-
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
 class Server:
-    _slots__ = [
-        "_host",
-        "_client_port",
-        "_server_port",
-        "_family",
-        "_adminServer",
-        "_client_listener",
-        "_server_listener",
-        "_connection_timeout",
-        "_features"
-    ]
-
     def __init__(
         self,
-        host=["localhost", ],
-        client_port=CLIENT_PORT,
-        server_port=SERVER_PORT,
+        host="localhost",
+        client_port=5222,
+        server_port=5269,
         family=socket.AF_INET,
         connection_timeout=60,
-
     ):
         self._host = host
         self._client_port = client_port
@@ -53,13 +35,12 @@ class Server:
         self._adminServer = None
         self._connection_timeout = connection_timeout
 
-        self._connections = ConnectionManager()
-
+        self._connection_manager = ConnectionManager()
 
     async def run_server(self):
         logger.info("Starting server...")
 
-        if os.path.isfile(SERVER_FILE_PATH + "/db/server.db") is False:
+        if os.path.isfile(os.path.join(SERVER_FILE_PATH + "/db/server.db")) is False:
             logger.debug("No database found. Initializing one...")
             with closing(connection()) as con:
                 with open(SERVER_FILE_PATH + "/db/schema.sql", "r") as schema:
@@ -70,8 +51,9 @@ class Server:
 
         self._client_listener = await loop.create_server(
             lambda: XMLProtocol(
-                namespace=CLIENT_NS,
+                namespace='jabber:client',
                 connection_timeout=self._connection_timeout,
+                connection_manager=self._connection_manager
             ),
             host=self._host,
             port=self._client_port,
@@ -82,8 +64,9 @@ class Server:
 
         self._server_listener = await loop.create_server(
             lambda: XMLProtocol(
-                namespace=SERVER_NS,
+                namespace='jabber:server',
                 connection_timeout=self._connection_timeout,
+                connection_manager=self._connection_manager
             ),
             host=self._host,
             port=self._server_port,

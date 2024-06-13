@@ -33,12 +33,12 @@ class Signal(Enum):
 
 
 class StreamHandler():
-    def __init__(self, buffer, starttls) -> None:
+    def __init__(self, buffer, starttls, connection_manager) -> None:
         self._buffer = buffer
         self._starttls = starttls
 
         self._streamFeature = StreamFeature()
-        self._connections = ConnectionManager()
+        self._connections = connection_manager
         self._stage = Stage.CONNECTED
 
         self._elem = None

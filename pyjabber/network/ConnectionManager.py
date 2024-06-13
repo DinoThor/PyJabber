@@ -23,7 +23,6 @@ class ConnectionManager(metaclass=Singleton):
     }
     """
 
-
     def __init__(self) -> None:
         self._peerList = {}
         self._remoteList = {}
@@ -44,13 +43,14 @@ class ConnectionManager(metaclass=Singleton):
         #
         #     if re.match(f"{jid}/*", values[self.JID]):
         #         res.append((self._peerList[key][self.JID], self._peerList[key][self.TRANSPORT]))
-
-        return [
-            (self._peerList[key][self.JID], self._peerList[key][self.TRANSPORT])
-               for key, values in self._peerList.items()
-               if values[self.JID] is not None
-               and re.match(f"{jid}/*", values[self.JID])
-        ]
+        # return res
+        halt = 0
+        a = [
+                (self._peerList[key][self.JID], self._peerList[key][self.TRANSPORT])
+                for key, values in self._peerList.items()
+                if values[self.JID] is not None and re.match(f"{jid}/*", values[self.JID])
+            ]
+        return a
 
     def get_jid_by_peer(self, peer) -> Union[str, None]:
         try:

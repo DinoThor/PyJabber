@@ -15,7 +15,8 @@ setup(
         "aiohttp==3.9.5",
         "click==8.1.7",
         "loguru==0.7.2",
-        "xmlschema==3.3.0"
+        "xmlschema==3.3.0",
+        "dependency-injector==4.41.0"
     ],
     include_package_data=True,
     classifiers=[

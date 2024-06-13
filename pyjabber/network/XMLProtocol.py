@@ -16,23 +16,13 @@ class XMLProtocol(asyncio.Protocol):
     """
     Protocol to manage the network connection between nodes in the XMPP network. Handles the transport layer.
     """
-
-    __slots__ = [
-        "_transport",
-        "_xmlns",
-        "_xml_parser",
-        "_connection_timeout",
-        "_timeout_monitor",
-        "_connections"
-    ]
-
-    def __init__(self, namespace, connection_timeout=None):
+    def __init__(self, namespace, connection_timeout, connection_manager):
         self._xmlns = namespace
         self._transport = None
         self._xml_parser = None
         self._timeout_monitor = None
         self._connection_timeout = connection_timeout
-        self._connections = ConnectionManager()
+        self._connection_manager = connection_manager
 
     def connection_made(self, transport):
         """
@@ -48,7 +38,7 @@ class XMLProtocol(asyncio.Protocol):
             self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
             self._xml_parser.setFeature(sax.handler.feature_external_ges, False)
             self._xml_parser.setContentHandler(
-                XMLParser(self._transport, self.task_tls)
+                XMLParser(self._transport, self.task_tls, self._connection_manager)
             )
 
             if self._connection_timeout:
@@ -57,7 +47,7 @@ class XMLProtocol(asyncio.Protocol):
                     callback=self.connection_timeout
                 )
 
-            self._connections.connection(self._transport.get_extra_info('peername'))
+            self._connection_manager.connection(self._transport.get_extra_info('peername'))
 
             logger.info(f"Connection from {self._transport.get_extra_info('peername')}")
         else:
@@ -111,7 +101,7 @@ class XMLProtocol(asyncio.Protocol):
 
         logger.debug(f"EOF received from {peer}")
 
-        self._connections.disconnection(peer)
+        self._connection_manager.disconnection(peer)
 
     def connection_timeout(self):
         """
