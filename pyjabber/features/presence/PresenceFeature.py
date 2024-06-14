@@ -42,7 +42,7 @@ class Presence(FeatureInterface):
         # Handle presence locally
         if to.split("@")[1] == "localhost":
             roster = RU.retrieve_roster(bare_jid)
-            buffer = self._connections.get_buffer_by_jid(to)
+            buffer = self._connections.get_buffer(to)
 
             item = [item for item in roster
                     if ET.fromstring(item[2]).attrib["jid"] == to]
@@ -51,7 +51,7 @@ class Presence(FeatureInterface):
                 create_roster_entry(bare_jid, to, roster_manager)
 
                 roster = RU.retrieve_roster(bare_jid)
-                buffer = self._connections.get_buffer_by_jid(to)
+                buffer = self._connections.get_buffer(to)
 
                 item = [item for item in roster
                         if ET.fromstring(item[2]).attrib["jid"] == to]
@@ -97,8 +97,8 @@ class Presence(FeatureInterface):
             element.attrib["from"] = self._jid
 
         if to.split("@")[1] == "localhost":
-            bufferBob = self._connections.get_buffer_by_jid(to)
-            bufferAlice = self._connections.get_buffer_by_jid(bare_jid)
+            bufferBob = self._connections.get_buffer(to)
+            bufferAlice = self._connections.get_buffer(bare_jid)
 
             rosterBob = RU.retrieve_roster(to)
             rosterAlice = RU.retrieve_roster(bare_jid)
@@ -208,7 +208,7 @@ class Presence(FeatureInterface):
         for r in roster:
             item = ET.fromstring(r[-1])
             jid = item.attrib["jid"]
-            buffer = self._connections.get_buffer_by_jid(jid)
+            buffer = self._connections.get_buffer(jid)
             for b in buffer:
                 presence = ET.Element(
                     "presence", attrib={"from": self._jid, "to": b[0].split("/")[0]}
@@ -225,7 +225,7 @@ class Presence(FeatureInterface):
         # Handle locally
         if to.split("@")[1] == "localhost":
             roster = RU.retrieve_roster(bare_jid)
-            buffer = self._connections.get_buffer_by_jid(to)
+            buffer = self._connections.get_buffer(to)
 
             item = [item for item in roster
                     if ET.fromstring(item[2]).attrib["jid"] == to]
@@ -295,6 +295,6 @@ class Presence(FeatureInterface):
 
                 presence.attrib["to"] = to
 
-                buffer = self._connections.get_buffer_by_jid(to)
+                buffer = self._connections.get_buffer(to)
                 for b in buffer:
                     b[-1].write(ET.tostring(presence))

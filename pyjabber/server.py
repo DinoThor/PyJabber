@@ -9,6 +9,7 @@ from loguru import logger
 
 from pyjabber.db.database import connection
 from pyjabber.network.XMLProtocol import XMLProtocol
+from pyjabber.network.server.XMLServerProtocol import XMLServerProtocol
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.webpage.adminPage import admin_instance
 
@@ -67,7 +68,8 @@ class Server:
             lambda: XMLProtocol(
                 namespace='jabber:server',
                 connection_timeout=self._connection_timeout,
-                connection_manager=self._connection_manager
+                connection_manager=self._connection_manager,
+                server_connection=self.task_s2s
             ),
             host=self._host,
             port=self._server_port,
@@ -90,6 +92,26 @@ class Server:
             await self._server_listener.wait_closed()
 
         logger.info("Server stopped...")
+
+    def task_s2s(self, host):
+        asyncio.get_running_loop().create_task(self.server_connection(host))
+
+    async def server_connection(self, host):
+        try:
+            loop = asyncio.get_event_loop()
+
+            await loop.create_connection(
+                lambda: XMLServerProtocol(
+                    namespace="jabber:server",
+                    connection_manager=self._connection_timeout,
+                    connection_timeout=60
+                ),
+                host=host,
+                port=5269
+            )
+
+        except asyncio.TimeoutError:
+            return None
 
     def raise_exit(self):
         raise SystemExit(1)

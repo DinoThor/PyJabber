@@ -1,5 +1,6 @@
 import os
 import pickle
+import re
 import xml.etree.ElementTree as ET
 
 import xmlschema
@@ -17,7 +18,8 @@ class StanzaHandler:
         self._buffer = buffer
         self._connections = connection_manager
         self._peername = buffer.get_extra_info('peername')
-        self._jid = self._connections.get_jid_by_peer(self._peername)
+        self._jid = self._connections.get_jid(self._peername)
+
         self._pluginManager = PluginManager(self._jid)
         self._presenceManager = Presence(self._jid, self._connections)
 
@@ -54,9 +56,12 @@ class StanzaHandler:
     def handle_msg(self, element: ET.Element):
         bare_jid = element.attrib["to"].split("/")[0]
 
-        buf = self._connections.get_buffer_by_jid(bare_jid)
-        for buffer in self._connections.get_buffer_by_jid(bare_jid):
-            buffer[-1].write(ET.tostring(element))
+        if re.match(r'^.+@localhost$', bare_jid):
+            for buffer in self._connections.get_buffer(bare_jid):
+                buffer[-1].write(ET.tostring(element))
+
+        else:
+            server_buffer = self._connections.get_buffer(bare_jid)
 
     def handle_pre(self, element: ET.Element):
         res = self._presenceManager.feed(element, self._jid)

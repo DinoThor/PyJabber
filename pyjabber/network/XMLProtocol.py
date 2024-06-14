@@ -7,6 +7,7 @@ from xml import sax
 
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.XMLParser import XMLParser
+from pyjabber.network.server import XMLServerProtocol
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
 
@@ -15,7 +16,7 @@ class XMLProtocol(asyncio.Protocol):
     """
     Protocol to manage the network connection between nodes in the XMPP network. Handles the transport layer.
     """
-    def __init__(self,namespace, connection_timeout, connection_manager, _enable_tls1_3=False):
+    def __init__(self, namespace, connection_timeout, connection_manager, _enable_tls1_3=False):
         self._xmlns = namespace
         self._transport = None
         self._xml_parser = None
@@ -119,6 +120,23 @@ class XMLProtocol(asyncio.Protocol):
     ###########################################################################
     ###########################################################################
     ###########################################################################
+
+    # def task_s2s(self, host):
+    #     asyncio.get_running_loop().create_task(self.create_server_connection(host))
+    #
+    #
+    # async def create_server_connection(self, host):
+    #     loop = asyncio.get_running_loop()
+    #
+    #     return await loop.create_connection(
+    #         lambda: XMLServerProtocol(
+    #             jid=host,
+    #             namespace="jabber:server",
+    #             connection_timeout=60
+    #         ),
+    #         host=jid,
+    #         port=5269
+    #     )
 
     def task_tls(self):
         asyncio.get_running_loop().create_task(self.enable_tls())

@@ -16,7 +16,7 @@ class StanzaServerHandler():
     def __init__(self, buffer) -> None:
         self._buffer = buffer
         self._peername = buffer.get_extra_info('peername')
-        self._jid = "marc"  #self._connections.get_jid_by_peer(self._peername)
+        self._jid = "marc"  #self._connections.get_jid(self._peername)
         self._pluginManager = PluginManager(self._jid)
         self._presenceManager = Presence()
 
@@ -54,7 +54,7 @@ class StanzaServerHandler():
         bare_jid = element.attrib["to"].strip("/")[0]
 
         if "localhost" in bare_jid:
-            reciverBuffer = self._connections.get_buffer_by_jid(bare_jid)
+            reciverBuffer = self._connections.get_buffer(bare_jid)
 
             for buffer in reciverBuffer:
                 buffer[-1].write(ET.tostring(element))

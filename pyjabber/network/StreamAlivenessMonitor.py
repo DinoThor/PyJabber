@@ -3,12 +3,9 @@ import warnings
 
 
 class StreamAlivenessMonitor:
-    '''
+    """
     This class is a helper to monitor the aliveness of a stream. It will call a callback if the stream is not alive after a timeout.
-    '''
-
-    __slots__ = ["_timeout", "_timeout_callback", "_timeout_task", "_reset_event"]
-
+    """
     def __init__(self, timeout=60, callback=None):
         self._timeout = timeout
         self._timeout_callback = callback
