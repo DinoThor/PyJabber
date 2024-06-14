@@ -5,7 +5,6 @@ from xml.sax import ContentHandler
 from xml.etree import ElementTree as ET
 
 from pyjabber.stream import Stream
-from pyjabber.stream .StreamHandler import StreamHandler, Signal
 from pyjabber.network.ConnectionsManager import ConectionsManager
 from pyjabber.utils import ClarkNotation as CN
 
@@ -36,12 +35,13 @@ class XMPPStreamHandler(ContentHandler):
         super().__init__()
         self._state         = StreamState.CONNECTED
         self._buffer        = buffer
-        self._streamHandler = StreamHandler(self._buffer, starttls)
         self._stanzaHandler = None
 
         self._connectons    = ConectionsManager()
 
         self._stack         = []
+        from pyjabber.stream.StreamHandler import StreamHandler  # Importación local
+        self._streamHandler = StreamHandler(self._buffer, starttls)
 
     @property
     def buffer(self) -> BaseProtocol:
@@ -96,6 +96,9 @@ class XMPPStreamHandler(ContentHandler):
             self._stack[-1].append(elem)
 
         else:
+            from pyjabber.stream.StanzaHandler import StanzaHandler
+            from pyjabber.stream.StreamHandler import Signal
+            self._stanzaHandler = StanzaHandler(self._buffer)
             if self._state == StreamState.READY:    # Ready to process stanzas
                 self._stanzaHandler.feed(elem)
             else:
@@ -103,8 +106,6 @@ class XMPPStreamHandler(ContentHandler):
                 if signal == Signal.RESET and "stream" in self._stack[-1].tag:
                     self._stack.pop()
                 elif signal == Signal.DONE:
-                    from pyjabber.stream.StanzaHandler import StanzaHandler
-                    self._stanzaHandler = StanzaHandler(self._buffer)
                     self._state = StreamState.READY
 
 
