@@ -1,5 +1,4 @@
 import asyncio
-import dataclasses
 import os
 import signal
 import socket
@@ -11,8 +10,7 @@ from loguru import logger
 from pyjabber.db.database import connection
 from pyjabber.network.XMLProtocol import XMLProtocol
 from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber.utils import Singleton
-from pyjabber.webpage.adminPage import serverInstance
+from pyjabber.webpage.adminPage import admin_instance
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -25,6 +23,7 @@ class Server:
         server_port=5269,
         family=socket.AF_INET,
         connection_timeout=60,
+        enable_tls1_3=False
     ):
         self._host = host
         self._client_port = client_port
@@ -34,6 +33,7 @@ class Server:
         self._server_listener = None
         self._adminServer = None
         self._connection_timeout = connection_timeout
+        self._enable_tls1_3 = enable_tls1_3
 
         self._connection_manager = ConnectionManager()
 
@@ -53,7 +53,8 @@ class Server:
             lambda: XMLProtocol(
                 namespace='jabber:client',
                 connection_timeout=self._connection_timeout,
-                connection_manager=self._connection_manager
+                connection_manager=self._connection_manager,
+                _enable_tls1_3=self._enable_tls1_3
             ),
             host=self._host,
             port=self._client_port,
@@ -107,10 +108,13 @@ class Server:
             pass
 
         try:
-            main_task = loop.create_task(self.run_server())
-            loop.run_until_complete(main_task)
-            loop.run_until_complete(serverInstance())
-            # loop.run_forever()
+            # XMPP Server
+            main_server = loop.create_task(self.run_server())
+            loop.run_until_complete(main_server)
+
+            # Control Panel Webpage | localhost:9090
+            admin_server = admin_instance()
+            loop.run_until_complete(admin_server)
 
         except (SystemExit, KeyboardInterrupt):  # pragma: no cover
             pass

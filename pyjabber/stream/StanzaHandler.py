@@ -60,7 +60,7 @@ class StanzaHandler:
 
         buf = self._connections.get_buffer_by_jid(bare_jid)
         for buffer in self._connections.get_buffer_by_jid(bare_jid):
-            buffer[-1].write(ET.tostring(element))self._connections.get_buffer_by_jid(bare_jid)
+            buffer[-1].write(ET.tostring(element))
 
     def handle_pre(self, element: ET.Element):
         res = self._presenceManager.feed(element, self._jid)

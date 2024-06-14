@@ -7,7 +7,6 @@ from xml import sax
 
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.XMLParser import XMLParser
-from pyjabber.network.ConnectionManager import ConnectionManager
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
 
@@ -16,13 +15,15 @@ class XMLProtocol(asyncio.Protocol):
     """
     Protocol to manage the network connection between nodes in the XMPP network. Handles the transport layer.
     """
-    def __init__(self, namespace, connection_timeout, connection_manager):
+    def __init__(self,namespace, connection_timeout, connection_manager, _enable_tls1_3=False):
         self._xmlns = namespace
         self._transport = None
         self._xml_parser = None
         self._timeout_monitor = None
         self._connection_timeout = connection_timeout
         self._connection_manager = connection_manager
+
+        self._enable_tls1_3 = _enable_tls1_3
 
     def connection_made(self, transport):
         """
@@ -126,11 +127,10 @@ class XMLProtocol(asyncio.Protocol):
         loop = asyncio.get_running_loop()
         parser = self._xml_parser.getContentHandler()
 
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        if not self._enable_tls1_3:
+            ssl_context.options |= ssl.OP_NO_TLSv1_3
 
-        # ssl_context = ssl.create_default_context(
-        #     ssl.Purpose.CLIENT_AUTH
-        # )
         ssl_context.load_cert_chain(
             certfile=FILE_AUTH + '/certs/localhost.pem',  # Cert file
             keyfile=FILE_AUTH + '/certs/localhost-key.pem')  # Key file
