@@ -1,15 +1,11 @@
-import asyncio
 import os
 import pickle
 import xml.etree.ElementTree as ET
-from uuid import uuid4
 
 import xmlschema
 
-from pyjabber.features.PresenceFeature import Presence
-from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.plugins.PluginManager import PluginManager
-from pyjabber.stanzas.IQ import IQ
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.utils import ClarkNotation as CN
 
@@ -23,7 +19,7 @@ class StanzaHandler:
         self._peername = buffer.get_extra_info('peername')
         self._jid = self._connections.get_jid_by_peer(self._peername)
         self._pluginManager = PluginManager(self._jid)
-        self._presenceManager = Presence()
+        self._presenceManager = Presence(self._jid, self._connections)
 
         self._functions = {
             "{jabber:client}iq": self.handle_iq,

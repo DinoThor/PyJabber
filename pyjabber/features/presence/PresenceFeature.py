@@ -4,25 +4,25 @@ from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.features.feature_utils import RosterUtils as RU
+from pyjabber.features.presence.utils import create_roster_entry
 
 import xml.etree.ElementTree as ET
-from typing import Dict
+from xml.etree.ElementTree import Element
+from typing import Dict, Any
 
 
 class Presence(FeatureInterface):
-    def __init__(self) -> None:
+    def __init__(self, jid, connection_manager) -> None:
         self._handlers = {
             "subscribe": self.handle_subscribe,
             "subscribed": self.handle_subscribed,
             "unsubscribed": self.handle_unsubscribed,
             "unavailable": self.handle_unavailable
         }
-        self._connections = ConnectionManager()
-        self._jid = None
-
-    def feed(self, element: ET.Element, jid: str, extra: Dict[str, any] = None):
+        self._connections = connection_manager
         self._jid = jid
 
+    def feed(self, element: Element, extra: Dict[str, Any] = None):
         if "type" in element.attrib:
             return self._handlers[element.attrib["type"]](element)
 
@@ -34,6 +34,7 @@ class Presence(FeatureInterface):
     def handle_subscribe(self, element: ET.Element):
         to = element.attrib["to"].split("/")[0]
         bare_jid = self._jid.split("/")[0]
+        roster_manager = Roster(bare_jid)
 
         if "from" not in element.attrib:
             element.attrib["from"] = self._jid
@@ -47,16 +48,7 @@ class Presence(FeatureInterface):
                     if ET.fromstring(item[2]).attrib["jid"] == to]
 
             if not item:
-                iq = ET.Element(
-                    "iq", attrib={"from": self._jid, "id": str(uuid4()), "type": "set"}
-                )
-                query = ET.Element("{jabber:iq:roster}query")
-                item = ET.Element("{jabber:iq:roster}item", attrib={"jid": to, "subscription": "none"})
-                query.append(item)
-                iq.append(query)
-
-                roster_manager = Roster(bare_jid)
-                roster_manager.feed(iq)
+                create_roster_entry(bare_jid, to, roster_manager)
 
                 roster = RU.retrieve_roster(bare_jid)
                 buffer = self._connections.get_buffer_by_jid(to)
@@ -110,6 +102,10 @@ class Presence(FeatureInterface):
 
             rosterBob = RU.retrieve_roster(to)
             rosterAlice = RU.retrieve_roster(bare_jid)
+
+            if not rosterAlice:
+                create_roster_entry(bare_jid, to, Roster(bare_jid))
+                rosterAlice = RU.retrieve_roster(bare_jid)
 
             rosterPushBob = None
             rosterPushAlice = None
