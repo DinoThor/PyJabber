@@ -16,10 +16,10 @@ from pyjabber.utils import ClarkNotation as CN
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
-class StanzaHandler():
-    def __init__(self, buffer) -> None:
+class StanzaHandler:
+    def __init__(self, buffer, connection_manager) -> None:
         self._buffer = buffer
-        self._connections = ConnectionManager()
+        self._connections = connection_manager
         self._peername = buffer.get_extra_info('peername')
         self._jid = self._connections.get_jid_by_peer(self._peername)
         self._pluginManager = PluginManager(self._jid)
@@ -58,6 +58,7 @@ class StanzaHandler():
     def handle_msg(self, element: ET.Element):
         bare_jid = element.attrib["to"].split("/")[0]
 
+        buf = self._connections.get_buffer_by_jid(bare_jid)
         for buffer in self._connections.get_buffer_by_jid(bare_jid):
             buffer[-1].write(ET.tostring(element))
 

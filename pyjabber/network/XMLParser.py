@@ -20,23 +20,16 @@ class StreamState(Enum):
 
 class XMLParser(ContentHandler):
     """
-    Manages the stream data an process the XML objects.
+    Manages the stream data and process the XML objects.
     Inheriting from sax.ContentHandler
     """
-
-    __slots__ = [
-        "_state",
-        "_buffer",
-        "_elementStack",
-        "_streamHandler",
-        "_stanzaHandler"
-    ]
-
-    def __init__(self, buffer, starttls):
+    def __init__(self, buffer, starttls, connection_manager):
         super().__init__()
         self._state = StreamState.CONNECTED
         self._buffer = buffer
-        self._streamHandler = StreamHandler(self._buffer, starttls)
+        self._connection_manager = connection_manager
+
+        self._streamHandler = StreamHandler(self._buffer, starttls, connection_manager)
         self._stanzaHandler = None
 
         self._stack = []
@@ -102,7 +95,7 @@ class XMLParser(ContentHandler):
                 if signal == Signal.RESET and "stream" in self._stack[-1].tag:
                     self._stack.pop()
                 elif signal == Signal.DONE:
-                    self._stanzaHandler = StanzaHandler(self._buffer)
+                    self._stanzaHandler = StanzaHandler(self._buffer, self._connection_manager)
                     self._state = StreamState.READY
 
     def characters(self, content: str) -> None:
