@@ -109,14 +109,14 @@ class XMPPStreamHandler(ContentHandler):
                     self._state = StreamState.READY
 
 
-def characters(self, content: str) -> None:
-        if not self._stack:
-            raise Exception()
+    def characters(self, content: str) -> None:
+            if not self._stack:
+                raise Exception()
 
-        elem = self._stack[-1]
-        if len(elem) != 0:
-            child = elem[-1]
-            child.tail = (child.tail or '') + content
+            elem = self._stack[-1]
+            if len(elem) != 0:
+                child = elem[-1]
+                child.tail = (child.tail or '') + content
 
-        else :
-            elem.text = (elem.text or '') + content
+            else :
+                elem.text = (elem.text or '') + content
