@@ -17,19 +17,19 @@ class XMLProtocol(asyncio.Protocol):
     '''
 
     __slots__ = [
-        "_transport", 
-        "_xmlns", 
-        "_xml_parser", 
-        "_connection_timeout", 
+        "_transport",
+        "_xmlns",
+        "_xml_parser",
+        "_connection_timeout",
         "_timeout_monitor",
         "_connections"
     ]
 
     def __init__(
-            self, 
-            namespace               = "jabber:client", 
+            self,
+            namespace               = "jabber:client",
             connection_timeout      = None):
-        
+
         self._xmlns                 = namespace
         self._transport             = None
         self._xml_parser            = None
@@ -41,7 +41,7 @@ class XMLProtocol(asyncio.Protocol):
     def connection_made(self, transport):
         '''
         Called when a client or another server opens a TCP connection to the server
-        
+
         :param transport: The transport object for the connection
         :type transport: asyncio.Transport
         '''
@@ -57,7 +57,7 @@ class XMLProtocol(asyncio.Protocol):
 
             if self._connection_timeout:
                 self._timeout_monitor = StreamAlivenessMonitor(
-                    timeout     = self._connection_timeout, 
+                    timeout     = self._connection_timeout,
                     callback    = self.connection_timeout
                 )
 
@@ -109,7 +109,7 @@ class XMLProtocol(asyncio.Protocol):
         I probably should change the parser
         '''
         data = data.replace(b"<?xml version=\"1.0\"?>", b"")
-        
+
         self._xml_parser.feed(data)
 
 
@@ -150,16 +150,16 @@ class XMLProtocol(asyncio.Protocol):
     async def enableTLS(self):
         loop        = asyncio.get_running_loop()
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-        ssl_context.load_cert_chain(
-            FILE_AUTH + '/certs/localhost.pem',         # Cert file
-            FILE_AUTH + '/certs/localhost-key.pem')     # Key file
+        cert_file = os.path.join(FILE_AUTH, 'certs', 'localhost.pem')
+        key_file = os.path.join(FILE_AUTH, 'certs', 'localhost-key.pem')
+        ssl_context.load_cert_chain(cert_file, key_file)
 
         return await loop.start_tls(
-                                transport   = self._transport, 
-                                protocol    = self._transport.get_protocol(), 
+                                transport   = self._transport,
+                                protocol    = self._transport.get_protocol(),
                                 sslcontext  = ssl_context,
                                 server_side = True)
-    
+
     def handleSTARTTLS(self, task):
         new_transport   = task.result()
         self._transport = new_transport
