@@ -19,7 +19,8 @@ from pyjabber.server import Server
               show_default=True, help='Log level alert')
 @click.option('--log_path', type=str, help='Path to log dumpfile')
 @click.option('--debug', '-D', is_flag=True, help='Enables debug mode in Asyncio')
-def main(host, client_port, server_port, family, tls1_3, timeout, log_level, log_path, debug):
+@click.option('--spade', '-S', is_flag=True, help='Enables traefik.me certificates')
+def main(host, client_port, server_port, family, tls1_3, timeout, log_level, log_path, debug, spade):
     if log_path:
         log_file = open(os.path.join(log_path, "pyjabber.log"), 'w')
 
@@ -37,7 +38,8 @@ def main(host, client_port, server_port, family, tls1_3, timeout, log_level, log
         server_port=server_port,
         family=socket.AF_INET if family == "ipv4" else socket.AF_INET6,
         connection_timeout=timeout,
-        enable_tls1_3=tls1_3
+        enable_tls1_3=tls1_3,
+        traefik_certs=spade
     )
 
     server.start(debug)

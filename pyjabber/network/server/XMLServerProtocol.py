@@ -16,7 +16,9 @@ class XMLServerProtocol(asyncio.Protocol):
     """
     Protocol to manage the network connection between nodes in the XMPP network. Handles the transport layer.
     """
-    def __init__(self, namespace, connection_manager, _enable_tls1_3=False, connection_timeout=None):
+
+    def __init__(self, namespace, connection_manager, _traefik_certs=False, _enable_tls1_3=False,
+                 connection_timeout=None):
         self._xmlns = namespace
         self._transport = None
         self._xml_parser = None
@@ -24,8 +26,8 @@ class XMLServerProtocol(asyncio.Protocol):
         self._enable_tls1_3 = _enable_tls1_3
         self._connection_timeout = connection_timeout
         self._connections = connection_manager
+        self._traefik_certs = _traefik_certs
         self._loop = asyncio.get_running_loop()
-
 
     def connection_made(self, transport):
         """
@@ -80,7 +82,6 @@ class XMLServerProtocol(asyncio.Protocol):
         :param data: Chunk of data received
         :type data: Byte array
         '''
-        print(data)
         try:
             logger.debug(f"Data received: {data.decode()}")
         except:
@@ -98,7 +99,7 @@ class XMLServerProtocol(asyncio.Protocol):
         keeps refusing it. I'm forced to do always before the feed.
         I probably should change the parser
         '''
-        data = data.replace(b"<?xml version=\"1.0\"?>", b"")
+        data = data.replace(b"<?xml version=\'1.0\'?>", b"")
 
         self._xml_parser.feed(data)
 
@@ -138,10 +139,16 @@ class XMLServerProtocol(asyncio.Protocol):
     async def enable_tls(self):
         parser = self._xml_parser.getContentHandler()
 
+        certfile = "fullchain.pem" if self._traefik_certs else "localhost.pem"
+        keyfile = "traefik-key.pem" if self._traefik_certs else "localhost-key.pem"
+
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        if not self._enable_tls1_3:
+            ssl_context.options |= ssl.OP_NO_TLSv1_3
+
         ssl_context.load_cert_chain(
-            certfile=FILE_AUTH + '/../certs/localhost.pem', # Cert file
-            keyfile=FILE_AUTH + '/../certs/localhost-key.pem'  # Key file
+            certfile=os.path.join(FILE_AUTH, "..", "certs", certfile),
+            keyfile=os.path.join(FILE_AUTH, "..", "certs", keyfile),
         )
 
         new_transport = await self._loop.start_tls(

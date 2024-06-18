@@ -22,10 +22,17 @@ class StreamServerHandler(StreamHandler):
     def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
         # TCP Connection opened
         if elem.tag == "{http://etherx.jabber.org/streams}features":
-            if "{urn:ietf:params:xml:ns:xmpp-tls}starttls" in [child.tag for child in elem]:
+            children = [child.tag for child in elem]
+            if "{urn:ietf:params:xml:ns:xmpp-tls}starttls" in children:
                 if self._stage == Stage.CONNECTED:
                     self._buffer.write("<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>".encode())
                     self._stage = Stage.OPENED
+                    return
+
+            elif "{urn:ietf:params:xml:ns:xmpp-sasl}mechanisms" in children:
+                mechanisms = [mech for mech in elem.find("{urn:ietf:params:xml:ns:xmpp-sasl}mechanisms")]
+                if 'EXTERNAL' in [mech.text for mech in mechanisms]:
+                    self._buffer.write("<auth xmlns='urn:ietf:params:xml:ns:xmpp-sasl' mechanism='EXTERNAL'>=</auth>".encode())
 
         if elem.tag == "{urn:ietf:params:xml:ns:xmpp-tls}proceed":
             if self._stage == Stage.OPENED:

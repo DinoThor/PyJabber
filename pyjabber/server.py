@@ -3,6 +3,7 @@ import os
 import signal
 import socket
 import nest_asyncio
+import wget
 
 from contextlib import closing
 from loguru import logger
@@ -24,7 +25,8 @@ class Server:
         server_port=5269,
         family=socket.AF_INET,
         connection_timeout=60,
-        enable_tls1_3=False
+        enable_tls1_3=False,
+        traefik_certs=False
     ):
         self._host = host
         self._client_port = client_port
@@ -35,6 +37,7 @@ class Server:
         self._adminServer = None
         self._connection_timeout = connection_timeout
         self._enable_tls1_3 = enable_tls1_3
+        self._traefik_certs = traefik_certs
 
         self._connection_manager = ConnectionManager(self.task_s2s)
 
@@ -48,6 +51,12 @@ class Server:
                     con.cursor().executescript(schema.read())
                 con.commit()
 
+        if self._traefik_certs:
+            if not os.path.isfile(os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik.pem")):
+                wget.download("http://traefik.me/cert.pem", os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik.pem"))
+            if not os.path.isfile(os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik-key.pem")):
+                wget.download("http://traefik.me/privkey.pem", os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik-key.pem"))
+
         loop = asyncio.get_event_loop()
 
         self._client_listener = await loop.create_server(
@@ -55,7 +64,8 @@ class Server:
                 namespace='jabber:client',
                 connection_timeout=self._connection_timeout,
                 connection_manager=self._connection_manager,
-                _enable_tls1_3=self._enable_tls1_3
+                _enable_tls1_3=self._enable_tls1_3,
+                _traefik_certs=self._traefik_certs
             ),
             host=self._host,
             port=self._client_port,
@@ -69,7 +79,8 @@ class Server:
                 namespace='jabber:server',
                 connection_timeout=self._connection_timeout,
                 connection_manager=self._connection_manager,
-                _enable_tls1_3=self._enable_tls1_3
+                _enable_tls1_3=self._enable_tls1_3,
+                _traefik_certs=self._traefik_certs
             ),
             host=self._host,
             port=self._server_port,
@@ -105,7 +116,8 @@ class Server:
                     namespace="jabber:server",
                     connection_timeout=self._connection_timeout,
                     connection_manager=self._connection_manager,
-                    _enable_tls1_3=self._enable_tls1_3
+                    _enable_tls1_3=self._enable_tls1_3,
+                    _traefik_certs=self._traefik_certs
                 ),
                 host=host,
                 port=5269

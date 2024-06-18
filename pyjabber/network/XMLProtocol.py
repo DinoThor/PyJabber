@@ -1,6 +1,7 @@
 import asyncio
 import os
 import ssl
+import wget
 
 from loguru import logger
 from xml import sax
@@ -16,7 +17,8 @@ class XMLProtocol(asyncio.Protocol):
     """
     Protocol to manage the network connection between nodes in the XMPP network. Handles the transport layer.
     """
-    def __init__(self, namespace, connection_timeout, connection_manager, _enable_tls1_3=False):
+
+    def __init__(self, namespace, connection_timeout, connection_manager, _traefik_certs, _enable_tls1_3=False):
         self._xmlns = namespace
         self._transport = None
         self._xml_parser = None
@@ -26,6 +28,7 @@ class XMLProtocol(asyncio.Protocol):
         self._connection_manager = connection_manager
 
         self._enable_tls1_3 = _enable_tls1_3
+        self._traefik_certs = _traefik_certs
 
     def connection_made(self, transport):
         """
@@ -133,9 +136,13 @@ class XMLProtocol(asyncio.Protocol):
         if not self._enable_tls1_3:
             ssl_context.options |= ssl.OP_NO_TLSv1_3
 
+        certfile = "fullchain.pem" if self._traefik_certs else "localhost.pem"
+        keyfile = "traefik-key.pem" if self._traefik_certs else "localhost-key.pem"
+
         ssl_context.load_cert_chain(
-            certfile=FILE_AUTH + '/certs/localhost.pem',  # Cert file
-            keyfile=FILE_AUTH + '/certs/localhost-key.pem')  # Key file
+            certfile=os.path.join(FILE_AUTH, "certs", certfile),
+            keyfile=os.path.join(FILE_AUTH, "certs", keyfile),
+        )
 
         new_transport = await self._loop.start_tls(
             transport=self._transport,

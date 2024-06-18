@@ -108,7 +108,7 @@ class XMLServerParser(ContentHandler):
 
     def initial_stream(self):
         initial_stream = Stream.Stream(
-            from_=None,
+            from_="158-42-154-74.traefik.me",
             to="gtirouter.dsic.upv.es",
             xmlns=Stream.Namespaces.SERVER.value
         )
