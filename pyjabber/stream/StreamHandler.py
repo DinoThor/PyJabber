@@ -31,8 +31,13 @@ class Signal(Enum):
     RESET = 0
     DONE = 1
 
+    def __eq__(self, other):
+        if other is None:
+            return False
+        return self.value == other.value
 
-class StreamHandler():
+
+class StreamHandler:
     def __init__(self, buffer, starttls, connection_manager) -> None:
         self._buffer = buffer
         self._starttls = starttls

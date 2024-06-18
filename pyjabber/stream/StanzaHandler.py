@@ -61,7 +61,7 @@ class StanzaHandler:
                 buffer[-1].write(ET.tostring(element))
 
         else:
-            server_buffer = self._connections.get_buffer(bare_jid)
+            server_buffer = self._connections.get_server_buffer(bare_jid)
 
     def handle_pre(self, element: ET.Element):
         res = self._presenceManager.feed(element, self._jid)

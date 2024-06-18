@@ -36,7 +36,7 @@ class Server:
         self._connection_timeout = connection_timeout
         self._enable_tls1_3 = enable_tls1_3
 
-        self._connection_manager = ConnectionManager()
+        self._connection_manager = ConnectionManager(self.task_s2s)
 
     async def run_server(self):
         logger.info("Starting server...")
@@ -69,7 +69,7 @@ class Server:
                 namespace='jabber:server',
                 connection_timeout=self._connection_timeout,
                 connection_manager=self._connection_manager,
-                server_connection=self.task_s2s
+                _enable_tls1_3=self._enable_tls1_3
             ),
             host=self._host,
             port=self._server_port,
@@ -103,8 +103,9 @@ class Server:
             await loop.create_connection(
                 lambda: XMLServerProtocol(
                     namespace="jabber:server",
-                    connection_manager=self._connection_timeout,
-                    connection_timeout=60
+                    connection_timeout=self._connection_timeout,
+                    connection_manager=self._connection_manager,
+                    _enable_tls1_3=self._enable_tls1_3
                 ),
                 host=host,
                 port=5269

@@ -12,13 +12,14 @@ from pyjabber.utils import ClarkNotation as CN
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
-class StanzaServerHandler():
-    def __init__(self, buffer) -> None:
+class StanzaServerHandler:
+    def __init__(self, buffer, connection_manager) -> None:
         self._buffer = buffer
+        self._connection_manager = connection_manager
         self._peername = buffer.get_extra_info('peername')
-        self._jid = "marc"  #self._connections.get_jid(self._peername)
-        self._pluginManager = PluginManager(self._jid)
-        self._presenceManager = Presence()
+        self._host = None #self._connections.get_jid(self._peername)
+        # self._pluginManager = PluginManager(self._jid)
+        # self._presenceManager = Presence()
 
         self._functions = {
             "{jabber:client}iq": self.handleIQ,

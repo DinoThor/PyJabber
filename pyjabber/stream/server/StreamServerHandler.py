@@ -11,46 +11,13 @@ from pyjabber.features.StreamFeature import StreamFeature
 from pyjabber.features.SASLFeature import SASLFeature, SASL
 from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.stream.StreamHandler import StreamHandler, Signal, Stage
 from pyjabber.utils import ClarkNotation as CN
 
 
-class Stage(Enum):
-    """
-    Stream connection states.
-    """
-    CONNECTED = 0
-    OPENED = 1
-    SSL = 2
-    SASL = 3
-    AUTH = 4
-    BIND = 5
-    READY = 6
-
-
-class Signal(Enum):
-    RESET = 0
-    DONE = 1
-
-
-class StreamServerHandler:
-    def __init__(self, buffer, starttls) -> None:
-        self._buffer = buffer
-        self._starttls = starttls
-
-        self._streamFeature = StreamFeature()
-        self._connections = ConnectionManager()
-        self._stage = Stage.CONNECTED
-
-        self._elem = None
-        self._jid = None
-
-    @property
-    def buffer(self):
-        return self._buffer
-
-    @buffer.setter
-    def buffer(self, value):
-        self._buffer = value
+class StreamServerHandler(StreamHandler):
+    def __init__(self, buffer, starttls, connection_manager) -> None:
+        super().__init__(buffer, starttls, connection_manager)
 
     def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
         # TCP Connection opened
@@ -58,13 +25,13 @@ class StreamServerHandler:
             if "{urn:ietf:params:xml:ns:xmpp-tls}starttls" in [child.tag for child in elem]:
                 if self._stage == Stage.CONNECTED:
                     self._buffer.write("<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>".encode())
-                    self._stage = Stage.OPENEDlog_path
+                    self._stage = Stage.OPENED
 
         if elem.tag == "{urn:ietf:params:xml:ns:xmpp-tls}proceed":
             if self._stage == Stage.OPENED:
-                print("PROCEEEEEEEEEEEEEEEEEEEEEd")
                 self._starttls()
-                return
+                self._stage = Stage.SSL
+                return Signal.RESET
 
         # if self._stage == Stage.OPENED:https://camo.githubusercontent.com/a5bb0aafd8b664c6279bc394dbe0bf8d19448cfec7c740d884ba11b74f94ab90/68747470733a2f2f696d672e736869656c64732e696f2f707970692f646d2f70796a6162626572
         #     self._streamFeature.reset()

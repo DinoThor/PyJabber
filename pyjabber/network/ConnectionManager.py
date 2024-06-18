@@ -131,7 +131,7 @@ class ConnectionManager(metaclass=Singleton):
             return self._peerList[host][self.TRANSPORT]
 
         else:
-            self._task_s2s()
+            self._task_s2s(host)
 
     def check_server_stream_available(self, host) -> bool:
         return host in [value[self.JID] for value in self._remoteList.values()]

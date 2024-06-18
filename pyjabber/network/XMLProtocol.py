@@ -21,6 +21,7 @@ class XMLProtocol(asyncio.Protocol):
         self._transport = None
         self._xml_parser = None
         self._timeout_monitor = None
+        self._loop = asyncio.get_event_loop()
         self._connection_timeout = connection_timeout
         self._connection_manager = connection_manager
 
@@ -121,28 +122,11 @@ class XMLProtocol(asyncio.Protocol):
     ###########################################################################
     ###########################################################################
 
-    # def task_s2s(self, host):
-    #     asyncio.get_running_loop().create_task(self.create_server_connection(host))
-    #
-    #
-    # async def create_server_connection(self, host):
-    #     loop = asyncio.get_running_loop()
-    #
-    #     return await loop.create_connection(
-    #         lambda: XMLServerProtocol(
-    #             jid=host,
-    #             namespace="jabber:server",
-    #             connection_timeout=60
-    #         ),
-    #         host=jid,
-    #         port=5269
-    #     )
-
     def task_tls(self):
-        asyncio.get_running_loop().create_task(self.enable_tls())
+        tls = self._loop.create_task(self.enable_tls())
+        self._loop.run_until_complete(tls)
 
     async def enable_tls(self):
-        loop = asyncio.get_running_loop()
         parser = self._xml_parser.getContentHandler()
 
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -153,7 +137,7 @@ class XMLProtocol(asyncio.Protocol):
             certfile=FILE_AUTH + '/certs/localhost.pem',  # Cert file
             keyfile=FILE_AUTH + '/certs/localhost-key.pem')  # Key file
 
-        new_transport = await loop.start_tls(
+        new_transport = await self._loop.start_tls(
             transport=self._transport,
             protocol=self,
             sslcontext=ssl_context,
