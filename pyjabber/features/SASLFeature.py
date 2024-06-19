@@ -24,13 +24,13 @@ class Signal(Enum):
 
 
 class SASL(FeatureInterface):
-    def __init__(self):
+    def __init__(self, db_connection_factory=connection()):
         self._handlers = {
             "iq"    : self.handleIQ,
             "auth"  : self.handleAuth
         }
         self._ns = "jabber:iq:register"
-        self._connections = ConectionsManager()
+        self._db_connection_factory = db_connection_factory
         self._peername = None
 
     def feed(self, element: ET, extra: dict[str, any] = None) -> Union[Tuple[Signal, bytes], bytes]:
@@ -42,31 +42,30 @@ class SASL(FeatureInterface):
 
     def handleIQ(self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
         query = element.find(CN.clarkFromTuple((self._ns, "query")))
-        
+
         if query is None:
             raise Exception()
-        
+
         if element.attrib["type"] == "get":
             pass #TODO XEP-0077 form data
 
         elif element.attrib["type"] == "set":
             new_jid     = query.find(CN.clarkFromTuple((self._ns, "username"))).text
 
-            with closing(connection()) as con:
+            with closing(self._db_connection_factory()) as con:
                 res = con.execute("SELECT * FROM credentials WHERE jid = ?", (new_jid,))
                 credentials = res.fetchone()
 
-            if credentials:
-                return Signal.RESET, SE.conflict_error(element.attrib["id"])
-            else:
-                pwd         = query.find(CN.clarkFromTuple((self._ns, "password"))).text
-                hash_pwd    = hashlib.sha256(pwd.encode()).hexdigest()
+                if credentials:
+                    return Signal.RESET, SE.conflict_error(element.attrib["id"])
+                else:
+                    pwd         = query.find(CN.clarkFromTuple((self._ns, "password"))).text
+                    hash_pwd    = hashlib.sha256(pwd.encode()).hexdigest()
 
-                with closing(connection()) as con:
                     con.execute("INSERT INTO credentials(jid, hash_pwd) VALUES (?, ?)", (new_jid, hash_pwd))
                     con.commit()
-                return Signal.RESET, self.iq_register_result(element.attrib["id"])
-            
+                    return Signal.RESET, self.iq_register_result(element.attrib["id"])
+
         else:
             raise Exception()
 
@@ -76,18 +75,14 @@ class SASL(FeatureInterface):
         jid     = data[1].decode()
         keyhash = hashlib.sha256(data[2]).hexdigest()
 
-        with closing(connection()) as con:
+        with closing(self._db_connection_factory()) as con:
             res = con.execute("SELECT hash_pwd FROM credentials WHERE jid = ?", (jid,))
             hash_pwd = res.fetchone()
 
-        if hash_pwd:
-            if hash_pwd[0] == keyhash:
-                self._connections.set_jid(self._peername, jid)
-                return Signal.RESET, "<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>".encode()
-            
-            elem = ET.Element("success", attrib={"xmlns" : "urn:ietf:params:xml:ns:xmpp-sasl"})
-            return ET.tostring(elem)
-            
+        if hash_pwd and hash_pwd[0] == keyhash:
+            self._connections.set_jid(self._peername, jid)
+            return Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>"
+
         return SE.not_authorized()
 
     def iq_register_result(self, id: str) -> bytes:
