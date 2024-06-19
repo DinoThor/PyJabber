@@ -43,7 +43,7 @@ class StreamHandler:
         self._starttls = starttls
 
         self._streamFeature = StreamFeature()
-        self._connections = connection_manager
+        self._connections: ConnectionManager = connection_manager
         self._stage = Stage.CONNECTED
 
         self._elem = None

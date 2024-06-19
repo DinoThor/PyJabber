@@ -40,8 +40,8 @@ class ConnectionManager(metaclass=Singleton):
             If the jid is in the format username@domain, the function
             will return a list of the buffers for each resource available.
 
-            :param jid: The jid to get the buffers for. It can be a full
-            jid or a bare jid
+            :param jid: The jid to get the buffers for. It can be a full jid or a bare jid
+            :return: (<JID>, <TRANSPORT>) tuple
         """
 
         return [(self._peerList[key][self.JID], self._peerList[key][self.TRANSPORT])
@@ -106,50 +106,60 @@ class ConnectionManager(metaclass=Singleton):
     ############################# REMOTE SERVER ###############################
     ###########################################################################
 
-    def connection_server(self, peer) -> None:
+    def connection_server(self, peer, host, transport) -> None:
         """
             Store a new connection, without jid or transport.
         """
         if peer not in self._remoteList:
             self._remoteList[peer] = {
-                self.JID: None,
+                self.JID: host,
                 self.TRANSPORT: None
             }
 
     def disconnection_server(self, peer) -> None:
+        """
+        Remove a present server connection in the list
+        i.e. EOF recived, or TCP connection lost
+        """
         try:
             self._remoteList.pop(peer)
         except KeyError:
             logger.error(f"{peer} not present in the online list")
 
-    def get_server_buffer(self, host: str) -> Dict[str, Tuple[str, Transport]]:
+    def get_server_buffer(self, host: str) -> Union[Tuple[str, Transport], None]:
         """
             Return the buffer associated with the given host
-            :return: An object in the format { (IP, PORT): {host: <HOST>, transport: <TRANSPORT>}}
+            :return: (<HOST>, <TRANSPORT>) tuple
         """
         if self.check_server_stream_available(host):
-            return self._peerList[host][self.TRANSPORT]
+            key = next((k for k, v in self._remoteList.items() if v.get(self.JID) == host), None)
+            return self._remoteList[key][self.JID], self._remoteList[key][self.TRANSPORT]
 
-        else:
-            self._task_s2s(host)
+        if self.check_server_present_in_list(host):
+            return
+
+        self._task_s2s(host)
+
+    def set_server_transport(self, peer: Tuple[str, int], transport: Transport) -> Union[None, bool]:
+        """
+            Set/update the transport of a registered server connection.
+
+            :param peer: The peer value in the tuple format ({IP}, {PORT})
+            :param transport: Transport to use
+        """
+        try:
+            self._remoteList[peer][self.TRANSPORT] = transport
+        except KeyError:
+            return False
 
     def check_server_stream_available(self, host) -> bool:
-        return host in [value[self.JID] for value in self._remoteList.values()]
+        for k, v in self._remoteList.items():
+            if v[self.JID] == host:
+                return v[self.TRANSPORT] is not None
 
-        # try:
-        #     return self._remoteList[jid][self.TRANSPORT]
-        # except KeyError:
-        #     loop = asyncio.get_running_loop()
-        #     a = loop.run_until_complete(self.create_server_connection(loop, jid))
-        #     print(a)
-
-    # async def create_server_connection(self, loop, jid):
-    #     loop = asyncio.get_running_loop()
-    #     return await loop.create_connection(
-    #             lambda: XMLServerProtocol(
-    #                 namespace           = "jabber:server",
-    #                 connection_timeout  = 60,
-    #             ),
-    #             host    = jid,
-    #             port    = 5269,
-    #         )
+    def check_server_present_in_list(self, host) -> bool:
+        try:
+            if [v for v in self._remoteList.values() if v[self.JID] == host]:
+                return True
+        except KeyError:
+            return False

@@ -12,6 +12,7 @@ from pyjabber.db.database import connection
 from pyjabber.network.XMLProtocol import XMLProtocol
 from pyjabber.network.server.XMLServerProtocol import XMLServerProtocol
 from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.webpage.adminPage import admin_instance
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -28,6 +29,7 @@ class Server:
         enable_tls1_3=False,
         traefik_certs=False
     ):
+        # Server
         self._host = host
         self._client_port = client_port
         self._server_port = server_port
@@ -36,10 +38,12 @@ class Server:
         self._server_listener = None
         self._adminServer = None
         self._connection_timeout = connection_timeout
+
+        # Client handler
         self._enable_tls1_3 = enable_tls1_3
         self._traefik_certs = traefik_certs
-
         self._connection_manager = ConnectionManager(self.task_s2s)
+        self._queue_message = QueueMessage(self._connection_manager)
 
     async def run_server(self):
         logger.info("Starting server...")
@@ -64,8 +68,9 @@ class Server:
                 namespace='jabber:client',
                 connection_timeout=self._connection_timeout,
                 connection_manager=self._connection_manager,
-                _enable_tls1_3=self._enable_tls1_3,
-                _traefik_certs=self._traefik_certs
+                enable_tls1_3=self._enable_tls1_3,
+                traefik_certs=self._traefik_certs,
+                queue_message=self._queue_message
             ),
             host=self._host,
             port=self._client_port,
@@ -105,6 +110,7 @@ class Server:
         logger.info("Server stopped...")
 
     def task_s2s(self, host):
+        host = host.split("@")[-1]
         asyncio.get_running_loop().create_task(self.server_connection(host))
 
     async def server_connection(self, host):
@@ -114,6 +120,7 @@ class Server:
             await loop.create_connection(
                 lambda: XMLServerProtocol(
                     namespace="jabber:server",
+                    host=host,
                     connection_timeout=self._connection_timeout,
                     connection_manager=self._connection_manager,
                     _enable_tls1_3=self._enable_tls1_3,

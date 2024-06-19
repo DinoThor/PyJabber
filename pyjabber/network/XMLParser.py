@@ -23,11 +23,12 @@ class XMLParser(ContentHandler):
     Manages the stream data and process the XML objects.
     Inheriting from sax.ContentHandler
     """
-    def __init__(self, buffer, starttls, connection_manager):
+    def __init__(self, buffer, starttls, connection_manager, queue_message):
         super().__init__()
         self._state = StreamState.CONNECTED
         self._buffer = buffer
         self._connection_manager = connection_manager
+        self._queue_message = queue_message
 
         self._streamHandler = StreamHandler(self._buffer, starttls, connection_manager)
         self._stanzaHandler = None
@@ -95,7 +96,7 @@ class XMLParser(ContentHandler):
                 if signal == Signal.RESET and "stream" in self._stack[-1].tag:
                     self._stack.pop()
                 elif signal == Signal.DONE:
-                    self._stanzaHandler = StanzaHandler(self._buffer, self._connection_manager)
+                    self._stanzaHandler = StanzaHandler(self._buffer, self._connection_manager, self._queue_message)
                     self._state = StreamState.READY
 
     def characters(self, content: str) -> None:

@@ -17,15 +17,24 @@ class XMLServerProtocol(asyncio.Protocol):
     Protocol to manage the network connection between nodes in the XMPP network. Handles the transport layer.
     """
 
-    def __init__(self, namespace, connection_manager, _traefik_certs=False, _enable_tls1_3=False,
-                 connection_timeout=None):
+    def __init__(
+        self,
+        namespace,
+        host,
+        connection_manager,
+        _traefik_certs=False,
+        _enable_tls1_3=False,
+        connection_timeout=None
+    ):
         self._xmlns = namespace
         self._transport = None
         self._xml_parser = None
         self._timeout_monitor = None
         self._enable_tls1_3 = _enable_tls1_3
+
+        self._host = host
         self._connection_timeout = connection_timeout
-        self._connections = connection_manager
+        self._connections: ConnectionManager = connection_manager
         self._traefik_certs = _traefik_certs
         self._loop = asyncio.get_running_loop()
 
@@ -52,7 +61,7 @@ class XMLServerProtocol(asyncio.Protocol):
                     callback=self.connection_timeout
                 )
 
-            self._connections.connection(self._transport.get_extra_info('peername'))
+            self._connections.connection_server(self._transport.get_extra_info('peername'), self._host, self._transport)
 
             logger.info(f"Server connection to {self._transport.get_extra_info('peername')}")
 
@@ -111,7 +120,7 @@ class XMLServerProtocol(asyncio.Protocol):
 
         logger.debug(f"EOF received from {peer}")
 
-        self._connections.disconnection(peer)
+        self._connections.disconnection_server(peer)
 
         self._transport = None
         self._xml_parser = None
@@ -158,6 +167,6 @@ class XMLServerProtocol(asyncio.Protocol):
         )
 
         self._transport = new_transport
-
         parser.buffer = self._transport
+
         logger.debug(f"Done TLS")

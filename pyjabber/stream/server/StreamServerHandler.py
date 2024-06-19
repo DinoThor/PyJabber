@@ -20,8 +20,12 @@ class StreamServerHandler(StreamHandler):
         super().__init__(buffer, starttls, connection_manager)
 
     def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
-        # TCP Connection opened
-        if elem.tag == "{http://etherx.jabber.org/streams}features":
+        if self._stage == Stage.READY:
+            peer = self.buffer.get_extra_info('peername')
+            self._connections.set_server_transport(peer, self.buffer)
+            return Signal.DONE
+
+        elif elem.tag == "{http://etherx.jabber.org/streams}features":
             children = [child.tag for child in elem]
             if "{urn:ietf:params:xml:ns:xmpp-tls}starttls" in children:
                 if self._stage == Stage.CONNECTED:
@@ -33,12 +37,19 @@ class StreamServerHandler(StreamHandler):
                 mechanisms = [mech for mech in elem.find("{urn:ietf:params:xml:ns:xmpp-sasl}mechanisms")]
                 if 'EXTERNAL' in [mech.text for mech in mechanisms]:
                     self._buffer.write("<auth xmlns='urn:ietf:params:xml:ns:xmpp-sasl' mechanism='EXTERNAL'>=</auth>".encode())
+                    return
 
-        if elem.tag == "{urn:ietf:params:xml:ns:xmpp-tls}proceed":
+        elif elem.tag == "{urn:ietf:params:xml:ns:xmpp-tls}proceed":
             if self._stage == Stage.OPENED:
                 self._starttls()
                 self._stage = Stage.SSL
                 return Signal.RESET
+
+        elif elem.tag == "{urn:ietf:params:xml:ns:xmpp-sasl}success":
+            self._stage = Stage.READY
+            return Signal.RESET
+
+        return
 
         # if self._stage == Stage.OPENED:https://camo.githubusercontent.com/a5bb0aafd8b664c6279bc394dbe0bf8d19448cfec7c740d884ba11b74f94ab90/68747470733a2f2f696d672e736869656c64732e696f2f707970692f646d2f70796a6162626572
         #     self._streamFeature.reset()

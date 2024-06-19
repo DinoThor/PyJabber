@@ -18,7 +18,7 @@ class XMLProtocol(asyncio.Protocol):
     Protocol to manage the network connection between nodes in the XMPP network. Handles the transport layer.
     """
 
-    def __init__(self, namespace, connection_timeout, connection_manager, _traefik_certs, _enable_tls1_3=False):
+    def __init__(self, namespace, connection_timeout, connection_manager, traefik_certs, queue_message, enable_tls1_3=False):
         self._xmlns = namespace
         self._transport = None
         self._xml_parser = None
@@ -27,8 +27,9 @@ class XMLProtocol(asyncio.Protocol):
         self._connection_timeout = connection_timeout
         self._connection_manager = connection_manager
 
-        self._enable_tls1_3 = _enable_tls1_3
-        self._traefik_certs = _traefik_certs
+        self._enable_tls1_3 = enable_tls1_3
+        self._traefik_certs = traefik_certs
+        self._queue_message = queue_message
 
     def connection_made(self, transport):
         """
@@ -44,7 +45,12 @@ class XMLProtocol(asyncio.Protocol):
             self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
             self._xml_parser.setFeature(sax.handler.feature_external_ges, False)
             self._xml_parser.setContentHandler(
-                XMLParser(self._transport, self.task_tls, self._connection_manager)
+                XMLParser(
+                    self._transport,
+                    self.task_tls,
+                    self._connection_manager,
+                    self._queue_message
+                )
             )
 
             if self._connection_timeout:
