@@ -84,8 +84,11 @@ def test_handle_open_stream_ssl():
     buffer.write.assert_called_once()
 
 
+from pyjabber.features.SASLFeature import SASL, connection
+
 @patch('pyjabber.features.SASLFeature.connection')
-def test_handle_open_stream_sasl_continue(mock_connection, monkeypatch):
+@patch('pyjabber.stream.StreamHandler.SASL')
+def test_handle_open_stream_sasl_continue(mock_sasl, mock_connection):
     buffer = MagicMock()
     starttls = Mock()
     handler = StreamHandler(buffer, starttls)
@@ -105,16 +108,19 @@ def test_handle_open_stream_sasl_continue(mock_connection, monkeypatch):
     auth_text = b64encode(b'\x00username\x00password').decode('ascii')
     elem.text = auth_text
 
-    sasl = Mock()
-    sasl.feed.return_value = b'response'
+    # Ajustar la función _db_connection_factory para que tome un argumento
+    def mock_db_connection_factory():
+        return mock_conn
 
-    monkeypatch.setattr("pyjabber.features.SASLFeature.SASL", lambda: sasl)
+    sasl_instance = SASL(db_connection_factory=mock_db_connection_factory)
+    sasl_instance._connections = MagicMock()
+    mock_sasl.return_value = sasl_instance
+
     handler.handle_open_stream(elem)
 
     assert handler._stage == Stage.AUTH
     expected_response = b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>"
     buffer.write.assert_called_once_with(expected_response)
-
 def test_handle_open_stream_auth():
     buffer = MagicMock()
     starttls = Mock()

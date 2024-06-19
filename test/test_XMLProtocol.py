@@ -93,8 +93,10 @@ def test_connection_timeout():
     assert protocol._xml_parser is None
 
 
+
+@pytest.mark.asyncio
 @patch('pyjabber.network.XMLProtocol.asyncio.get_running_loop')
-def test_taskTLS(mock_get_running_loop):
+async def test_taskTLS(mock_get_running_loop):
     protocol = XMLProtocol()
     mock_loop = MagicMock()
     mock_get_running_loop.return_value = mock_loop
@@ -110,9 +112,8 @@ def test_taskTLS(mock_get_running_loop):
     assert called_coroutine.__name__ == enableTLS_coroutine().__name__
     mock_loop.create_task.return_value.add_done_callback.assert_called_once_with(protocol.handleSTARTTLS)
 
-    # Asegurarse de que la coroutine simulada sea llamada y esperada
-    asyncio.run(enableTLS_coroutine())
-
+    # Espera a que la coroutine simulada sea llamada y esperada
+    await called_coroutine
 
 @patch('pyjabber.network.XMLProtocol.asyncio.get_running_loop')
 @patch('pyjabber.network.XMLProtocol.ssl.SSLContext')
