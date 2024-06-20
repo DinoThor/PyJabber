@@ -3,6 +3,7 @@ import os
 import signal
 import socket
 import nest_asyncio
+import urllib.request
 import wget
 
 from contextlib import closing
@@ -57,7 +58,7 @@ class Server:
 
         if self._traefik_certs:
             if not os.path.isfile(os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik.pem")):
-                wget.download("http://traefik.me/cert.pem", os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik.pem"))
+                wget.download("http://traefik.me/fullchain.pem", os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik.pem"))
             if not os.path.isfile(os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik-key.pem")):
                 wget.download("http://traefik.me/privkey.pem", os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik-key.pem"))
 
@@ -77,6 +78,7 @@ class Server:
             family=self._family
         )
 
+
         logger.info(f"Server is listening clients on {self._client_listener.sockets[0].getsockname()}")
 
         self._server_listener = await loop.create_server(
@@ -85,7 +87,8 @@ class Server:
                 connection_timeout=self._connection_timeout,
                 connection_manager=self._connection_manager,
                 _enable_tls1_3=self._enable_tls1_3,
-                _traefik_certs=self._traefik_certs
+                _traefik_certs=self._traefik_certs,
+                queue_message=self._queue_message
             ),
             host=self._host,
             port=self._server_port,
@@ -93,6 +96,11 @@ class Server:
         )
 
         logger.info(f"Server is listening servers on {self._server_listener.sockets[0].getsockname()}")
+
+        public_ip = urllib.request.urlopen("https://api.ipify.org/")
+        if public_ip.status == 200:
+            public_ip = public_ip.read().decode()
+            logger.info(f"SERVER DOMAIN NAME ==> https://{public_ip.replace('.', '-')}.traefik.me")
 
         logger.info("Server started...")
 

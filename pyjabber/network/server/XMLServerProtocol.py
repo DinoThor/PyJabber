@@ -148,7 +148,7 @@ class XMLServerProtocol(asyncio.Protocol):
     async def enable_tls(self):
         parser = self._xml_parser.getContentHandler()
 
-        certfile = "fullchain.pem" if self._traefik_certs else "localhost.pem"
+        certfile = "traefik.pem" if self._traefik_certs else "localhost.pem"
         keyfile = "traefik-key.pem" if self._traefik_certs else "localhost-key.pem"
 
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)

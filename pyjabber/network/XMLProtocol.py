@@ -142,7 +142,7 @@ class XMLProtocol(asyncio.Protocol):
         if not self._enable_tls1_3:
             ssl_context.options |= ssl.OP_NO_TLSv1_3
 
-        certfile = "fullchain.pem" if self._traefik_certs else "localhost.pem"
+        certfile = "traefik.pem" if self._traefik_certs else "localhost.pem"
         keyfile = "traefik-key.pem" if self._traefik_certs else "localhost-key.pem"
 
         ssl_context.load_cert_chain(
