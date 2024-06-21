@@ -11,7 +11,7 @@ from loguru import logger
 
 from pyjabber.db.database import connection
 from pyjabber.network.XMLProtocol import XMLProtocol
-from pyjabber.network.server.XMLServerProtocol import XMLServerProtocol
+from pyjabber.network.server.incoming.XMLServerProtocol import XMLServerProtocol
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.webpage.adminPage import admin_instance
@@ -86,8 +86,8 @@ class Server:
                 namespace='jabber:server',
                 connection_timeout=self._connection_timeout,
                 connection_manager=self._connection_manager,
-                _enable_tls1_3=self._enable_tls1_3,
-                _traefik_certs=self._traefik_certs,
+                enable_tls1_3=self._enable_tls1_3,
+                traefik_certs=self._traefik_certs,
                 queue_message=self._queue_message
             ),
             host=self._host,

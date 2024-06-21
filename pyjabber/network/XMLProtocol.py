@@ -1,14 +1,12 @@
 import asyncio
 import os
 import ssl
-import wget
 
 from loguru import logger
 from xml import sax
 
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.XMLParser import XMLParser
-from pyjabber.network.server import XMLServerProtocol
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
 
@@ -101,7 +99,7 @@ class XMLProtocol(asyncio.Protocol):
         keeps refusing it. I'm forced to do always before the feed.
         I probably should change the parser
         '''
-        data = data.replace(b"<?xml version=\"1.0\"?>", b"")
+        data = data.replace(b"<?xml version=\'1.0\'?>", b"")
 
         self._xml_parser.feed(data)
 

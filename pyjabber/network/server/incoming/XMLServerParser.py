@@ -5,9 +5,9 @@ from xml.sax import ContentHandler
 from xml.etree import ElementTree as ET
 
 from pyjabber.stream import Stream
-from pyjabber.stream.StreamHandler import StreamHandler, Signal
-from pyjabber.stream.server.StanzaServerHandler import StanzaServerHandler
-from pyjabber.stream.server.StreamServerHandler import StreamServerHandler
+from pyjabber.stream.StreamHandler import Signal
+from pyjabber.stream.server.incoming.StanzaServerHandler import StanzaServerHandler
+from pyjabber.stream.server.incoming.StreamServerHandler import StreamServerHandler
 from pyjabber.utils import ClarkNotation as CN
 
 
@@ -24,11 +24,12 @@ class XMLServerParser(ContentHandler):
     Manages the stream data and process the XML objects.
     Inheriting from sax.ContentHandler
     """
-    def __init__(self, buffer, starttls, connection_manager):
+    def __init__(self, buffer, starttls, connection_manager, host):
         super().__init__()
         self._state = StreamState.CONNECTED
         self._buffer = buffer
         self._connection_manager = connection_manager
+        self._host = host
 
         self._streamHandler = StreamServerHandler(self._buffer, starttls, connection_manager)
         self._stanzaHandler = None
@@ -109,7 +110,7 @@ class XMLServerParser(ContentHandler):
     def initial_stream(self):
         initial_stream = Stream.Stream(
             from_="158-42-154-74.traefik.me",
-            to="gtirouter.dsic.upv.es",
+            to=self._host,
             xmlns=Stream.Namespaces.SERVER.value
         )
 
