@@ -8,16 +8,16 @@ from pyjabber.utils import Singleton
 
 class ConectionsManager(metaclass = Singleton):
     __slots__ = ["_peerList"]
-    
+
     JID         = "jid"
     TRANSPORT   = "transport"
 
     def __init__(self) -> None:
-        self._peerList = {} 
+        self._peerList = {}
 
     def get_users_connected(self) -> dict[str, tuple[str, int]]:
         return self._peerList
-    
+
     def get_buffer_by_jid(self, jid: str) -> tuple[str | Transport]:
         res = []
         for key, values in self._peerList.items():
@@ -25,16 +25,16 @@ class ConectionsManager(metaclass = Singleton):
                 continue
 
             if re.match(f"{jid}/*", values[self.JID]):
-                res.append((self._peerList[key][self.JID], self._peerList[key][self.TRANSPORT]))            
-        
+                res.append((self._peerList[key][self.JID], self._peerList[key][self.TRANSPORT]))
+
         return res
-    
+
     def get_jid_by_peer(self, peer) -> Union[str, None]:
         try:
             return self._peerList[peer][self.JID]
         except KeyError:
             return None
-        
+
     def set_jid(self, peer, jid, transport = None) -> Union[None, bool]:
         try:
             self._peerList[peer][self.JID] = jid
@@ -48,7 +48,7 @@ class ConectionsManager(metaclass = Singleton):
             self._peerList[peer] = {
                 self.JID       : None,
                 self.TRANSPORT : None
-            } 
+            }
 
     def disconnection(self, peer) -> None:
         try:
