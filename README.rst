@@ -58,6 +58,7 @@ or
 
         python -m pyjabber --help
 
+
 .. code-block::
 
         Usage: python -m pyjabber [OPTIONS]
@@ -67,10 +68,12 @@ or
           --client_port INTEGER     Server-to-client port  [default: 5222]
           --server_port INTEGER     Server-to-server port  [default: 5269]
           --family [ipv4|ipv6]      (ipv4 / ipv6)  [default: ipv4]
+          --tls1_3                  Enables TLSv1_3 in c2s
           --timeout INTEGER         Timeout for connection  [default: 60]
           --log_level [INFO|DEBUG]  Log level alert  [default: INFO]
-          --log_path TEXT           Path to log dumpfile.
-          -D, --debug               Enables debug mode in Asyncio.
+          --log_path TEXT           Path to log dumpfile
+          -D, --debug               Enables debug mode in Asyncio
+          -S, --spade               Enables traefik.me certificates
           --help                    Show this message and exit.
 
 
@@ -86,7 +89,7 @@ Features
      - Description
    * - TLS
      - Implemented
-     - v1.2, with localhost certificate and CA included
+     - v1.2 + v1.3 with localhost certificate and CA included, and traefik.me certificates
    * - SASL
      - Implemented
      - PLAIN

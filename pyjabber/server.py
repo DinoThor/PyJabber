@@ -11,7 +11,8 @@ from loguru import logger
 
 from pyjabber.db.database import connection
 from pyjabber.network.XMLProtocol import XMLProtocol
-from pyjabber.network.server.incoming.XMLServerProtocol import XMLServerProtocol
+from pyjabber.network.server.incoming.XMLServerIncomingProtocol import XMLServerIncomingProtocol
+from pyjabber.network.server.outcoming.XMLServerOutcomingProtocol import XMLServerOutcomingProtocol
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.webpage.adminPage import admin_instance
@@ -82,7 +83,7 @@ class Server:
         logger.info(f"Server is listening clients on {self._client_listener.sockets[0].getsockname()}")
 
         self._server_listener = await loop.create_server(
-            lambda: XMLProtocol(
+            lambda: XMLServerIncomingProtocol(
                 namespace='jabber:server',
                 connection_timeout=self._connection_timeout,
                 connection_manager=self._connection_manager,
@@ -122,24 +123,21 @@ class Server:
         asyncio.get_running_loop().create_task(self.server_connection(host))
 
     async def server_connection(self, host):
-        try:
-            loop = asyncio.get_event_loop()
+        loop = asyncio.get_event_loop()
 
-            await loop.create_connection(
-                lambda: XMLServerProtocol(
-                    namespace="jabber:server",
-                    host=host,
-                    connection_timeout=self._connection_timeout,
-                    connection_manager=self._connection_manager,
-                    _enable_tls1_3=self._enable_tls1_3,
-                    _traefik_certs=self._traefik_certs
-                ),
+        await loop.create_connection(
+            lambda: XMLServerOutcomingProtocol(
+                namespace="jabber:server",
                 host=host,
-                port=5269
-            )
-
-        except asyncio.TimeoutError:
-            return None
+                connection_timeout=self._connection_timeout,
+                connection_manager=self._connection_manager,
+                queue_message=self._queue_message,
+                enable_tls1_3=self._enable_tls1_3,
+                traefik_certs=self._traefik_certs
+            ),
+            host=host,
+            port=5269
+        )
 
     def raise_exit(self):
         raise SystemExit(1)

@@ -27,7 +27,7 @@ class StanzaServerHandler:
             "{jabber:client}presence": self.handlePre
         }
 
-        with open(FILE_PATH + "/../schemas/schemas.pkl", "rb") as schemasDump:
+        with open(os.path.join(FILE_PATH, "..", "..", "schemas", "schemas.pkl"), "rb") as schemasDump:
             self._schemas = pickle.load(schemasDump)
 
     def feed(self, element: ET.Element):

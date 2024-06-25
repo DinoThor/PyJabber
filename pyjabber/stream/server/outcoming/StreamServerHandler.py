@@ -39,6 +39,11 @@ class StreamServerHandler(StreamHandler):
                     self._buffer.write("<auth xmlns='urn:ietf:params:xml:ns:xmpp-sasl' mechanism='EXTERNAL'>=</auth>".encode())
                     return
 
+            elif "urn:xmpp:features:dialback{dialback}" in children and self._stage == Stage.READY:
+                peer = self.buffer.get_extra_info('peername')
+                self._connections.set_server_transport(peer, self.buffer)
+                return Signal.DONE
+
         elif elem.tag == "{urn:ietf:params:xml:ns:xmpp-tls}proceed":
             if self._stage == Stage.OPENED:
                 self._starttls()

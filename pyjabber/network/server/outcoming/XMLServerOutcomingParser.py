@@ -1,9 +1,7 @@
-from asyncio import BaseProtocol
-from enum import Enum
 from loguru import logger
-from xml.sax import ContentHandler
 from xml.etree import ElementTree as ET
 
+from pyjabber.network.XMLParser import XMLParser
 from pyjabber.stream import Stream
 from pyjabber.stream.StreamHandler import Signal
 from pyjabber.stream.server.incoming.StanzaServerHandler import StanzaServerHandler
@@ -11,43 +9,16 @@ from pyjabber.stream.server.incoming.StreamServerHandler import StreamServerHand
 from pyjabber.utils import ClarkNotation as CN
 
 
-class StreamState(Enum):
-    """
-    Stream connection states.
-    """
-    CONNECTED = 0
-    READY = 1
-
-
-class XMLServerParser(ContentHandler):
+class XMLServerOutcomingParser(XMLParser):
     """
     Manages the stream data and process the XML objects.
     Inheriting from sax.ContentHandler
     """
+
     def __init__(self, buffer, starttls, connection_manager, host):
-        super().__init__()
-        self._state = StreamState.CONNECTED
-        self._buffer = buffer
-        self._connection_manager = connection_manager
+        super().__init__(buffer, starttls, connection_manager)
         self._host = host
-
         self._streamHandler = StreamServerHandler(self._buffer, starttls, connection_manager)
-        self._stanzaHandler = None
-
-        self._stack = []
-
-        self._tls_done = False
-
-        self.initial_stream()
-
-    @property
-    def buffer(self) -> BaseProtocol:
-        return self._buffer
-
-    @buffer.setter
-    def buffer(self, value: BaseProtocol):
-        self._buffer = value
-        self._streamHandler.buffer = value
 
     def startElementNS(self, name, qname, attrs):
         logger.debug(f"Start element NS: {name}")
@@ -84,7 +55,7 @@ class XMLServerParser(ContentHandler):
             self._stack[-1].append(elem)
 
         else:
-            if self._state == StreamState.READY:  # Ready to process stanzas
+            if self._state == self.StreamState.READY:  # Ready to process stanzas
                 self._stanzaHandler.feed(elem)
             else:
                 signal = self._streamHandler.handle_open_stream(elem)
@@ -93,19 +64,7 @@ class XMLServerParser(ContentHandler):
                     self.initial_stream()
                 elif signal == Signal.DONE:
                     self._stanzaHandler = StanzaServerHandler(self._buffer, self._connection_manager)
-                    self._state = StreamState.READY
-
-    def characters(self, content: str) -> None:
-        if not self._stack:
-            raise Exception()
-
-        elem = self._stack[-1]
-        if len(elem) != 0:
-            child = elem[-1]
-            child.tail = (child.tail or '') + content
-
-        else:
-            elem.text = (elem.text or '') + content
+                    self._state = self.StreamState.READY
 
     def initial_stream(self):
         initial_stream = Stream.Stream(

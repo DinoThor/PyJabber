@@ -1,10 +1,11 @@
 import asyncio
-from collections import deque
+from loguru import logger
 
 from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.utils import Singleton
 
 
-class QueueMessage:
+class QueueMessage(metaclass=Singleton):
     def __init__(self, connection_manager):
         self._queue = []
         self._loop = asyncio.get_event_loop()
@@ -23,4 +24,5 @@ class QueueMessage:
                 buffer = self._connection_manager.get_server_buffer(host)
                 if buffer:
                     buffer[-1].write(element)
+                    logger.debug(f"Routed message to {host}")
                     self._queue.remove((host, element))

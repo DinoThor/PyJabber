@@ -10,22 +10,15 @@ from pyjabber.stream.StanzaHandler import StanzaHandler
 from pyjabber.utils import ClarkNotation as CN
 
 
-class StreamState(Enum):
-    """
-    Stream connection states.
-    """
-    CONNECTED = 0
-    READY = 1
-
-
 class XMLParser(ContentHandler):
     """
     Manages the stream data and process the XML objects.
     Inheriting from sax.ContentHandler
     """
+
     def __init__(self, buffer, starttls, connection_manager, queue_message):
         super().__init__()
-        self._state = StreamState.CONNECTED
+        self._state = self.StreamState.CONNECTED
         self._buffer = buffer
         self._connection_manager = connection_manager
         self._queue_message = queue_message
@@ -35,7 +28,12 @@ class XMLParser(ContentHandler):
 
         self._stack = []
 
-        self._counter = 0
+    class StreamState(Enum):
+        """
+        Stream connection states.
+        """
+        CONNECTED = 0
+        READY = 1
 
     @property
     def buffer(self) -> BaseProtocol:
@@ -91,7 +89,7 @@ class XMLParser(ContentHandler):
             self._stack[-1].append(elem)
 
         else:
-            if self._state == StreamState.READY:  # Ready to process stanzas
+            if self._state == self.StreamState.READY:  # Ready to process stanzas
                 self._stanzaHandler.feed(elem)
             else:
                 signal = self._streamHandler.handle_open_stream(elem)
@@ -99,7 +97,7 @@ class XMLParser(ContentHandler):
                     self._stack.pop()
                 elif signal == Signal.DONE:
                     self._stanzaHandler = StanzaHandler(self._buffer, self._connection_manager, self._queue_message)
-                    self._state = StreamState.READY
+                    self._state = self.StreamState.READY
 
     def characters(self, content: str) -> None:
         if not self._stack:
