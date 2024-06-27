@@ -104,6 +104,46 @@ def test_handle_unavailable(setup_presence):
 
     assert result is None
 
+def test_feed_handle_initial_presence(setup_presence):
+    presence, mock_roster, mock_connections = setup_presence
+    element = ET.Element('presence', attrib={'id': '123'})
+    jid = 'user@localhost'
+
+    mock_roster.retriveRoster.return_value = [
+        (1, 'user2@localhost', '<item jid="user2@localhost" subscription="both"/>')
+    ]
+
+    buffer_mock = MagicMock()
+    mock_connections.get_buffer_by_jid.return_value = [buffer_mock]
+
+    result = presence.feed(element, jid)
+
+    assert result is None
+    mock_roster.retriveRoster.assert_called_once_with('user@localhost')
+    mock_connections.get_buffer_by_jid.assert_called_once_with('user2@localhost')
+    buffer_mock[-1].write.assert_called_once()
+
+
+
+def test_handle_initial_presence(setup_presence):
+    presence, mock_roster, mock_connections = setup_presence
+    element = ET.Element('presence', attrib={'id': '123'})
+    presence._jid = 'user@localhost'
+
+    mock_roster.retriveRoster.return_value = [
+        (1, 'user2@localhost', '<item jid="user2@localhost" subscription="both"/>')
+    ]
+
+    buffer_mock = MagicMock()
+    mock_connections.get_buffer_by_jid.return_value = [buffer_mock]
+
+    presence.handleInitialPresence(element)
+
+    mock_roster.retriveRoster.assert_called_once_with('user@localhost')
+    mock_connections.get_buffer_by_jid.assert_called_once_with('user2@localhost')
+    buffer_mock[-1].write.assert_called_once()
+
+
 
 if __name__ == "__main__":
     pytest.main()
