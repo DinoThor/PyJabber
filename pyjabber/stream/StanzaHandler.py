@@ -35,8 +35,10 @@ class StanzaHandler():
             schema: xmlschema.XMLSchema = self._schemas[CN.deglose(element.tag)[0]]
             if schema.is_valid(ET.tostring(element)) is False:
                 self._buffer.write(SE.bad_request())
+                return
         except KeyError:
             self._buffer.write(SE.feature_not_implemented())
+            return
 
         try:
             self._functions[element.tag](element)
