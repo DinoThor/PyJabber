@@ -6,8 +6,9 @@ from loguru import logger
 from xml import sax
 
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
+from pyjabber.network.XMLParser import XMLParser
 from pyjabber.network.XMLProtocol import XMLProtocol
-from pyjabber.network.server.incoming.XMLServerIncomingParser import XMLServerParser
+from pyjabber.network.server.incoming.XMLServerIncomingParser import XMLServerIncomingParser
 from pyjabber.network.ConnectionManager import ConnectionManager
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
@@ -23,13 +24,11 @@ class XMLServerIncomingProtocol(XMLProtocol):
         namespace,
         connection_manager,
         queue_message,
-        host,
         traefik_certs=False,
         enable_tls1_3=False,
         connection_timeout=None):
 
         super().__init__(namespace, connection_timeout, connection_manager, traefik_certs, queue_message, enable_tls1_3)
-        self._host = host
 
     def connection_made(self, transport):
         """
@@ -45,7 +44,11 @@ class XMLServerIncomingProtocol(XMLProtocol):
             self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
             self._xml_parser.setFeature(sax.handler.feature_external_ges, False)
             self._xml_parser.setContentHandler(
-                XMLServerParser(self._transport, self.task_tls, self._connection_manager, self._host)
+                XMLServerIncomingParser(
+                    self._transport,
+                    self.task_tls,
+                    self._connection_manager,
+                    self._queue_message)
             )
 
             if self._connection_timeout:
@@ -54,7 +57,7 @@ class XMLServerIncomingProtocol(XMLProtocol):
                     callback=self.connection_timeout
                 )
 
-            self._connection_manager.connection_server(self._transport.get_extra_info('peername'), self._host, self._transport)
+            self._connection_manager.connection(self._transport.get_extra_info('peername'))
 
             logger.info(f"Server connection to {self._transport.get_extra_info('peername')}")
 
@@ -77,28 +80,28 @@ class XMLServerIncomingProtocol(XMLProtocol):
     ###########################################################################
     ###########################################################################
     ###########################################################################
-    async def enable_tls(self):
-        parser = self._xml_parser.getContentHandler()
-
-        certfile = "traefik.pem" if self._traefik_certs else "localhost.pem"
-        keyfile = "traefik-key.pem" if self._traefik_certs else "localhost-key.pem"
-
-        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        if not self._enable_tls1_3:
-            ssl_context.options |= ssl.OP_NO_TLSv1_3
-
-        ssl_context.load_cert_chain(
-            certfile=os.path.join(FILE_AUTH, "..", "..", "certs", certfile),
-            keyfile=os.path.join(FILE_AUTH, "..", "..", "certs", keyfile),
-        )
-
-        new_transport = await self._loop.start_tls(
-            transport=self._transport,
-            protocol=self,
-            sslcontext=ssl_context,
-        )
-
-        self._transport = new_transport
-        parser.buffer = self._transport
-
-        logger.debug(f"Done TLS")
+    # async def enable_tls(self):
+    #     parser = self._xml_parser.getContentHandler()
+    #
+    #     certfile = "traefik.pem" if self._traefik_certs else "localhost.pem"
+    #     keyfile = "traefik-key.pem" if self._traefik_certs else "localhost-key.pem"
+    #
+    #     ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+    #     if not self._enable_tls1_3:
+    #         ssl_context.options |= ssl.OP_NO_TLSv1_3
+    #
+    #     ssl_context.load_cert_chain(
+    #         certfile=os.path.join(FILE_AUTH, "..", "..", "certs", certfile),
+    #         keyfile=os.path.join(FILE_AUTH, "..", "..", "certs", keyfile),
+    #     )
+    #
+    #     new_transport = await self._loop.start_tls(
+    #         transport=self._transport,
+    #         protocol=self,
+    #         sslcontext=ssl_context,
+    #     )
+    #
+    #     self._transport = new_transport
+    #     parser.buffer = self._transport
+    #
+    #     logger.debug(f"Done TLS")

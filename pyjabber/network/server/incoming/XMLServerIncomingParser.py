@@ -1,13 +1,12 @@
-from asyncio import BaseProtocol
 from enum import Enum
 from loguru import logger
-from xml.sax import ContentHandler
 from xml.etree import ElementTree as ET
 
+from pyjabber.network.XMLParser import XMLParser
 from pyjabber.stream import Stream
 from pyjabber.stream.StreamHandler import Signal
-from pyjabber.stream.server.incoming.StanzaServerHandler import StanzaServerHandler
-from pyjabber.stream.server.incoming.StreamServerHandler import StreamServerHandler
+from pyjabber.stream.server.incoming.StanzaServerIncomingHandler import StanzaServerHandler
+from pyjabber.stream.server.incoming.StreamServerIncomingHandler import StreamServerIncomingHandler
 from pyjabber.utils import ClarkNotation as CN
 
 
@@ -19,49 +18,38 @@ class StreamState(Enum):
     READY = 1
 
 
-class XMLServerParser(ContentHandler):
+class XMLServerIncomingParser(XMLParser):
     """
     Manages the stream data and process the XML objects.
     Inheriting from sax.ContentHandler
     """
-    def __init__(self, buffer, starttls, connection_manager, host):
-        super().__init__()
-        self._state = StreamState.CONNECTED
-        self._buffer = buffer
-        self._connection_manager = connection_manager
-        self._host = host
-
-        self._streamHandler = StreamServerHandler(self._buffer, starttls, connection_manager)
-        self._stanzaHandler = None
-
-        self._stack = []
-
-        self._tls_done = False
-
-        self.initial_stream()
-
-    @property
-    def buffer(self) -> BaseProtocol:
-        return self._buffer
-
-    @buffer.setter
-    def buffer(self, value: BaseProtocol):
-        self._buffer = value
-        self._streamHandler.buffer = value
+    def __init__(self, buffer, starttls, connection_manager, queue_message):
+        super().__init__(buffer, starttls, connection_manager, queue_message)
+        self._streamHandler = StreamServerIncomingHandler(self._buffer, starttls, connection_manager)
 
     def startElementNS(self, name, qname, attrs):
         logger.debug(f"Start element NS: {name}")
 
-        clark = CN.clarkFromTuple(name)
-        if CN.clarkFromTuple(name) == '{http://etherx.jabber.org/streams}stream' and self._stack:
-            # ERROR Stream already present in stack
-            raise Exception()
+        if self._stack:  # "<stream:stream>" tag already present in the data stack
+            elem = ET.Element(
+                CN.clarkFromTuple(name),
+                attrib={CN.clarkFromTuple(key): item for key, item in dict(attrs).items()}
+            )
+            self._stack.append(elem)
 
-        elem = ET.Element(
-            CN.clarkFromTuple(name),
-            attrib={CN.clarkFromTuple(key): item for key, item in dict(attrs).items()}
-        )
-        self._stack.append(elem)
+        elif name[1] == "stream" and name[0] == "http://etherx.jabber.org/streams":
+            self._buffer.write(Stream.responseStream(attrs))
+
+            elem = ET.Element(
+                CN.clarkFromTuple(name),
+                attrib={CN.clarkFromTuple(key): item for key, item in dict(attrs).items()}
+            )
+
+            self._stack.append(elem)
+            self._streamHandler.handle_open_stream()
+
+        else:
+            raise Exception()
 
     def endElementNS(self, name, qname):
         logger.debug(f"End element NS: {qname} : {name}")
@@ -88,31 +76,9 @@ class XMLServerParser(ContentHandler):
                 self._stanzaHandler.feed(elem)
             else:
                 signal = self._streamHandler.handle_open_stream(elem)
-                if signal == Signal.RESET:
+                if signal == Signal.RESET and "stream" in self._stack[-1].tag:
                     self._stack.clear()
-                    self.initial_stream()
                 elif signal == Signal.DONE:
                     self._stanzaHandler = StanzaServerHandler(self._buffer, self._connection_manager)
                     self._state = StreamState.READY
 
-    def characters(self, content: str) -> None:
-        if not self._stack:
-            raise Exception()
-
-        elem = self._stack[-1]
-        if len(elem) != 0:
-            child = elem[-1]
-            child.tail = (child.tail or '') + content
-
-        else:
-            elem.text = (elem.text or '') + content
-
-    def initial_stream(self):
-        initial_stream = Stream.Stream(
-            from_="158-42-154-74.traefik.me",
-            to=self._host,
-            xmlns=Stream.Namespaces.SERVER.value
-        )
-
-        initial_stream = initial_stream.open_tag()
-        self._buffer.write(initial_stream)

@@ -16,6 +16,7 @@ from pyjabber.utils import ClarkNotation as CN
 class mechanismEnum(Enum):
     PLAIN = "PLAIN"
     SCRAM_SHA_1 = "SCRAM-SHA-1"
+    EXTERNAL = "EXTERNAL"
 
 
 class Signal(Enum):

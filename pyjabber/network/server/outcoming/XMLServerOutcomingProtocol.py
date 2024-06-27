@@ -7,7 +7,7 @@ from xml import sax
 
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.XMLProtocol import XMLProtocol
-from pyjabber.network.server.incoming.XMLServerIncomingParser import XMLServerParser
+from pyjabber.network.server.outcoming.XMLServerOutcomingParser import XMLServerOutcomingParser
 from pyjabber.network.ConnectionManager import ConnectionManager
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
@@ -45,7 +45,12 @@ class XMLServerOutcomingProtocol(XMLProtocol):
             self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
             self._xml_parser.setFeature(sax.handler.feature_external_ges, False)
             self._xml_parser.setContentHandler(
-                XMLServerParser(self._transport, self.task_tls, self._connection_manager, self._host)
+                XMLServerOutcomingParser(
+                    self._transport,
+                    self.task_tls,
+                    self._connection_manager,
+                    self._queue_message,
+                    self._host)
             )
 
             if self._connection_timeout:
@@ -80,8 +85,8 @@ class XMLServerOutcomingProtocol(XMLProtocol):
     async def enable_tls(self):
         parser = self._xml_parser.getContentHandler()
 
-        certfile = "traefik.pem" if self._traefik_certs else "localhost.pem"
-        keyfile = "traefik-key.pem" if self._traefik_certs else "localhost-key.pem"
+        certfile = "_wildcard.spade.upv.es.pem" if self._traefik_certs else "localhost.pem"
+        keyfile = "_wildcard.spade.upv.es-key.pem" if self._traefik_certs else "localhost-key.pem"
 
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         if not self._enable_tls1_3:

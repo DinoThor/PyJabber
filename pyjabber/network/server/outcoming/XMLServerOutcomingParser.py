@@ -4,8 +4,8 @@ from xml.etree import ElementTree as ET
 from pyjabber.network.XMLParser import XMLParser
 from pyjabber.stream import Stream
 from pyjabber.stream.StreamHandler import Signal
-from pyjabber.stream.server.incoming.StanzaServerHandler import StanzaServerHandler
-from pyjabber.stream.server.incoming.StreamServerHandler import StreamServerHandler
+from pyjabber.stream.server.outcoming.StanzaServerOutcomingHandler import StanzaServerOutcomingHandler
+from pyjabber.stream.server.outcoming.StreamServerOutcomingHandler import StreamServerOutcomingHandler
 from pyjabber.utils import ClarkNotation as CN
 
 
@@ -15,10 +15,11 @@ class XMLServerOutcomingParser(XMLParser):
     Inheriting from sax.ContentHandler
     """
 
-    def __init__(self, buffer, starttls, connection_manager, host):
-        super().__init__(buffer, starttls, connection_manager)
+    def __init__(self, buffer, starttls, connection_manager, queue_message, host):
+        super().__init__(buffer, starttls, connection_manager, queue_message)
         self._host = host
-        self._streamHandler = StreamServerHandler(self._buffer, starttls, connection_manager)
+        self._streamHandler = StreamServerOutcomingHandler(self._buffer, starttls, connection_manager)
+        self.initial_stream()
 
     def startElementNS(self, name, qname, attrs):
         logger.debug(f"Start element NS: {name}")
@@ -63,7 +64,7 @@ class XMLServerOutcomingParser(XMLParser):
                     self._stack.clear()
                     self.initial_stream()
                 elif signal == Signal.DONE:
-                    self._stanzaHandler = StanzaServerHandler(self._buffer, self._connection_manager)
+                    self._stanzaHandler = StanzaServerOutcomingHandler(self._buffer, self._connection_manager)
                     self._state = self.StreamState.READY
 
     def initial_stream(self):

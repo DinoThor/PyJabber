@@ -82,10 +82,10 @@ class XMLParser(ContentHandler):
         elem = self._stack.pop()
 
         if elem.tag != CN.clarkFromTuple(name):
-            # TODO: INVALID STANZA/MESSAGE
+            # INVALID STANZA/MESSAGE
             raise Exception()
 
-        if "stream" not in self._stack[-1].tag:
+        if self._stack[-1].tag != '{http://etherx.jabber.org/streams}stream':
             self._stack[-1].append(elem)
 
         else:
@@ -94,7 +94,7 @@ class XMLParser(ContentHandler):
             else:
                 signal = self._streamHandler.handle_open_stream(elem)
                 if signal == Signal.RESET and "stream" in self._stack[-1].tag:
-                    self._stack.pop()
+                    self._stack.clear()
                 elif signal == Signal.DONE:
                     self._stanzaHandler = StanzaHandler(self._buffer, self._connection_manager, self._queue_message)
                     self._state = self.StreamState.READY

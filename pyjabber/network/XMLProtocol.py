@@ -5,6 +5,7 @@ import ssl
 from loguru import logger
 from xml import sax
 
+from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.XMLParser import XMLParser
 
@@ -23,7 +24,7 @@ class XMLProtocol(asyncio.Protocol):
         self._timeout_monitor = None
         self._loop = asyncio.get_event_loop()
         self._connection_timeout = connection_timeout
-        self._connection_manager = connection_manager
+        self._connection_manager: ConnectionManager = connection_manager
 
         self._enable_tls1_3 = enable_tls1_3
         self._traefik_certs = traefik_certs
@@ -140,8 +141,8 @@ class XMLProtocol(asyncio.Protocol):
         if not self._enable_tls1_3:
             ssl_context.options |= ssl.OP_NO_TLSv1_3
 
-        certfile = "traefik.pem" if self._traefik_certs else "localhost.pem"
-        keyfile = "traefik-key.pem" if self._traefik_certs else "localhost-key.pem"
+        certfile = "_wildcard.spade.upv.es.pem" if self._traefik_certs else "localhost.pem"
+        keyfile = "_wildcard.spade.upv.es-key.pem" if self._traefik_certs else "localhost-key.pem"
 
         ssl_context.load_cert_chain(
             certfile=os.path.join(FILE_AUTH, "certs", certfile),

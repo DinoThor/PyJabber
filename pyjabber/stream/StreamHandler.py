@@ -59,10 +59,6 @@ class StreamHandler:
 
     def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
         # TCP Connection opened
-        if elem is not None and elem.tag == "{jabber:server:dialback}result":
-            self._buffer.write(b"<stream:features><mechanisms xmlns='urn:ietf:params:xml:ns:xmpp-sasl'><mechanism>EXTERNAL</mechanism></mechanisms></stream:features>")
-            return
-
         if self._stage == Stage.CONNECTED:
             self._streamFeature.reset()
             self._streamFeature.register(StartTLSFeature())

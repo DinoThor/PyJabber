@@ -82,6 +82,20 @@ class Server:
 
         logger.info(f"Server is listening clients on {self._client_listener.sockets[0].getsockname()}")
 
+        # self._server_listener = await loop.create_server(
+        #     lambda: XMLServerIncomingProtocol(
+        #         namespace='jabber:server',
+        #         connection_timeout=self._connection_timeout,
+        #         connection_manager=self._connection_manager,
+        #         enable_tls1_3=self._enable_tls1_3,
+        #         traefik_certs=self._traefik_certs,
+        #         queue_message=self._queue_message
+        #     ),
+        #     host="158-42-154-74.traefik.me",
+        #     port=self._server_port,
+        #     family=self._family
+        # )
+
         self._server_listener = await loop.create_server(
             lambda: XMLServerIncomingProtocol(
                 namespace='jabber:server',
