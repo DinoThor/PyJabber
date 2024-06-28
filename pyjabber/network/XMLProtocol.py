@@ -5,46 +5,38 @@ import ssl
 from loguru import logger
 from xml import sax
 
+from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
-from pyjabber.network.XMLParser import XMPPStreamHandler
-from pyjabber.network.ConnectionsManager import ConectionsManager
+from pyjabber.network.XMLParser import XMLParser
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
 
+
 class XMLProtocol(asyncio.Protocol):
-    '''
+    """
     Protocol to manage the network connection between nodes in the XMPP network. Handles the transport layer.
-    '''
+    """
 
-    __slots__ = [
-        "_transport",
-        "_xmlns",
-        "_xml_parser",
-        "_connection_timeout",
-        "_timeout_monitor",
-        "_connections"
-    ]
+    def __init__(self, namespace, connection_timeout, connection_manager, traefik_certs, queue_message, enable_tls1_3=False):
+        self._xmlns = namespace
+        self._transport = None
+        self._xml_parser = None
+        self._timeout_monitor = None
+        self._loop = asyncio.get_event_loop()
+        self._connection_timeout = connection_timeout
+        self._connection_manager: ConnectionManager = connection_manager
 
-    def __init__(
-            self,
-            namespace               = "jabber:client",
-            connection_timeout      = None):
-
-        self._xmlns                 = namespace
-        self._transport             = None
-        self._xml_parser            = None
-        self._timeout_monitor       = None
-        self._connection_timeout    = connection_timeout
-        self._connections           = ConectionsManager()
-
+        self._enable_tls1_3 = enable_tls1_3
+        self._traefik_certs = traefik_certs
+        self._queue_message = queue_message
 
     def connection_made(self, transport):
-        '''
+        """
         Called when a client or another server opens a TCP connection to the server
 
         :param transport: The transport object for the connection
         :type transport: asyncio.Transport
-        '''
+        """
         if transport:
             self._transport = transport
 
@@ -52,45 +44,45 @@ class XMLProtocol(asyncio.Protocol):
             self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
             self._xml_parser.setFeature(sax.handler.feature_external_ges, False)
             self._xml_parser.setContentHandler(
-                XMPPStreamHandler(self._transport, self.taskTLS)
+                XMLParser(
+                    self._transport,
+                    self.task_tls,
+                    self._connection_manager,
+                    self._queue_message
+                )
             )
 
             if self._connection_timeout:
                 self._timeout_monitor = StreamAlivenessMonitor(
-                    timeout     = self._connection_timeout,
-                    callback    = self.connection_timeout
+                    timeout=self._connection_timeout,
+                    callback=self.connection_timeout
                 )
 
-            self._connections.connection(self._transport.get_extra_info('peername'))
+            self._connection_manager.connection(self._transport.get_extra_info('peername'))
 
             logger.info(f"Connection from {self._transport.get_extra_info('peername')}")
         else:
             logger.error("Invalid transport")
 
     def connection_lost(self, exc):
-        '''
+        """
         Called when a client or another server closes a TCP connection to the server
 
         :param exc: Exception that caused the connection to close
         :type exc: Exception
-        '''
-        try:
-            logger.info(f"Connection lost from {self._transport.get_extra_info('peername')}: Reason {exc}")
+        """
+        logger.info(f"Connection lost from {self._transport.get_extra_info('peername')}: Reason {exc}")
 
-            self._transport     = None
-            self._xml_parser    = None
-
-        except:
-            logger.info(f"Connection lost after EOF recived")
-
+        self._transport = None
+        self._xml_parser = None
 
     def data_received(self, data):
-        '''
+        """
         Called when data is received from the client or another server
 
         :param data: Chunk of data received
         :type data: Byte array
-        '''
+        """
         try:
             logger.debug(f"Data received: {data.decode()}")
         except:
@@ -108,62 +100,63 @@ class XMLProtocol(asyncio.Protocol):
         keeps refusing it. I'm forced to do always before the feed.
         I probably should change the parser
         '''
-        data = data.replace(b"<?xml version=\"1.0\"?>", b"")
+        data = data.replace(b"<?xml version=\'1.0\'?>", b"")
 
         self._xml_parser.feed(data)
 
-
-
     def eof_received(self):
-        '''
+        """
         Called when the client or another server sends an EOF
-        '''
+        """
         peer = self._transport.get_extra_info('peername')
 
         logger.debug(f"EOF received from {peer}")
 
-        self._connections.disconnection(peer)
-
-        self._transport     = None
-        self._xml_parser    = None
+        self._connection_manager.disconnection(peer)
 
     def connection_timeout(self):
-        '''
+        """
         Called when the stream is not responding for a long tikem
-        '''
+        """
         logger.debug(f"Connection timeout from {self._transport.get_extra_info('peername')}")
 
         self._transport.write("<connection-timeout/>".encode())
         self._transport.close()
 
-        self._transport     = None
-        self._xml_parser    = None
+        self._transport = None
+        self._xml_parser = None
 
     ###########################################################################
     ###########################################################################
     ###########################################################################
 
-    def taskTLS(self):
-        task = asyncio.get_running_loop().create_task(self.enableTLS())
-        task.add_done_callback(self.handleSTARTTLS)
+    def task_tls(self):
+        tls = self._loop.create_task(self.enable_tls())
+        self._loop.run_until_complete(tls)
 
-    async def enableTLS(self):
-        loop        = asyncio.get_running_loop()
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-        cert_file = os.path.join(FILE_AUTH, 'certs', 'localhost.pem')
-        key_file = os.path.join(FILE_AUTH, 'certs', 'localhost-key.pem')
-        ssl_context.load_cert_chain(cert_file, key_file)
+    async def enable_tls(self):
+        parser = self._xml_parser.getContentHandler()
 
-        return await loop.start_tls(
-                                transport   = self._transport,
-                                protocol    = self._transport.get_protocol(),
-                                sslcontext  = ssl_context,
-                                server_side = True)
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        if not self._enable_tls1_3:
+            ssl_context.options |= ssl.OP_NO_TLSv1_3
 
-    def handleSTARTTLS(self, task):
-        new_transport   = task.result()
+        certfile = "_wildcard.spade.upv.es.pem" if self._traefik_certs else "localhost.pem"
+        keyfile = "_wildcard.spade.upv.es-key.pem" if self._traefik_certs else "localhost-key.pem"
+
+        ssl_context.load_cert_chain(
+            certfile=os.path.join(FILE_AUTH, "certs", certfile),
+            keyfile=os.path.join(FILE_AUTH, "certs", keyfile),
+        )
+
+        new_transport = await self._loop.start_tls(
+            transport=self._transport,
+            protocol=self,
+            sslcontext=ssl_context,
+            server_side=True)
+
+        # self._transport.close()
         self._transport = new_transport
-        parser          = self._xml_parser.getContentHandler()
-        parser.buffer   = new_transport
-        logger.debug("Done TLS")
 
+        parser.buffer = self._transport
+        logger.debug(f"Done TLS")

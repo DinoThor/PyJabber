@@ -52,7 +52,7 @@ def invalid_xml() -> bytes:
         <invalid-xml
             xmlns='urn:ietf:params:xml:ns:xmpp-streams'/>
     </stream:error>
-    </stream:stream>    
+    </stream:stream>
     """
     return f"<stream:error><invalid-xml xmlns='{XMLNS}'/></stream:error></stream:stream>".encode()
 
@@ -79,7 +79,7 @@ def not_acceptable(text: str = None) -> bytes:
         return f"<error type='modify'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'><text>{text}</text></not-acceptable></error>".encode()
     else:
         return f"<error type='modify'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>".encode()
-         
+
 def not_authorized() -> bytes:
     """
     <failure xmlns='urn:ietf:params:xml:ns:xmpp-sasl'>
