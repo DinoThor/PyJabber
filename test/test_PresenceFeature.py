@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 import xml.etree.ElementTree as ET
-from pyjabber.features.PresenceFeature import Presence
+from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.stanzas.error import StanzaError as SE
 
 

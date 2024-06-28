@@ -73,7 +73,7 @@ def test_tobytes():
     feature = ET.Element("feature1")
     stream_feature.register(feature)
 
-    xml_bytes = stream_feature.tobytes()
+    xml_bytes = stream_feature.to_bytes()
 
     expected_bytes = b'<stream:features xmlns="http://etherx.jabber.org/streams"><feature1 /></stream:features>'
     assert xml_bytes == expected_bytes

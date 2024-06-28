@@ -34,7 +34,7 @@ def test_initialization_not_required():
 
 def test_proceed_response():
     starttls_feature = StartTLSFeature()
-    proceed_response = starttls_feature.proceedResponse()
+    proceed_response = starttls_feature.proceed_response()
     expected_response = b'<proceed xmlns="urn:ietf:params:xml:ns:xmpp-tls" />'
     assert proceed_response == expected_response
 

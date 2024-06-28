@@ -4,7 +4,7 @@ from xml.etree import ElementTree as ET
 from pyjabber.utils import ClarkNotation as CN
 from pyjabber.stream.StreamHandler import  Signal
 
-from pyjabber.network.ConnectionsManager import ConectionsManager
+from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.XMLParser import XMPPStreamHandler, StreamState
 
 
@@ -18,7 +18,7 @@ def test_initialization():
     assert handler._stanzaHandler is None
     assert handler._streamHandler is not None
     assert handler._stack == []
-    assert isinstance(handler._connectons, ConectionsManager)
+    assert isinstance(handler._connectons, ConnectionManager)
 
 
 def test_buffer_property():
