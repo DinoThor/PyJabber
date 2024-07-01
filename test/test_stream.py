@@ -2,16 +2,14 @@ import pytest
 from xml.etree.ElementTree import Element
 from pyjabber.stream.Stream import Namespaces, Stream, responseStream
 
-
 def test_namespaces_enum():
     assert Namespaces.XMLSTREAM.value == "http://etherx.jabber.org/streams"
     assert Namespaces.CLIENT.value == "jabber:client"
     assert Namespaces.SERVER.value == "jabber:server"
 
-
 def test_stream_initialization():
     stream = Stream(
-        id_='12345',
+        id='12345',
         from_='user@example.com',
         to='server@example.com',
         version='1.0',
@@ -27,10 +25,9 @@ def test_stream_initialization():
     assert stream.attrib['xmlns'] == Namespaces.CLIENT.value
     assert stream.attrib['xmlns:stream'] == Namespaces.XMLSTREAM.value
 
-
 def test_stream_open_tag():
     stream = Stream(
-        id_='12345',
+        id='12345',
         from_='user@example.com',
         to='server@example.com',
         version='1.0',
@@ -38,7 +35,6 @@ def test_stream_open_tag():
     )
     open_tag = stream.open_tag()
     assert open_tag == b"<stream:stream id='12345' from='user@example.com' to='server@example.com' version='1.0' xml:lang='en' xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams'>"
-
 
 def test_response_stream():
     attrs = {
