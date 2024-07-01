@@ -8,7 +8,7 @@ from pyjabber.server import Server
 
 
 @click.command
-@click.option('--host', type=str, default='localhost', show_default=True, help='Host name')
+@click.option('--host', type=str, help='Host name')
 @click.option('--client_port', type=int, default=5222, show_default=True, help='Server-to-client port')
 @click.option('--server_port', type=int, default=5269, show_default=True, help='Server-to-server port')
 @click.option('--family', type=click.Choice(['ipv4', 'ipv6'], case_sensitive=False), default='ipv4', show_default=True,
@@ -23,6 +23,9 @@ from pyjabber.server import Server
 def main(host, client_port, server_port, family, tls1_3, timeout, log_level, log_path, debug, spade):
     if log_path:
         log_file = open(os.path.join(log_path, "pyjabber.log"), 'w')
+
+    if not host:
+        host = socket.gethostname()
 
     logger.add(
         log_file if log_path else os.devnull,
@@ -39,7 +42,7 @@ def main(host, client_port, server_port, family, tls1_3, timeout, log_level, log
         family=socket.AF_INET if family == "ipv4" else socket.AF_INET6,
         connection_timeout=timeout,
         enable_tls1_3=tls1_3,
-        traefik_certs=spade
+        spade=spade
     )
 
     server.start(debug)
@@ -47,7 +50,7 @@ def main(host, client_port, server_port, family, tls1_3, timeout, log_level, log
     return 0
 
 
-"""Allow cookiecutter to be executable through `python -m vangare`."""
+"""Allow cookiecutter to be executable through `python -m pyjabber`."""
 
 if __name__ == "__main__":
     sys.exit(main())  # pragma: no cover

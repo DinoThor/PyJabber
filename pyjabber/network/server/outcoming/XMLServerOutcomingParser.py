@@ -1,10 +1,12 @@
+import urllib.request
+
 from loguru import logger
 from xml.etree import ElementTree as ET
 
 from pyjabber.network.XMLParser import XMLParser
 from pyjabber.stream import Stream
+from pyjabber.stream.StanzaHandler import StanzaHandler
 from pyjabber.stream.StreamHandler import Signal
-from pyjabber.stream.server.outcoming.StanzaServerOutcomingHandler import StanzaServerOutcomingHandler
 from pyjabber.stream.server.outcoming.StreamServerOutcomingHandler import StreamServerOutcomingHandler
 from pyjabber.utils import ClarkNotation as CN
 
@@ -15,10 +17,11 @@ class XMLServerOutcomingParser(XMLParser):
     Inheriting from sax.ContentHandler
     """
 
-    def __init__(self, buffer, starttls, connection_manager, queue_message, host):
+    def __init__(self, buffer, starttls, connection_manager, queue_message, host, my_host):
         super().__init__(buffer, starttls, connection_manager, queue_message)
         self._host = host
-        self._streamHandler = StreamServerOutcomingHandler(self._buffer, starttls, connection_manager)
+        self._my_host = my_host
+        self._streamHandler = StreamServerOutcomingHandler(self._buffer, starttls, connection_manager, my_host)
         self.initial_stream()
 
     def startElementNS(self, name, qname, attrs):
@@ -64,12 +67,12 @@ class XMLServerOutcomingParser(XMLParser):
                     self._stack.clear()
                     self.initial_stream()
                 elif signal == Signal.DONE:
-                    self._stanzaHandler = StanzaServerOutcomingHandler(self._buffer, self._connection_manager)
+                    self._stanzaHandler = StanzaHandler(self._buffer, self._connection_manager, None)
                     self._state = self.StreamState.READY
 
     def initial_stream(self):
         initial_stream = Stream.Stream(
-            from_="158-42-154-74.traefik.me",
+            from_=self._my_host,
             to=self._host,
             xmlns=Stream.Namespaces.SERVER.value
         )
