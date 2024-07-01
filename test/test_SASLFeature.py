@@ -37,7 +37,7 @@ def db_connection_factory(setup_database):
     return factory
 
 
-@patch('pyjabber.network.ConnectionsManager.ConectionsManager')
+@patch('pyjabber.network.ConnectionManager.ConnectionManager')
 def test_handle_auth_success(MockConnectionsManager, db_connection_factory):
     sasl = SASL()
     sasl._connections = MockConnectionsManager()
@@ -51,7 +51,7 @@ def test_handle_auth_success(MockConnectionsManager, db_connection_factory):
     assert result == (Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")
 
 
-@patch('pyjabber.network.ConnectionsManager.ConectionsManager')
+@patch('pyjabber.network.ConnectionManager.ConnectionManager')
 def test_handle_auth_failure(MockConnectionsManager, db_connection_factory):
     sasl = SASL()
     sasl._connections = MockConnectionsManager()
