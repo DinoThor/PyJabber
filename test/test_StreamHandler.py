@@ -1,10 +1,9 @@
-from base64 import b64encode
-
 import pytest
 from unittest.mock import Mock, MagicMock, patch
 from xml.etree import ElementTree as ET
+from base64 import b64encode
 from hashlib import sha256
-from uuid import UUID
+from uuid import uuid4
 from pyjabber.utils import ClarkNotation as CN
 from pyjabber.stream.StreamHandler import Stage, Signal, StreamHandler
 
@@ -17,50 +16,50 @@ def test_stage_enum():
     assert Stage.BIND.value == 5
     assert Stage.READY.value == 6
 
-
 def test_signal_enum():
     assert Signal.RESET.value == 0
     assert Signal.DONE.value == 1
 
-
 def test_stream_handler_initialization():
     buffer = Mock()
     starttls = Mock()
-    handler = StreamHandler(buffer, starttls)
+    connection_manager = Mock()
+    handler = StreamHandler(buffer, starttls, connection_manager)
 
     assert handler._buffer == buffer
     assert handler._starttls == starttls
+    assert handler._connections == connection_manager
     assert handler._stage == Stage.CONNECTED
     assert handler._elem is None
     assert handler._jid is None
 
-
 def test_stream_handler_buffer_property():
     buffer = Mock()
     starttls = Mock()
-    handler = StreamHandler(buffer, starttls)
+    connection_manager = Mock()
+    handler = StreamHandler(buffer, starttls, connection_manager)
 
     new_buffer = Mock()
     handler.buffer = new_buffer
 
     assert handler.buffer == new_buffer
 
-
 def test_handle_open_stream_connected():
     buffer = MagicMock()
     starttls = Mock()
-    handler = StreamHandler(buffer, starttls)
+    connection_manager = Mock()
+    handler = StreamHandler(buffer, starttls, connection_manager)
 
     handler.handle_open_stream()
 
     assert handler._stage == Stage.OPENED
     buffer.write.assert_called_once()
 
-
 def test_handle_open_stream_opened():
     buffer = MagicMock()
     starttls = Mock()
-    handler = StreamHandler(buffer, starttls)
+    connection_manager = Mock()
+    handler = StreamHandler(buffer, starttls, connection_manager)
     handler._stage = Stage.OPENED
 
     elem = ET.Element("starttls")
@@ -71,11 +70,11 @@ def test_handle_open_stream_opened():
     buffer.write.assert_called_once()
     starttls.assert_called_once()
 
-
 def test_handle_open_stream_ssl():
     buffer = MagicMock()
     starttls = Mock()
-    handler = StreamHandler(buffer, starttls)
+    connection_manager = Mock()
+    handler = StreamHandler(buffer, starttls, connection_manager)
     handler._stage = Stage.SSL
 
     handler.handle_open_stream()
@@ -83,15 +82,16 @@ def test_handle_open_stream_ssl():
     assert handler._stage == Stage.SASL
     buffer.write.assert_called_once()
 
-
 from pyjabber.features.SASLFeature import SASL, connection
+
 
 @patch('pyjabber.features.SASLFeature.connection')
 @patch('pyjabber.stream.StreamHandler.SASL')
 def test_handle_open_stream_sasl_continue(mock_sasl, mock_connection):
     buffer = MagicMock()
     starttls = Mock()
-    handler = StreamHandler(buffer, starttls)
+    connection_manager = Mock()
+    handler = StreamHandler(buffer, starttls, connection_manager)
     handler._stage = Stage.SASL
 
     password = b'password'
@@ -124,7 +124,8 @@ def test_handle_open_stream_sasl_continue(mock_sasl, mock_connection):
 def test_handle_open_stream_auth():
     buffer = MagicMock()
     starttls = Mock()
-    handler = StreamHandler(buffer, starttls)
+    connection_manager = Mock()
+    handler = StreamHandler(buffer, starttls, connection_manager)
     handler._stage = Stage.AUTH
 
     handler.handle_open_stream()
@@ -132,11 +133,11 @@ def test_handle_open_stream_auth():
     assert handler._stage == Stage.BIND
     buffer.write.assert_called_once()
 
-
 def test_handle_open_stream_bind(monkeypatch):
     buffer = MagicMock()
     starttls = Mock()
-    handler = StreamHandler(buffer, starttls)
+    connection_manager = Mock()
+    handler = StreamHandler(buffer, starttls, connection_manager)
     handler._stage = Stage.BIND
 
     iq_elem = ET.Element("iq", attrib={"type": "set", "id": "123"})
@@ -146,7 +147,7 @@ def test_handle_open_stream_bind(monkeypatch):
 
     connections = Mock()
     handler._connections = connections
-    connections.get_jid_by_peer.return_value = "user"
+    connections.get_jid.return_value = "user"
 
     clark_notation_bind = CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "bind"))
     bind_elem_found = iq_elem.find(clark_notation_bind)
@@ -157,7 +158,7 @@ def test_handle_open_stream_bind(monkeypatch):
     assert result == Signal.DONE
     buffer.write.assert_called_once()
 
-    connections.get_jid_by_peer.assert_called_once_with(buffer.get_extra_info('peername'))
+    connections.get_jid.assert_called_once_with(buffer.get_extra_info('peername'))
     connections.set_jid.assert_called_once_with(
         buffer.get_extra_info('peername'),
         'user@localhost/resource_id',
