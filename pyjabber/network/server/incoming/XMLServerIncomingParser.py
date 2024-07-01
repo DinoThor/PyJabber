@@ -5,7 +5,7 @@ from xml.etree import ElementTree as ET
 from pyjabber.network.XMLParser import XMLParser
 from pyjabber.stream import Stream
 from pyjabber.stream.StreamHandler import Signal
-from pyjabber.stream.server.incoming.StanzaServerIncomingHandler import StanzaServerHandler
+from pyjabber.stream.server.incoming.StanzaServerIncomingHandler import StanzaServerIncomingHandler
 from pyjabber.stream.server.incoming.StreamServerIncomingHandler import StreamServerIncomingHandler
 from pyjabber.utils import ClarkNotation as CN
 
@@ -79,6 +79,5 @@ class XMLServerIncomingParser(XMLParser):
                 if signal == Signal.RESET and "stream" in self._stack[-1].tag:
                     self._stack.clear()
                 elif signal == Signal.DONE:
-                    self._stanzaHandler = StanzaServerHandler(self._buffer, self._connection_manager)
+                    self._stanzaHandler = StanzaServerIncomingHandler(self._buffer, self._connection_manager)
                     self._state = StreamState.READY
-

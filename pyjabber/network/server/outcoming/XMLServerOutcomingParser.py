@@ -1,5 +1,3 @@
-import urllib.request
-
 from loguru import logger
 from xml.etree import ElementTree as ET
 
