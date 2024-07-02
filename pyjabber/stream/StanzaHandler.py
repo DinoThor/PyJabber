@@ -1,5 +1,6 @@
 import os
 import pickle
+import re
 import xml.etree.ElementTree as ET
 
 import xmlschema
@@ -68,7 +69,7 @@ class StanzaHandler:
         """
         bare_jid = element.attrib["to"].split("/")[0]
 
-        if False:  # re.match(r'^.+@localhost$', bare_jid):
+        if re.match(r'^.+@' + socket.gethostname() + r'$', bare_jid):
             for buffer in self._connections.get_buffer(bare_jid):
                 buffer[-1].write(ET.tostring(element))
 

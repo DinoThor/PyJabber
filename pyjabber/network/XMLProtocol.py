@@ -147,11 +147,16 @@ class XMLProtocol(asyncio.Protocol):
             keyfile=os.path.join(FILE_AUTH, "certs", "domain_key.pem"),
         )
 
-        new_transport = await self._loop.start_tls(
-            transport=self._transport,
-            protocol=self,
-            sslcontext=ssl_context,
-            server_side=True)
+        try:
+            new_transport = await self._loop.start_tls(
+                transport=self._transport,
+                protocol=self,
+                sslcontext=ssl_context,
+                server_side=True)
+        except Exception as e:
+            logger.error("TLS handshake failed. Closing connection")
+            self.connection_lost(e)
+            return
 
         # self._transport.close()
         self._transport = new_transport

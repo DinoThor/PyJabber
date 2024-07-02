@@ -1,46 +1,98 @@
-from OpenSSL import SSL, crypto
+import os
+import socket
+from loguru import logger
+
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
+import datetime
 
 
-def cert_gen(
-    # emailAddress="emailAddress",
-    commonName="commonName",
-    countryName="NT",
-    localityName="localityName",
-    stateOrProvinceName="stateOrProvinceName",
-    organizationName="organizationName",
-    organizationUnitName="organizationUnitName",
-    serialNumber=0,
-    validityStartInSeconds=0,
-    validityEndInSeconds=10 * 365 * 24 * 60 * 60,
-    KEY_FILE="private.key",
-        CERT_FILE="selfsigned.crt"):
-    # can look at generated file using openssl:
-    # openssl x509 -inform pem -in selfsigned.crt -noout -text
-    # create a key pair
-    k = crypto.PKey()
-    k.generate_key(crypto.TYPE_RSA, 4096)
-    # create a self-signed cert
-    cert = crypto.X509()
-    cert.get_subject().C = countryName
-    cert.get_subject().ST = stateOrProvinceName
-    cert.get_subject().L = localityName
-    cert.get_subject().O = organizationName
-    cert.get_subject().OU = organizationUnitName
-    cert.get_subject().CN = commonName
-    cert.get_subject().emailAddress = emailAddress
-    cert.set_serial_number(serialNumber)
-    cert.gmtime_adj_notBefore(validityStartInSeconds)
-    cert.gmtime_adj_notAfter(validityEndInSeconds)
-    cert.set_issuer(cert.get_subject())
-    cert.set_pubkey(k)
-    cert.sign(k, 'sha512')
-    with open(CERT_FILE, "wt") as f:
-        f.write(
-            crypto.dump_certificate(
-                crypto.FILETYPE_PEM,
-                cert).decode("utf-8"))
-    with open(KEY_FILE, "wt") as f:
-        f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, k).decode("utf-8"))
+def check_hostname_cert_exists(host: str):
+    previous_path = os.getcwd()
+    file_path = os.path.dirname(os.path.abspath(__file__))
+
+    os.chdir(os.path.join(file_path, "certs"))
+
+    for file in [f"{host}_key.pem", f"{host}_csr.pem", f"{host}_cert.pem"]:
+        if os.path.isfile(file) is False:
+            os.chdir(os.path.join(previous_path))
+            logger.debug("Missing hostname certificate")
+            return False
+
+    os.chdir(os.path.join(previous_path))
+    return True
 
 
-cert_gen()
+def generate_hostname_cert(host):
+    logger.debug("Generating hostname certificate")
+    previous_path = os.getcwd()
+    file_path = os.path.dirname(os.path.abspath(__file__))
+
+    os.chdir(os.path.join(file_path, "certs"))
+
+    for file in [f"{host}_key.pem", f"{host}_csr.pem", f"{host}_cert.pem"]:
+        if os.path.isfile(file):
+            os.remove(file)
+
+    domain_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048,
+        backend=default_backend()
+    )
+
+    with open(f"{host}_key.pem", "wb") as f:
+        f.write(domain_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption()
+        ))
+
+    domain_name = socket.gethostname()
+    csr = x509.CertificateSigningRequestBuilder().subject_name(x509.Name([
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"Spade"),
+        x509.NameAttribute(NameOID.COMMON_NAME, domain_name),
+    ])).add_extension(
+        x509.SubjectAlternativeName([x509.DNSName(domain_name)]),
+        critical=False,
+    ).sign(domain_key, hashes.SHA256(), default_backend())
+
+    with open(f"{host}_csr.pem", "wb") as f:
+        f.write(csr.public_bytes(serialization.Encoding.PEM))
+
+    with open("ca_key.pem", "rb") as f:
+        ca_key = serialization.load_pem_private_key(
+            f.read(),
+            password=None,
+            backend=default_backend()
+        )
+
+    with open("ca_cert.pem", "rb") as f:
+        ca_cert = x509.load_pem_x509_certificate(f.read(), default_backend())
+
+    domain_cert = x509.CertificateBuilder().subject_name(
+        csr.subject
+    ).issuer_name(
+        ca_cert.subject
+    ).public_key(
+        csr.public_key()
+    ).serial_number(
+        x509.random_serial_number()
+    ).not_valid_before(
+        datetime.datetime.utcnow()
+    ).not_valid_after(
+        datetime.datetime.utcnow() + datetime.timedelta(days=365 * 10)
+    ).add_extension(
+        x509.SubjectAlternativeName([x509.DNSName(domain_name)]),
+        critical=False,
+    ).sign(ca_key, hashes.SHA256(), default_backend())
+
+    with open(f"{host}_cert.pem", "wb") as f:
+        f.write(domain_cert.public_bytes(serialization.Encoding.PEM))
+
+    os.chdir(previous_path)
+
+    logger.debug(f"Certificate generated for => {socket.gethostname()}")

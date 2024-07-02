@@ -20,7 +20,7 @@ class QueueMessage(metaclass=Singleton):
 
     async def chrono(self):
         while len(self._queue) > 0:
-            await asyncio.sleep(1)
+            await asyncio.sleep(5)
             for host, element in self._queue:
                 buffer = self._connection_manager.get_server_buffer(host)
                 if buffer:

@@ -1,8 +1,10 @@
+import asyncio
 from enum import Enum
 from typing import Union
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
+from loguru import logger
 
 from pyjabber.features import InBandRegistration as IBR
 from pyjabber.features.ResourceBinding import ResourceBinding
@@ -142,8 +144,7 @@ class StreamHandler:
 
                     jidRes = ET.SubElement(bindRes, "jid")
 
-                    currentJid = self._connections.get_jid(
-                        self._buffer.get_extra_info('peername'))
+                    currentJid = self._connection_manager.get_jid(self._buffer.get_extra_info('peername'))
                     jidRes.text = f"{currentJid}@localhost/{resource_id}"
 
                     self._buffer.write(ET.tostring(iqRes))
@@ -151,7 +152,7 @@ class StreamHandler:
                     # Stream is negotiated.
                     # Update the connection register
                     # with the jid and transport
-                    self._connections.set_jid(
+                    self._connection_manager.set_jid(
                         self._buffer.get_extra_info('peername'),
                         jidRes.text, self._buffer
                     )

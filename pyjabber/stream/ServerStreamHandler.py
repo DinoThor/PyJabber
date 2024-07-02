@@ -3,6 +3,7 @@ from typing import Union
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
+from loguru import logger
 
 from pyjabber.features import InBandRegistration as IBR
 from pyjabber.features.ResourceBinding import ResourceBinding
