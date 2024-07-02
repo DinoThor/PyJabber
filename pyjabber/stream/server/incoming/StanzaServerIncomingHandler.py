@@ -1,13 +1,10 @@
 import os
 import pickle
 import xml.etree.ElementTree as ET
-
 import xmlschema
 
 from pyjabber.features.presence.PresenceFeature import Presence
-from pyjabber.plugins.PluginManager import PluginManager
 from pyjabber.stanzas.error import StanzaError as SE
-from pyjabber.utils import ClarkNotation as CN
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
