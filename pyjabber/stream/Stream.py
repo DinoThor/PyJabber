@@ -1,7 +1,6 @@
 import enum
-import xml.etree.ElementTree as ET
 from uuid import uuid4
-
+import xml.etree.ElementTree as ET
 
 class Namespaces(enum.Enum):
     '''
@@ -21,12 +20,12 @@ class Stream(ET.Element):
 
     def __init__(
             self,
-            id=None,
-            from_=None,
-            to=None,
-            version="1.0",
-            xml_lang="en",
-            xmlns=Namespaces.CLIENT.value):
+            id         = None,
+            from_       = None,
+            to          = None,
+            version     = "1.0",
+            xml_lang    = "en",
+            xmlns       = Namespaces.CLIENT.value):
 
         if not id:
             id = str(uuid4())
@@ -52,22 +51,21 @@ class Stream(ET.Element):
         tag += '>'
         return tag.encode()
 
-
 def responseStream(attrs):
     attrs = dict(attrs)
 
-    id = str(uuid4())
-    from_ = attrs.pop((None, "from"), None)
-    to = attrs.pop((None, "to"), None)
+    id      = str(uuid4())
+    from_   = attrs.pop((None, "from"), None)
+    to      = attrs.pop((None, "to"), None)
     version = attrs.pop((None, "version"), "1.0")
-    lang = attrs.pop(("http://www.w3.org/XML/1998/namespace", "lang"), None)
+    lang    = attrs.pop(("http://www.w3.org/XML/1998/namespace", "lang"), None)
 
     stream = Stream(
-        id=id,
-        from_=to,
-        to=from_,
-        version=version,
-        xml_lang=lang
+        id          = id,
+        from_       = to,
+        to          = from_,
+        version     = version,
+        xml_lang    = lang
     )
 
     return stream.open_tag()
