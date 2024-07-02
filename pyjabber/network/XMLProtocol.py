@@ -101,6 +101,7 @@ class XMLProtocol(asyncio.Protocol):
         I probably should change the parser
         '''
         data = data.replace(b"<?xml version=\'1.0\'?>", b"")
+        data = data.replace(b"<?xml version=\"1.0\"?>", b"")
 
         self._xml_parser.feed(data)
 
