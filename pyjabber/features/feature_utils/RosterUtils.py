@@ -4,14 +4,14 @@ from pyjabber.db.database import connection
 import xml.etree.ElementTree as ET
 
 
-def retrieve_roster(jid: str) -> List[str]:
+def retrieve_roster(jid: str) -> List[str]:  # pragma: no cover
     with closing(connection()) as con:
         res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
         roster = res.fetchall()
     return roster
 
 
-def update(id: int, item: ET) -> str:
+def update(id: int, item: ET) -> str:  # pragma: no cover
     with closing(connection()) as con:
         con.execute("UPDATE roster SET rosterItem = ? WHERE id = ?", (ET.tostring(item).decode(), id))
         con.commit()

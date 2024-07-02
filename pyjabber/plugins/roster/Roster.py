@@ -8,7 +8,7 @@ from pyjabber.stanzas.IQ import IQ
 
 
 class Roster(Plugin):
-    def __init__(self, jid: str) -> None:
+    def __init__(self, jid: str, db_connection_factory=None) -> None:
         self._jid = jid
         self._handlers = {
             "get": self.handle_get,
@@ -20,6 +20,7 @@ class Roster(Plugin):
             "query": "{jabber:iq:roster}query",
             "item": "{jabber:iq:roster}item"
         }
+        self._db_connection_factory = db_connection_factory or connection
 
     def feed(self, element: ET.Element):
         if len(element) != 1:
@@ -33,7 +34,7 @@ class Roster(Plugin):
     def handle_get(self, element: ET.Element):
         jid = self._jid.split("/")[0]
         try:
-            with closing(connection()) as con:
+            with closing(self._db_connection_factory()) as con:
                 res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
                 roster = res.fetchall()
 
@@ -72,18 +73,17 @@ class Roster(Plugin):
         if "subscription" in new_item.attrib.keys():
             remove = new_item.attrib["subscription"] == "remove"
 
-        with closing(connection()) as con:
+        with closing(self._db_connection_factory()) as con:
             res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
             res = res.fetchall()
 
-        roster = res
-        roster = [ET.fromstring(r[-1]) for r in roster]
-        match_item = [i for i in roster if i.attrib["jid"] == new_item.attrib["jid"]]
+            roster = res
+            roster = [ET.fromstring(r[-1]) for r in roster]
+            match_item = [i for i in roster if i.attrib["jid"] == new_item.attrib["jid"]]
 
-        if match_item:
-            # Delete roster item
-            if remove:
-                with closing(connection()) as con:
+            if match_item:
+                # Delete roster item
+                if remove:
                     con.execute("""
                                 DELETE FROM roster
                                 WHERE jid = ? AND rosterItem = ?
@@ -92,9 +92,7 @@ class Roster(Plugin):
                                  ET.tostring(match_item[0]).decode()))
                     con.commit()
 
-            else:
-                # Update roster item
-                with closing(connection()) as con:
+                else:
                     con.execute("""
                                 UPDATE roster
                                 SET rosterItem = ?
@@ -105,23 +103,22 @@ class Roster(Plugin):
                                  ET.tostring(match_item[0])))
                     con.commit()
 
-        else:
-            # New roster item
-            if not remove:
-                with closing(connection()) as con:
+
+            else:
+                if not remove:
                     con.execute("INSERT INTO roster(jid, rosterItem) VALUES (?, ?)",
                                 (jid, ET.tostring(new_item).decode()))
                     con.commit()
 
-        res = ET.Element(
-            "iq",
-            attrib={
-                "id": element.attrib["id"],
-                "type": "result"
-            }
-        )
+            res = ET.Element(
+                "iq",
+                attrib={
+                    "id": element.attrib["id"],
+                    "type": "result"
+                }
+            )
 
-        return ET.tostring(res)
+            return ET.tostring(res)
 
     def handle_result(self, element: ET.Element):
         # It's safe to ignore this stanza

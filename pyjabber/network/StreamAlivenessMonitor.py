@@ -17,9 +17,11 @@ class StreamAlivenessMonitor:
             self._timeout_task.cancel()
 
     async def _timeout_task_coro(self):
-        await asyncio.wait_for([self._reset_event.wait()], timeout=self._timeout)
-        if self._timeout_callback is not None:
-            self._timeout_callback()
+        try:
+            await asyncio.wait_for(self._reset_event.wait(), timeout=self._timeout)
+        except asyncio.TimeoutError:
+            if self._timeout_callback is not None:
+                self._timeout_callback()
 
     def reset(self):
         if self._timeout_task is not None:
