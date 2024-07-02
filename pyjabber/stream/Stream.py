@@ -2,6 +2,7 @@ import enum
 from uuid import uuid4
 import xml.etree.ElementTree as ET
 
+
 class Namespaces(enum.Enum):
     '''
     Defines the available namespaces in the protocol.
@@ -12,30 +13,29 @@ class Namespaces(enum.Enum):
 
 
 class Stream(ET.Element):
-
     class Namespaces(enum.Enum):
         XMLSTREAM = "http://etherx.jabber.org/streams"
         CLIENT = "jabber:client"
         SERVER = "jabber:server"
 
     def __init__(
-            self, 
-            id         = None, 
-            from_       = None, 
-            to          = None, 
-            version     = "1.0", 
-            xml_lang    = "en", 
-            xmlns       = Namespaces.CLIENT.value):
-        
+        self,
+        id=None,
+        from_=None,
+        to=None,
+        version="1.0",
+        xml_lang="en",
+        xmlns=Namespaces.CLIENT.value):
+
         if not id:
             id = str(uuid4())
-        
+
         attrib = {
             k: v for k, v in (
-                ("id", id), 
-                ("from", from_), 
-                ("to", to), 
-                ("version", version), 
+                ("id", id),
+                ("from", from_),
+                ("to", to),
+                ("version", version),
                 ("xml:lang", xml_lang),
                 ("xmlns", xmlns)) if v is not None
         }
@@ -51,21 +51,22 @@ class Stream(ET.Element):
         tag += '>'
         return tag.encode()
 
+
 def responseStream(attrs):
     attrs = dict(attrs)
 
-    id      = str(uuid4())
-    from_   = attrs.pop((None, "from"), None)
-    to      = attrs.pop((None, "to"), None)
+    id = str(uuid4())
+    from_ = attrs.pop((None, "from"), None)
+    to = attrs.pop((None, "to"), None)
     version = attrs.pop((None, "version"), "1.0")
-    lang    = attrs.pop(("http://www.w3.org/XML/1998/namespace", "lang"), None)
+    lang = attrs.pop(("http://www.w3.org/XML/1998/namespace", "lang"), None)
 
     stream = Stream(
-        id          = id,
-        from_       = to,
-        to          = from_,
-        version     = version,
-        xml_lang    = lang
+        id=id,
+        from_=to,
+        to=from_,
+        version=version,
+        xml_lang=lang
     )
 
     return stream.open_tag()

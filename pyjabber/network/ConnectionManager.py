@@ -140,6 +140,16 @@ class ConnectionManager(metaclass=Singleton):
 
         self._task_s2s(host)
 
+    def get_server_host(self, peer: Tuple[str, int]):
+        """
+            Return the host associated with the given peer.
+            :return: Hostname
+        """
+        try:
+            return self._remoteList[peer]["host"]
+        except KeyError:
+            return None
+
     def set_server_transport(self, peer: Tuple[str, int], transport: Transport) -> Union[None, bool]:
         """
             Set/update the transport of a registered server connection.
@@ -149,6 +159,18 @@ class ConnectionManager(metaclass=Singleton):
         """
         try:
             self._remoteList[peer][self.TRANSPORT] = transport
+        except KeyError:
+            return False
+
+    def set_server_host(self, peer: Tuple[str, int], host: str):
+        """
+            Set/update the host of a registered server connection.
+
+            :param peer: The peer value in the tuple format ({IP}, {PORT})
+            :param host: New host name
+        """
+        try:
+            self._remoteList[peer]["host"] = host
         except KeyError:
             return False
 

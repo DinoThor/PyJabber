@@ -1,3 +1,4 @@
+import socket
 from enum import Enum
 from typing import Union
 from uuid import uuid4
@@ -135,7 +136,7 @@ class StreamHandler:
                     jidRes = ET.SubElement(bindRes, "jid")
 
                     currentJid = self._connection_manager.get_jid(self._buffer.get_extra_info('peername'))
-                    jidRes.text = f"{currentJid}@localhost/{resource_id}"
+                    jidRes.text = f"{currentJid}@{socket.gethostname()}/{resource_id}"
 
                     self._buffer.write(ET.tostring(iqRes))
 
