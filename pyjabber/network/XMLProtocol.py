@@ -17,7 +17,7 @@ class XMLProtocol(asyncio.Protocol):
     Protocol to manage the network connection between nodes in the XMPP network. Handles the transport layer.
     """
 
-    def __init__(self, namespace, connection_timeout, connection_manager, traefik_certs, queue_message, enable_tls1_3=False):
+    def __init__(self, namespace, connection_timeout, connection_manager, spade, queue_message, enable_tls1_3=False):
         self._xmlns = namespace
         self._transport = None
         self._xml_parser = None
@@ -27,7 +27,7 @@ class XMLProtocol(asyncio.Protocol):
         self._connection_manager: ConnectionManager = connection_manager
 
         self._enable_tls1_3 = enable_tls1_3
-        self._traefik_certs = traefik_certs
+        self._spade = spade
         self._queue_message = queue_message
 
     def connection_made(self, transport):
@@ -101,6 +101,7 @@ class XMLProtocol(asyncio.Protocol):
         I probably should change the parser
         '''
         data = data.replace(b"<?xml version=\'1.0\'?>", b"")
+        data = data.replace(b"<?xml version=\"1.0\"?>", b"")
 
         self._xml_parser.feed(data)
 
@@ -141,12 +142,9 @@ class XMLProtocol(asyncio.Protocol):
         if not self._enable_tls1_3:
             ssl_context.options |= ssl.OP_NO_TLSv1_3
 
-        certfile = "_wildcard.spade.upv.es.pem" if self._traefik_certs else "localhost.pem"
-        keyfile = "_wildcard.spade.upv.es-key.pem" if self._traefik_certs else "localhost-key.pem"
-
         ssl_context.load_cert_chain(
-            certfile=os.path.join(FILE_AUTH, "certs", certfile),
-            keyfile=os.path.join(FILE_AUTH, "certs", keyfile),
+            certfile=os.path.join(FILE_AUTH, "certs", "domain_cert.pem"),
+            keyfile=os.path.join(FILE_AUTH, "certs", "domain_key.pem"),
         )
 
         new_transport = await self._loop.start_tls(

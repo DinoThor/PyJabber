@@ -25,12 +25,13 @@ class Signal(Enum):
 
 
 class SASL(FeatureInterface):
-    def __init__(self,db_connection_factory=connection()):
+    def __init__(self, connection_manager, db_connection_factory=connection):
         self._handlers = {
             "iq": self.handleIQ,
             "auth": self.handleAuth
         }
         self._ns = "jabber:iq:register"
+        self._connection_manager = connection_manager
         self._db_connection_factory = db_connection_factory
         self._peername = None
 
@@ -77,7 +78,7 @@ class SASL(FeatureInterface):
             hash_pwd = res.fetchone()
 
         if hash_pwd and hash_pwd[0] == keyhash:
-            self._connections.set_jid(self._peername, jid)
+            self._connection_manager.set_jid(self._peername, jid)
             return Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>"
 
         return SE.not_authorized()

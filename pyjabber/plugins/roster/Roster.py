@@ -1,6 +1,4 @@
-from enum import Enum
 import xml.etree.ElementTree as ET
-from typing import List
 from contextlib import closing
 
 from pyjabber.db.database import connection

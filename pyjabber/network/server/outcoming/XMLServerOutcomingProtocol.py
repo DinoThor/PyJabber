@@ -8,7 +8,6 @@ from xml import sax
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.XMLProtocol import XMLProtocol
 from pyjabber.network.server.outcoming.XMLServerOutcomingParser import XMLServerOutcomingParser
-from pyjabber.network.ConnectionManager import ConnectionManager
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
 
@@ -22,14 +21,16 @@ class XMLServerOutcomingProtocol(XMLProtocol):
         self,
         namespace,
         host,
+        my_host,
         connection_manager,
         queue_message,
-        traefik_certs=False,
+        spade=False,
         enable_tls1_3=False,
         connection_timeout=None):
 
-        super().__init__(namespace, connection_timeout, connection_manager, traefik_certs, queue_message, enable_tls1_3)
+        super().__init__(namespace, connection_timeout, connection_manager, spade, queue_message, enable_tls1_3)
         self._host = host
+        self._my_host = my_host
 
     def connection_made(self, transport):
         """
@@ -50,7 +51,9 @@ class XMLServerOutcomingProtocol(XMLProtocol):
                     self.task_tls,
                     self._connection_manager,
                     self._queue_message,
-                    self._host)
+                    self._host,
+                    self._my_host
+                )
             )
 
             if self._connection_timeout:
@@ -85,16 +88,13 @@ class XMLServerOutcomingProtocol(XMLProtocol):
     async def enable_tls(self):
         parser = self._xml_parser.getContentHandler()
 
-        certfile = "_wildcard.spade.upv.es.pem" if self._traefik_certs else "localhost.pem"
-        keyfile = "_wildcard.spade.upv.es-key.pem" if self._traefik_certs else "localhost-key.pem"
-
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         if not self._enable_tls1_3:
             ssl_context.options |= ssl.OP_NO_TLSv1_3
 
         ssl_context.load_cert_chain(
-            certfile=os.path.join(FILE_AUTH, "..", "..", "certs", certfile),
-            keyfile=os.path.join(FILE_AUTH, "..", "..", "certs", keyfile),
+            certfile=os.path.join(FILE_AUTH, "..", "..", "certs", "traefik.pem"),
+            keyfile=os.path.join(FILE_AUTH, "..", "..", "certs", "traefik-key.pem"),
         )
 
         new_transport = await self._loop.start_tls(

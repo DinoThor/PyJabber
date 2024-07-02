@@ -8,6 +8,7 @@ PyJabber
    readme
    installation
    architecture
+   spade
    modules
    contributing
    authors

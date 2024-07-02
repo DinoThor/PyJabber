@@ -18,7 +18,7 @@ def test_connection_made(mock_connections_manager, mock_make_parser):
     namespace = "jabber:client"
     connection_timeout = 30
     connection_manager = mock_connections_manager.return_value
-    traefik_certs = False
+    spade = False
     queue_message = MagicMock()
 
     with patch('pyjabber.network.XMLProtocol.XMLParser', return_value=mock_handler):
@@ -26,7 +26,7 @@ def test_connection_made(mock_connections_manager, mock_make_parser):
             namespace=namespace,
             connection_timeout=connection_timeout,
             connection_manager=connection_manager,
-            traefik_certs=traefik_certs,
+            spade=spade,
             queue_message=queue_message
         )
         protocol.connection_made(mock_transport)
@@ -47,7 +47,7 @@ def test_connection_made_with_timeout(mock_monitor):
     namespace = "jabber:client"
     connection_timeout = 30
     connection_manager = MagicMock()
-    traefik_certs = False
+    spade = False
     queue_message = MagicMock()
 
     with patch('pyjabber.network.XMLProtocol.sax.make_parser', return_value=mock_parser):
@@ -55,7 +55,7 @@ def test_connection_made_with_timeout(mock_monitor):
             namespace=namespace,
             connection_timeout=connection_timeout,
             connection_manager=connection_manager,
-            traefik_certs=traefik_certs,
+            spade=spade,
             queue_message=queue_message
         )
         protocol.connection_made(mock_transport)
@@ -68,14 +68,14 @@ def test_connection_lost():
     namespace = "jabber:client"
     connection_timeout = 30
     connection_manager = MagicMock()
-    traefik_certs = False
+    spade = False
     queue_message = MagicMock()
 
     protocol = XMLProtocol(
         namespace=namespace,
         connection_timeout=connection_timeout,
         connection_manager=connection_manager,
-        traefik_certs=traefik_certs,
+        spade=spade,
         queue_message=queue_message
     )
     mock_transport = MagicMock()
@@ -91,14 +91,14 @@ def test_data_received():
     namespace = "jabber:client"
     connection_timeout = 30
     connection_manager = MagicMock()
-    traefik_certs = False
+    spade = False
     queue_message = MagicMock()
 
     protocol = XMLProtocol(
         namespace=namespace,
         connection_timeout=connection_timeout,
         connection_manager=connection_manager,
-        traefik_certs=traefik_certs,
+        spade=spade,
         queue_message=queue_message
     )
     mock_transport = MagicMock()
@@ -118,14 +118,14 @@ def test_eof_received():
     namespace = "jabber:client"
     connection_timeout = 30
     connection_manager = MagicMock()
-    traefik_certs = False
+    spade = False
     queue_message = MagicMock()
 
     protocol = XMLProtocol(
         namespace=namespace,
         connection_timeout=connection_timeout,
         connection_manager=connection_manager,
-        traefik_certs=traefik_certs,
+        spade=spade,
         queue_message=queue_message
     )
     mock_transport = MagicMock()
@@ -147,14 +147,14 @@ def test_connection_timeout():
     namespace = "jabber:client"
     connection_timeout = 30
     connection_manager = MagicMock()
-    traefik_certs = False
+    spade = False
     queue_message = MagicMock()
 
     protocol = XMLProtocol(
         namespace=namespace,
         connection_timeout=connection_timeout,
         connection_manager=connection_manager,
-        traefik_certs=traefik_certs,
+        spade=spade,
         queue_message=queue_message
     )
     mock_transport = MagicMock()
@@ -174,14 +174,14 @@ def test_enable_tls(mock_create_default_context, mock_get_running_loop):
     namespace = "jabber:client"
     connection_timeout = 30
     connection_manager = MagicMock()
-    traefik_certs = False
+    spade = False
     queue_message = MagicMock()
 
     protocol = XMLProtocol(
         namespace=namespace,
         connection_timeout=connection_timeout,
         connection_manager=connection_manager,
-        traefik_certs=traefik_certs,
+        spade=spade,
         queue_message=queue_message
     )
     mock_transport = MagicMock()

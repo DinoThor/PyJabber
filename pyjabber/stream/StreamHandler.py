@@ -1,9 +1,7 @@
 from enum import Enum
 from typing import Union
-from loguru import logger
 from uuid import uuid4
 from xml.etree import ElementTree as ET
-import asyncio
 
 from pyjabber.features import InBandRegistration as IBR
 from pyjabber.features.StartTLSFeature import StartTLSFeature
@@ -43,7 +41,7 @@ class StreamHandler:
         self._starttls = starttls
 
         self._streamFeature = StreamFeature()
-        self._connections: ConnectionManager = connection_manager
+        self._connection_manager: ConnectionManager = connection_manager
         self._stage = Stage.CONNECTED
 
         self._elem = None
@@ -86,7 +84,7 @@ class StreamHandler:
 
         # SASL
         elif self._stage == Stage.SASL:
-            res = SASL().feed(elem, {"peername": self._buffer.get_extra_info('peername')})
+            res = SASL(self._connection_manager).feed(elem, {"peername": self._buffer.get_extra_info('peername')})
             if type(res) is tuple:
                 if res[0].value == Signal.RESET.value:
                     self._buffer.write(res[1])
@@ -136,7 +134,7 @@ class StreamHandler:
 
                     jidRes = ET.SubElement(bindRes, "jid")
 
-                    currentJid = self._connections.get_jid(self._buffer.get_extra_info('peername'))
+                    currentJid = self._connection_manager.get_jid(self._buffer.get_extra_info('peername'))
                     jidRes.text = f"{currentJid}@localhost/{resource_id}"
 
                     self._buffer.write(ET.tostring(iqRes))
@@ -144,7 +142,7 @@ class StreamHandler:
                     # Stream is negotiated.
                     # Update the connection register
                     # with the jid and transport
-                    self._connections.set_jid(
+                    self._connection_manager.set_jid(
                         self._buffer.get_extra_info('peername'),
                         jidRes.text, self._buffer
                     )

@@ -1,4 +1,5 @@
 import asyncio
+import colorama
 import os
 import signal
 import socket
@@ -16,6 +17,7 @@ from pyjabber.network.server.outcoming.XMLServerOutcomingProtocol import XMLServ
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.webpage.adminPage import admin_instance
+from pyjabber.network import CertGenerator
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -23,13 +25,13 @@ SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 class Server:
     def __init__(
         self,
-        host="localhost",
+        host=socket.gethostname(),
         client_port=5222,
         server_port=5269,
         family=socket.AF_INET,
         connection_timeout=60,
         enable_tls1_3=False,
-        traefik_certs=False
+        spade=False
     ):
         # Server
         self._host = host
@@ -39,25 +41,29 @@ class Server:
         self._client_listener = None
         self._server_listener = None
         self._adminServer = None
+        self._public_ip = None
         self._connection_timeout = connection_timeout
 
         # Client handler
         self._enable_tls1_3 = enable_tls1_3
-        self._traefik_certs = traefik_certs
+        self._spade = spade
         self._connection_manager = ConnectionManager(self.task_s2s)
         self._queue_message = QueueMessage(self._connection_manager)
 
     async def run_server(self):
         logger.info("Starting server...")
 
-        if os.path.isfile(os.path.join(SERVER_FILE_PATH + "/db/server.db")) is False:
+        if os.path.isfile(os.path.join(SERVER_FILE_PATH, "db", "server.db")) is False:
             logger.debug("No database found. Initializing one...")
             with closing(connection()) as con:
                 with open(SERVER_FILE_PATH + "/db/schema.sql", "r") as schema:
                     con.cursor().executescript(schema.read())
                 con.commit()
 
-        if self._traefik_certs:
+        if CertGenerator.check_hostname_cert_exists() is False:
+            CertGenerator.generate_hostname_cert()
+
+        if self._spade:
             if not os.path.isfile(os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik.pem")):
                 wget.download("http://traefik.me/fullchain.pem", os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik.pem"))
             if not os.path.isfile(os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik-key.pem")):
@@ -71,7 +77,7 @@ class Server:
                 connection_timeout=self._connection_timeout,
                 connection_manager=self._connection_manager,
                 enable_tls1_3=self._enable_tls1_3,
-                traefik_certs=self._traefik_certs,
+                spade=self._spade,
                 queue_message=self._queue_message
             ),
             host=self._host,
@@ -79,22 +85,8 @@ class Server:
             family=self._family
         )
 
-
+        logger.info(f"Client domain => {self._host}")
         logger.info(f"Server is listening clients on {self._client_listener.sockets[0].getsockname()}")
-
-        # self._server_listener = await loop.create_server(
-        #     lambda: XMLServerIncomingProtocol(
-        #         namespace='jabber:server',
-        #         connection_timeout=self._connection_timeout,
-        #         connection_manager=self._connection_manager,
-        #         enable_tls1_3=self._enable_tls1_3,
-        #         traefik_certs=self._traefik_certs,
-        #         queue_message=self._queue_message
-        #     ),
-        #     host="158-42-154-74.traefik.me",
-        #     port=self._server_port,
-        #     family=self._family
-        # )
 
         self._server_listener = await loop.create_server(
             lambda: XMLServerIncomingProtocol(
@@ -102,10 +94,10 @@ class Server:
                 connection_timeout=self._connection_timeout,
                 connection_manager=self._connection_manager,
                 enable_tls1_3=self._enable_tls1_3,
-                traefik_certs=self._traefik_certs,
+                spade=self._spade,
                 queue_message=self._queue_message
             ),
-            host=self._host,
+            host="0.0.0.0",
             port=self._server_port,
             family=self._family
         )
@@ -114,8 +106,9 @@ class Server:
 
         public_ip = urllib.request.urlopen("https://api.ipify.org/")
         if public_ip.status == 200:
-            public_ip = public_ip.read().decode()
-            logger.info(f"SERVER DOMAIN NAME ==> https://{public_ip.replace('.', '-')}.traefik.me")
+            self._public_ip = public_ip.read().decode()
+            self._public_ip = self._public_ip.replace(".", "-") + ".traefik.me"
+            logger.info(f"S2S domain ==> {colorama.Fore.RED}{self._public_ip.replace('.', '-')}")
 
         logger.info("Server started...")
 
@@ -143,14 +136,15 @@ class Server:
             lambda: XMLServerOutcomingProtocol(
                 namespace="jabber:server",
                 host=host,
+                my_host=self._public_ip,
                 connection_timeout=self._connection_timeout,
                 connection_manager=self._connection_manager,
                 queue_message=self._queue_message,
                 enable_tls1_3=self._enable_tls1_3,
-                traefik_certs=self._traefik_certs
+                spade=self._spade
             ),
             host=host,
-            port=5269
+            port=5270
         )
 
     def raise_exit(self):
