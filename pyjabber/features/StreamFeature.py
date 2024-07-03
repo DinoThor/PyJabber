@@ -1,5 +1,6 @@
-from xml.etree import ElementTree as ET
 from typing import Dict
+from xml.etree import ElementTree as ET
+
 
 class NonUniqueFeature(Exception):
     """
@@ -20,7 +21,7 @@ class StreamFeature(ET.Element):
         attrib: Dict[str, str] = {
             "xmlns": "http://etherx.jabber.org/streams"
         },
-        **extra: str) -> None:
+            **extra: str) -> None:
         super().__init__(tag, attrib, **extra)
         self._features: Dict[str, ET.Element] = {}
 

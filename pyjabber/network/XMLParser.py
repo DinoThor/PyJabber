@@ -1,12 +1,13 @@
 from asyncio import BaseProtocol
 from enum import Enum
-from loguru import logger
-from xml.sax import ContentHandler
 from xml.etree import ElementTree as ET
+from xml.sax import ContentHandler
+
+from loguru import logger
 
 from pyjabber.stream import Stream
-from pyjabber.stream.StreamHandler import StreamHandler, Signal
 from pyjabber.stream.StanzaHandler import StanzaHandler
+from pyjabber.stream.StreamHandler import Signal, StreamHandler
 from pyjabber.utils import ClarkNotation as CN
 
 
@@ -23,7 +24,8 @@ class XMLParser(ContentHandler):
         self._connection_manager = connection_manager
         self._queue_message = queue_message
 
-        self._streamHandler = StreamHandler(self._buffer, starttls, connection_manager)
+        self._streamHandler = StreamHandler(
+            self._buffer, starttls, connection_manager)
         self._stanzaHandler = None
 
         self._stack = []
@@ -50,8 +52,9 @@ class XMLParser(ContentHandler):
         if self._stack:  # "<stream:stream>" tag already present in the data stack
             elem = ET.Element(
                 CN.clarkFromTuple(name),
-                attrib={CN.clarkFromTuple(key): item for key, item in dict(attrs).items()}
-            )
+                attrib={
+                    CN.clarkFromTuple(key): item for key,
+                    item in dict(attrs).items()})
             self._stack.append(elem)
 
         elif name[1] == "stream" and name[0] == "http://etherx.jabber.org/streams":
@@ -59,8 +62,9 @@ class XMLParser(ContentHandler):
 
             elem = ET.Element(
                 CN.clarkFromTuple(name),
-                attrib={CN.clarkFromTuple(key): item for key, item in dict(attrs).items()}
-            )
+                attrib={
+                    CN.clarkFromTuple(key): item for key,
+                    item in dict(attrs).items()})
 
             self._stack.append(elem)
             self._streamHandler.handle_open_stream()
@@ -96,7 +100,8 @@ class XMLParser(ContentHandler):
                 if signal == Signal.RESET and "stream" in self._stack[-1].tag:
                     self._stack.clear()
                 elif signal == Signal.DONE:
-                    self._stanzaHandler = StanzaHandler(self._buffer, self._connection_manager, self._queue_message)
+                    self._stanzaHandler = StanzaHandler(
+                        self._buffer, self._connection_manager, self._queue_message)
                     self._state = self.StreamState.READY
 
     def characters(self, content: str) -> None:

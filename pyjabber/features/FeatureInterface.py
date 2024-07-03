@@ -1,7 +1,5 @@
 import xml.etree.ElementTree as ET
-
-from abc import ABCMeta
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 from typing import Dict
 
 

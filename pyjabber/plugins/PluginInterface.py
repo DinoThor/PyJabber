@@ -1,7 +1,5 @@
-from abc import ABC
-from abc import abstractmethod
-
 import xml.etree.ElementTree as ET
+from abc import ABC, abstractmethod
 
 
 class Plugin(ABC):

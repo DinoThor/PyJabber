@@ -1,7 +1,7 @@
 import re
-from typing import List
 from asyncio import Transport
-from typing import Dict, Union, Tuple
+from typing import Dict, List, Tuple, Union
+
 from loguru import logger
 
 from pyjabber.utils import Singleton
@@ -60,7 +60,8 @@ class ConnectionManager(metaclass=Singleton):
         except KeyError:
             return None
 
-    def set_jid(self, peer: Tuple[str, int], jid: str, transport: Transport = None) -> Union[None, bool]:
+    def set_jid(self, peer: Tuple[str, int], jid: str,
+                transport: Transport = None) -> Union[None, bool]:
         """
             Set/update the jid of a registered connection.
 
@@ -126,13 +127,18 @@ class ConnectionManager(metaclass=Singleton):
         except KeyError:
             logger.error(f"{peer} not present in the online list")
 
-    def get_server_buffer(self, host: str) -> Union[Tuple[str, Transport], None]:
+    def get_server_buffer(
+            self, host: str) -> Union[Tuple[str, Transport], None]:
         """
             Return the buffer associated with the given host
             :return: (<HOST>, <TRANSPORT>) tuple
         """
         if self.check_server_stream_available(host):
-            key = next((k for k, v in self._remoteList.items() if v.get(self.JID) == host), None)
+            key = next(
+                (k for k,
+                 v in self._remoteList.items() if v.get(
+                     self.JID) == host),
+                None)
             return self._remoteList[key][self.JID], self._remoteList[key][self.TRANSPORT]
 
         if self.check_server_present_in_list(host):
@@ -140,7 +146,8 @@ class ConnectionManager(metaclass=Singleton):
 
         self._task_s2s(host)
 
-    def set_server_transport(self, peer: Tuple[str, int], transport: Transport) -> Union[None, bool]:
+    def set_server_transport(
+            self, peer: Tuple[str, int], transport: Transport) -> Union[None, bool]:
         """
             Set/update the transport of a registered server connection.
 

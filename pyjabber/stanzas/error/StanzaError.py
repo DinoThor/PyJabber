@@ -19,20 +19,31 @@ XMLNS = "urn:ietf:params:xml:ns:xmpp-stanzas"
 
 
 def bad_request() -> bytes:
-     """
-    <error type='modify'>
-        <bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
-    </error>
     """
-     return f"<error type='modify'><bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>".encode()
+   <error type='modify'>
+       <bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
+   </error>
+   """
+    return f"<error type='modify'><bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>".encode()
+
 
 def conflict_error(id: str) -> bytes:
-        iq = ET.Element("iq", attrib = {"id": id, "type": "error", "from": "localhost"})
-        error = ET.SubElement(iq, "error", attrib = {"type": "cancel"})
-        ET.SubElement(error, "conflict", attrib = {"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
-        text = ET.SubElement(error, "text", attrib = {"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
-        text.text = "The requested username already exists"
-        return ET.tostring(iq)
+    iq = ET.Element(
+        "iq",
+        attrib={
+            "id": id,
+            "type": "error",
+            "from": "localhost"})
+    error = ET.SubElement(iq, "error", attrib={"type": "cancel"})
+    ET.SubElement(
+        error, "conflict", attrib={
+            "xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
+    text = ET.SubElement(
+        error, "text", attrib={
+            "xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
+    text.text = "The requested username already exists"
+    return ET.tostring(iq)
+
 
 def feature_not_implemented(xmlns, feature) -> bytes:
     """
@@ -44,7 +55,9 @@ def feature_not_implemented(xmlns, feature) -> bytes:
             feature='{feature}'/>
     </error>
     """
-    return f"<error type='cancel'><feature-not-implemented xmlns='{XMLNS}'/><unsupported xmlns='{xmlns}#errors'feature='{feature}'/></error>".encode()
+    return f"<error type='cancel'><feature-not-implemented xmlns='{XMLNS}'/><unsupported xmlns='{xmlns}#errors'feature='{feature}'/></error>".encode(
+    )
+
 
 def invalid_xml() -> bytes:
     """
@@ -56,13 +69,16 @@ def invalid_xml() -> bytes:
     """
     return f"<stream:error><invalid-xml xmlns='{XMLNS}'/></stream:error></stream:stream>".encode()
 
+
 def item_not_found() -> bytes:
     """
     <error type='cancel'>
         <item-not-found xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
     </error>
     """
-    return f"<error type='cancel'><item-not-found xmlns='{XMLNS}'/></error>".encode()
+    return f"<error type='cancel'><item-not-found xmlns='{XMLNS}'/></error>".encode(
+    )
+
 
 def not_acceptable(text: str = None) -> bytes:
     """
@@ -76,9 +92,11 @@ def not_acceptable(text: str = None) -> bytes:
     </error>
     """
     if text:
-        return f"<error type='modify'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'><text>{text}</text></not-acceptable></error>".encode()
+        return f"<error type='modify'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'><text>{text}</text></not-acceptable></error>".encode(
+        )
     else:
         return f"<error type='modify'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>".encode()
+
 
 def not_authorized() -> bytes:
     """
@@ -88,6 +106,7 @@ def not_authorized() -> bytes:
     """
     return "<failure xmlns='urn:ietf:params:xml:ns:xmpp-sasl'><not-authorized/></failure>".encode()
 
+
 def service_unavaliable():
     """
     <error type='cancel'>
@@ -96,4 +115,3 @@ def service_unavaliable():
     </error>
     """
     return "<error type='cancel'><service-unavailable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>".encode()
-
