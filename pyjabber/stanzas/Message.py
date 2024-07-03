@@ -3,14 +3,14 @@ from xml.etree import ElementTree as ET
 
 class Message(ET.Element):
     def __init__(
-        self,
-        mto: str,
-        mfrom: str,
-        id: str,
-        body: str,
-        mtype: str = "chat",
-        tag: str = "message",
-        **extra: str) -> None:
+            self,
+            mto: str,
+            mfrom: str,
+            id: str,
+            body: str,
+            mtype: str = "chat",
+            tag: str = "message",
+            **extra: str) -> None:
 
         attrib = {
             k: v for k, v in (
