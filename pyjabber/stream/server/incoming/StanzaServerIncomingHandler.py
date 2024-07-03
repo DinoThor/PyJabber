@@ -9,7 +9,7 @@ from pyjabber.stanzas.error import StanzaError as SE
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
-class StanzaServerHandler:
+class StanzaServerIncomingHandler:
     def __init__(self, buffer, connection_manager) -> None:
         self._buffer = buffer
         self._connection_manager = connection_manager
@@ -23,18 +23,7 @@ class StanzaServerHandler:
             "{jabber:client}presence": self.handle_pre
         }
 
-        with open(os.path.join(FILE_PATH, "..", "..", "schemas", "schemas.pkl"), "rb") as schemasDump:
-            self._schemas = pickle.load(schemasDump)
-
     def feed(self, element: ET.Element):
-        try:
-            schema: xmlschema.XMLSchema = self._schemas[CN.deglose(element.tag)[
-                0]]
-            if schema.is_valid(ET.tostring(element)) is False:
-                self._buffer.write(SE.bad_request())
-        except KeyError:
-            self._buffer.write(SE.feature_not_implemented())
-
         try:
             self._functions[element.tag](element)
         except KeyError:
