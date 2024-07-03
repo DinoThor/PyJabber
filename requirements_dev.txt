@@ -9,6 +9,7 @@ loguru==0.7.2
 pip>=21.1
 pytest-asyncio==0.21.0
 pytest==7.3.1
+pytest-cov
 sphinx-wagtail-theme==6.3.0
 tox==4.5.1
 twine==4.0.2
