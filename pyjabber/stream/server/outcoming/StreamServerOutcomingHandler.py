@@ -2,12 +2,12 @@ from typing import Union
 from xml.etree import ElementTree as ET
 
 from pyjabber.features import InBandRegistration as IBR
+from pyjabber.features.ResourceBinding import ResourceBinding
+from pyjabber.features.SASLFeature import SASL, SASLFeature
 from pyjabber.features.StartTLSFeature import StartTLSFeature
 from pyjabber.features.StreamFeature import StreamFeature
-from pyjabber.features.SASLFeature import SASLFeature, SASL
-from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber.stream.StreamHandler import StreamHandler, Signal, Stage
+from pyjabber.stream.StreamHandler import Signal, Stage, StreamHandler
 from pyjabber.utils import ClarkNotation as CN
 
 
@@ -23,7 +23,8 @@ class StreamServerOutcomingHandler(StreamHandler):
     def __init__(self, buffer, starttls, connection_manager) -> None:
         super().__init__(buffer, starttls, connection_manager)
 
-    def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
+    def handle_open_stream(
+            self, elem: ET.Element = None) -> Union[Signal, None]:
         if self._stage == Stage.READY:
             peer = self.buffer.get_extra_info('peername')
             self._connections.set_server_transport(peer, self.buffer)
@@ -33,14 +34,16 @@ class StreamServerOutcomingHandler(StreamHandler):
             children = [child.tag for child in elem]
             if self.STARTTLS in children:
                 if self._stage == Stage.CONNECTED:
-                    self._buffer.write("<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>".encode())
+                    self._buffer.write(
+                        "<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>".encode())
                     self._stage = Stage.OPENED
                     return
 
             elif self.MECHANISMS in children:
                 mechanisms = [mech for mech in elem.find(self.MECHANISMS)]
                 if 'EXTERNAL' in [mech.text for mech in mechanisms]:
-                    self._buffer.write("<auth xmlns='urn:ietf:params:xml:ns:xmpp-sasl' mechanism='EXTERNAL'>=</auth>".encode())
+                    self._buffer.write(
+                        "<auth xmlns='urn:ietf:params:xml:ns:xmpp-sasl' mechanism='EXTERNAL'>=</auth>".encode())
                     return
 
             elif self.DIALBACK in children and self._stage == Stage.READY:

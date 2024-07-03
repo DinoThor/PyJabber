@@ -1,14 +1,14 @@
+import xml.etree.ElementTree as ET
+from typing import Any, Dict
 from uuid import uuid4
+from xml.etree.ElementTree import Element
+
+from pyjabber.features.feature_utils import RosterUtils as RU
 from pyjabber.features.FeatureInterface import FeatureInterface
+from pyjabber.features.presence.utils import create_roster_entry
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.stanzas.error import StanzaError as SE
-from pyjabber.features.feature_utils import RosterUtils as RU
-from pyjabber.features.presence.utils import create_roster_entry
-
-import xml.etree.ElementTree as ET
-from xml.etree.ElementTree import Element
-from typing import Dict, Any
 
 
 class Presence(FeatureInterface):
@@ -175,7 +175,9 @@ class Presence(FeatureInterface):
                             "type": "set"
                         }
                     )
-                    query = ET.Element("query", attrib={"xmlns": "jabber:iq:roster"})
+                    query = ET.Element(
+                        "query", attrib={
+                            "xmlns": "jabber:iq:roster"})
                     item = ET.fromstring(rosterPushBob)
 
                     query.append(item)
@@ -193,7 +195,9 @@ class Presence(FeatureInterface):
                             "type": "set"
                         }
                     )
-                    query = ET.Element("query", attrib={"xmlns": "jabber:iq:roster"})
+                    query = ET.Element(
+                        "query", attrib={
+                            "xmlns": "jabber:iq:roster"})
                     item = ET.fromstring(rosterPushAlice)
 
                     query.append(item)
@@ -211,8 +215,10 @@ class Presence(FeatureInterface):
             buffer = self._connections.get_buffer(jid)
             for b in buffer:
                 presence = ET.Element(
-                    "presence", attrib={"from": self._jid, "to": b[0].split("/")[0]}
-                )
+                    "presence",
+                    attrib={
+                        "from": self._jid,
+                        "to": b[0].split("/")[0]})
                 b[-1].write(ET.tostring(presence))
 
     def handle_unsubscribed(self, element: ET.Element):

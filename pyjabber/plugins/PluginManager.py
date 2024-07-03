@@ -2,12 +2,12 @@ import xml.etree.ElementTree as ET
 from typing import Dict
 
 from pyjabber.plugins.PluginInterface import Plugin
-from pyjabber.stanzas.error import StanzaError as SE
-from pyjabber.utils import ClarkNotation as CN
 
 # Plugins
 from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.plugins.xep_0199.xep_0199 import Ping
+from pyjabber.stanzas.error import StanzaError as SE
+from pyjabber.utils import ClarkNotation as CN
 
 
 class PluginManager():
@@ -30,12 +30,13 @@ class PluginManager():
         tag, _ = CN.deglose(child.tag)
 
         try:
-            plugin = self._activePlugins[tag]  #Plugin already instanced
+            plugin = self._activePlugins[tag]  # Plugin already instanced
             return plugin.feed(element)
         except KeyError:
             try:
-                plugin = self._plugins[tag]  #Retrive plugin from list and instance
+                # Retrive plugin from list and instance
+                plugin = self._plugins[tag]
                 self._activePlugins[tag] = plugin(self._jid)
                 return self._activePlugins[tag].feed(element)
             except KeyError:
-                return SE.service_unavaliable()  #Plugin unavailable
+                return SE.service_unavaliable()  # Plugin unavailable

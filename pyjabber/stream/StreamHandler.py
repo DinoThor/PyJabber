@@ -1,15 +1,16 @@
+import asyncio
 from enum import Enum
 from typing import Union
-from loguru import logger
 from uuid import uuid4
 from xml.etree import ElementTree as ET
-import asyncio
+
+from loguru import logger
 
 from pyjabber.features import InBandRegistration as IBR
+from pyjabber.features.ResourceBinding import ResourceBinding
+from pyjabber.features.SASLFeature import SASL, SASLFeature
 from pyjabber.features.StartTLSFeature import StartTLSFeature
 from pyjabber.features.StreamFeature import StreamFeature
-from pyjabber.features.SASLFeature import SASLFeature, SASL
-from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.utils import ClarkNotation as CN
 
@@ -57,7 +58,8 @@ class StreamHandler:
     def buffer(self, value):
         self._buffer = value
 
-    def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
+    def handle_open_stream(
+            self, elem: ET.Element = None) -> Union[Signal, None]:
         # TCP Connection opened
         if self._stage == Stage.CONNECTED:
             self._streamFeature.reset()
@@ -86,7 +88,9 @@ class StreamHandler:
 
         # SASL
         elif self._stage == Stage.SASL:
-            res = SASL().feed(elem, {"peername": self._buffer.get_extra_info('peername')})
+            res = SASL().feed(
+                elem, {
+                    "peername": self._buffer.get_extra_info('peername')})
             if type(res) is tuple:
                 if res[0].value == Signal.RESET.value:
                     self._buffer.write(res[1])
@@ -110,8 +114,12 @@ class StreamHandler:
         elif self._stage == Stage.BIND:
             if "iq" in elem.tag:
                 if elem.attrib["type"] == "set":
-                    bindElem = elem.find(CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "bind")))
-                    resouce = bindElem.find(CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "resource")))
+                    bindElem = elem.find(
+                        CN.clarkFromTuple(
+                            ("urn:ietf:params:xml:ns:xmpp-bind", "bind")))
+                    resouce = bindElem.find(
+                        CN.clarkFromTuple(
+                            ("urn:ietf:params:xml:ns:xmpp-bind", "resource")))
 
                     if resouce is not None:
                         resource_id = resouce.text
@@ -136,7 +144,8 @@ class StreamHandler:
 
                     jidRes = ET.SubElement(bindRes, "jid")
 
-                    currentJid = self._connections.get_jid(self._buffer.get_extra_info('peername'))
+                    currentJid = self._connections.get_jid(
+                        self._buffer.get_extra_info('peername'))
                     jidRes.text = f"{currentJid}@localhost/{resource_id}"
 
                     self._buffer.write(ET.tostring(iqRes))

@@ -2,18 +2,22 @@ import asyncio
 import os
 import signal
 import socket
-import nest_asyncio
 import urllib.request
-import wget
-
 from contextlib import closing
+
+import nest_asyncio
+import wget
 from loguru import logger
 
 from pyjabber.db.database import connection
-from pyjabber.network.XMLProtocol import XMLProtocol
-from pyjabber.network.server.incoming.XMLServerIncomingProtocol import XMLServerIncomingProtocol
-from pyjabber.network.server.outcoming.XMLServerOutcomingProtocol import XMLServerOutcomingProtocol
 from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.network.server.incoming.XMLServerIncomingProtocol import (
+    XMLServerIncomingProtocol,
+)
+from pyjabber.network.server.outcoming.XMLServerOutcomingProtocol import (
+    XMLServerOutcomingProtocol,
+)
+from pyjabber.network.XMLProtocol import XMLProtocol
 from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.webpage.adminPage import admin_instance
 
@@ -50,7 +54,10 @@ class Server:
     async def run_server(self):
         logger.info("Starting server...")
 
-        if os.path.isfile(os.path.join(SERVER_FILE_PATH + "/db/server.db")) is False:
+        if os.path.isfile(
+            os.path.join(
+                SERVER_FILE_PATH +
+                "/db/server.db")) is False:
             logger.debug("No database found. Initializing one...")
             with closing(connection()) as con:
                 with open(SERVER_FILE_PATH + "/db/schema.sql", "r") as schema:
@@ -58,10 +65,32 @@ class Server:
                 con.commit()
 
         if self._traefik_certs:
-            if not os.path.isfile(os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik.pem")):
-                wget.download("http://traefik.me/fullchain.pem", os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik.pem"))
-            if not os.path.isfile(os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik-key.pem")):
-                wget.download("http://traefik.me/privkey.pem", os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik-key.pem"))
+            if not os.path.isfile(
+                os.path.join(
+                    SERVER_FILE_PATH,
+                    "network",
+                    "certs",
+                    "traefik.pem")):
+                wget.download(
+                    "http://traefik.me/fullchain.pem",
+                    os.path.join(
+                        SERVER_FILE_PATH,
+                        "network",
+                        "certs",
+                        "traefik.pem"))
+            if not os.path.isfile(
+                os.path.join(
+                    SERVER_FILE_PATH,
+                    "network",
+                    "certs",
+                    "traefik-key.pem")):
+                wget.download(
+                    "http://traefik.me/privkey.pem",
+                    os.path.join(
+                        SERVER_FILE_PATH,
+                        "network",
+                        "certs",
+                        "traefik-key.pem"))
 
         loop = asyncio.get_event_loop()
 
@@ -79,8 +108,8 @@ class Server:
             family=self._family
         )
 
-
-        logger.info(f"Server is listening clients on {self._client_listener.sockets[0].getsockname()}")
+        logger.info(
+            f"Server is listening clients on {self._client_listener.sockets[0].getsockname()}")
 
         # self._server_listener = await loop.create_server(
         #     lambda: XMLServerIncomingProtocol(
@@ -110,12 +139,14 @@ class Server:
             family=self._family
         )
 
-        logger.info(f"Server is listening servers on {self._server_listener.sockets[0].getsockname()}")
+        logger.info(
+            f"Server is listening servers on {self._server_listener.sockets[0].getsockname()}")
 
         public_ip = urllib.request.urlopen("https://api.ipify.org/")
         if public_ip.status == 200:
             public_ip = public_ip.read().decode()
-            logger.info(f"SERVER DOMAIN NAME ==> https://{public_ip.replace('.', '-')}.traefik.me")
+            logger.info(
+                f"SERVER DOMAIN NAME ==> https://{public_ip.replace('.', '-')}.traefik.me")
 
         logger.info("Server started...")
 
@@ -186,7 +217,9 @@ class Server:
             tasks = asyncio.all_tasks(loop)
             for task in tasks:
                 task.cancel()
-            loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
+            loop.run_until_complete(
+                asyncio.gather(
+                    *tasks, return_exceptions=True))
 
             # Close the server
             close_task = loop.create_task(self.stop())

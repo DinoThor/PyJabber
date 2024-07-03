@@ -1,14 +1,16 @@
 import asyncio
 import os
 import ssl
-
-from loguru import logger
 from xml import sax
 
+from loguru import logger
+
+from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.network.server.outcoming.XMLServerOutcomingParser import (
+    XMLServerOutcomingParser,
+)
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.XMLProtocol import XMLProtocol
-from pyjabber.network.server.outcoming.XMLServerOutcomingParser import XMLServerOutcomingParser
-from pyjabber.network.ConnectionManager import ConnectionManager
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
 
@@ -19,16 +21,22 @@ class XMLServerOutcomingProtocol(XMLProtocol):
     """
 
     def __init__(
-        self,
-        namespace,
-        host,
-        connection_manager,
-        queue_message,
-        traefik_certs=False,
-        enable_tls1_3=False,
-        connection_timeout=None):
+            self,
+            namespace,
+            host,
+            connection_manager,
+            queue_message,
+            traefik_certs=False,
+            enable_tls1_3=False,
+            connection_timeout=None):
 
-        super().__init__(namespace, connection_timeout, connection_manager, traefik_certs, queue_message, enable_tls1_3)
+        super().__init__(
+            namespace,
+            connection_timeout,
+            connection_manager,
+            traefik_certs,
+            queue_message,
+            enable_tls1_3)
         self._host = host
 
     def connection_made(self, transport):
@@ -43,7 +51,8 @@ class XMLServerOutcomingProtocol(XMLProtocol):
 
             self._xml_parser = sax.make_parser()
             self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
-            self._xml_parser.setFeature(sax.handler.feature_external_ges, False)
+            self._xml_parser.setFeature(
+                sax.handler.feature_external_ges, False)
             self._xml_parser.setContentHandler(
                 XMLServerOutcomingParser(
                     self._transport,
@@ -59,9 +68,11 @@ class XMLServerOutcomingProtocol(XMLProtocol):
                     callback=self.connection_timeout
                 )
 
-            self._connection_manager.connection_server(self._transport.get_extra_info('peername'), self._host, self._transport)
+            self._connection_manager.connection_server(
+                self._transport.get_extra_info('peername'), self._host, self._transport)
 
-            logger.info(f"Server connection to {self._transport.get_extra_info('peername')}")
+            logger.info(
+                f"Server connection to {self._transport.get_extra_info('peername')}")
 
         else:
             logger.error("Invalid transport")

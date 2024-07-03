@@ -1,12 +1,17 @@
 from enum import Enum
-from loguru import logger
 from xml.etree import ElementTree as ET
+
+from loguru import logger
 
 from pyjabber.network.XMLParser import XMLParser
 from pyjabber.stream import Stream
+from pyjabber.stream.server.incoming.StanzaServerIncomingHandler import (
+    StanzaServerHandler,
+)
+from pyjabber.stream.server.incoming.StreamServerIncomingHandler import (
+    StreamServerIncomingHandler,
+)
 from pyjabber.stream.StreamHandler import Signal
-from pyjabber.stream.server.incoming.StanzaServerIncomingHandler import StanzaServerHandler
-from pyjabber.stream.server.incoming.StreamServerIncomingHandler import StreamServerIncomingHandler
 from pyjabber.utils import ClarkNotation as CN
 
 
@@ -23,9 +28,11 @@ class XMLServerIncomingParser(XMLParser):
     Manages the stream data and process the XML objects.
     Inheriting from sax.ContentHandler
     """
+
     def __init__(self, buffer, starttls, connection_manager, queue_message):
         super().__init__(buffer, starttls, connection_manager, queue_message)
-        self._streamHandler = StreamServerIncomingHandler(self._buffer, starttls, connection_manager)
+        self._streamHandler = StreamServerIncomingHandler(
+            self._buffer, starttls, connection_manager)
 
     def startElementNS(self, name, qname, attrs):
         logger.debug(f"Start element NS: {name}")
@@ -33,8 +40,9 @@ class XMLServerIncomingParser(XMLParser):
         if self._stack:  # "<stream:stream>" tag already present in the data stack
             elem = ET.Element(
                 CN.clarkFromTuple(name),
-                attrib={CN.clarkFromTuple(key): item for key, item in dict(attrs).items()}
-            )
+                attrib={
+                    CN.clarkFromTuple(key): item for key,
+                    item in dict(attrs).items()})
             self._stack.append(elem)
 
         elif name[1] == "stream" and name[0] == "http://etherx.jabber.org/streams":
@@ -42,8 +50,9 @@ class XMLServerIncomingParser(XMLParser):
 
             elem = ET.Element(
                 CN.clarkFromTuple(name),
-                attrib={CN.clarkFromTuple(key): item for key, item in dict(attrs).items()}
-            )
+                attrib={
+                    CN.clarkFromTuple(key): item for key,
+                    item in dict(attrs).items()})
 
             self._stack.append(elem)
             self._streamHandler.handle_open_stream()
@@ -79,6 +88,6 @@ class XMLServerIncomingParser(XMLParser):
                 if signal == Signal.RESET and "stream" in self._stack[-1].tag:
                     self._stack.clear()
                 elif signal == Signal.DONE:
-                    self._stanzaHandler = StanzaServerHandler(self._buffer, self._connection_manager)
+                    self._stanzaHandler = StanzaServerHandler(
+                        self._buffer, self._connection_manager)
                     self._state = StreamState.READY
-

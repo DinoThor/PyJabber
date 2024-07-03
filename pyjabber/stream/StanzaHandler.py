@@ -36,7 +36,8 @@ class StanzaHandler:
 
     def feed(self, element: ET.Element):
         try:
-            schema: xmlschema.XMLSchema = self._schemas[CN.deglose(element.tag)[0]]
+            schema: xmlschema.XMLSchema = self._schemas[CN.deglose(element.tag)[
+                0]]
             if schema.is_valid(ET.tostring(element)) is False:
                 self._buffer.write(SE.bad_request())
                 return
@@ -68,7 +69,7 @@ class StanzaHandler:
         """
         bare_jid = element.attrib["to"].split("/")[0]
 
-        if False:# re.match(r'^.+@localhost$', bare_jid):
+        if False:  # re.match(r'^.+@localhost$', bare_jid):
             for buffer in self._connections.get_buffer(bare_jid):
                 buffer[-1].write(ET.tostring(element))
 

@@ -1,15 +1,17 @@
 import asyncio
 import os
 import ssl
-
-from loguru import logger
 from xml import sax
 
+from loguru import logger
+
+from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.network.server.incoming.XMLServerIncomingParser import (
+    XMLServerIncomingParser,
+)
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.XMLParser import XMLParser
 from pyjabber.network.XMLProtocol import XMLProtocol
-from pyjabber.network.server.incoming.XMLServerIncomingParser import XMLServerIncomingParser
-from pyjabber.network.ConnectionManager import ConnectionManager
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
 
@@ -20,15 +22,21 @@ class XMLServerIncomingProtocol(XMLProtocol):
     """
 
     def __init__(
-        self,
-        namespace,
-        connection_manager,
-        queue_message,
-        traefik_certs=False,
-        enable_tls1_3=False,
-        connection_timeout=None):
+            self,
+            namespace,
+            connection_manager,
+            queue_message,
+            traefik_certs=False,
+            enable_tls1_3=False,
+            connection_timeout=None):
 
-        super().__init__(namespace, connection_timeout, connection_manager, traefik_certs, queue_message, enable_tls1_3)
+        super().__init__(
+            namespace,
+            connection_timeout,
+            connection_manager,
+            traefik_certs,
+            queue_message,
+            enable_tls1_3)
 
     def connection_made(self, transport):
         """
@@ -42,7 +50,8 @@ class XMLServerIncomingProtocol(XMLProtocol):
 
             self._xml_parser = sax.make_parser()
             self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
-            self._xml_parser.setFeature(sax.handler.feature_external_ges, False)
+            self._xml_parser.setFeature(
+                sax.handler.feature_external_ges, False)
             self._xml_parser.setContentHandler(
                 XMLServerIncomingParser(
                     self._transport,
@@ -57,9 +66,11 @@ class XMLServerIncomingProtocol(XMLProtocol):
                     callback=self.connection_timeout
                 )
 
-            self._connection_manager.connection(self._transport.get_extra_info('peername'))
+            self._connection_manager.connection(
+                self._transport.get_extra_info('peername'))
 
-            logger.info(f"Server connection to {self._transport.get_extra_info('peername')}")
+            logger.info(
+                f"Server connection to {self._transport.get_extra_info('peername')}")
 
         else:
             logger.error("Invalid transport")

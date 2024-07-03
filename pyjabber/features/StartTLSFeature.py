@@ -26,7 +26,7 @@ class StartTLSFeature(ET.Element):
             "xmlns": "urn:ietf:params:xml:ns:xmpp-tls"
         },
         required: bool = True,
-        **extra: str) -> None:
+            **extra: str) -> None:
         super().__init__(tag, attrib, **extra)
 
         if required:
@@ -34,5 +34,7 @@ class StartTLSFeature(ET.Element):
 
     @staticmethod
     def proceed_response() -> bytes:
-        elem = ET.Element("proceed", attrib={"xmlns": "urn:ietf:params:xml:ns:xmpp-tls"})
+        elem = ET.Element(
+            "proceed", attrib={
+                "xmlns": "urn:ietf:params:xml:ns:xmpp-tls"})
         return ET.tostring(elem)
