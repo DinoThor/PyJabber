@@ -1,3 +1,5 @@
+import socket
+
 import pytest
 from unittest.mock import Mock, MagicMock, patch
 from xml.etree import ElementTree as ET
@@ -161,7 +163,7 @@ def test_handle_open_stream_bind(monkeypatch):
     connections.get_jid.assert_called_once_with(buffer.get_extra_info('peername'))
     connections.set_jid.assert_called_once_with(
         buffer.get_extra_info('peername'),
-        'user@localhost/resource_id',
+        f'user@{socket.gethostname()}/resource_id',
         buffer
     )
 
