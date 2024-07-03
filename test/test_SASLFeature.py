@@ -39,8 +39,8 @@ def db_connection_factory(setup_database):
 
 @patch('pyjabber.network.ConnectionManager.ConnectionManager')
 def test_handle_auth_success(MockConnectionsManager, db_connection_factory):
-    sasl = SASL()
-    sasl._connections = MockConnectionsManager()
+    sasl = SASL(MockConnectionsManager())
+    # sasl._connections = MockConnectionsManager()
     sasl._db_connection_factory = db_connection_factory
     element = ET.Element("{urn:ietf:params:xml:ns:xmpp-sasl}auth")
     auth_text = base64.b64encode(b'\x00username\x00password').decode('ascii')
@@ -53,8 +53,8 @@ def test_handle_auth_success(MockConnectionsManager, db_connection_factory):
 
 @patch('pyjabber.network.ConnectionManager.ConnectionManager')
 def test_handle_auth_failure(MockConnectionsManager, db_connection_factory):
-    sasl = SASL()
-    sasl._connections = MockConnectionsManager()
+    sasl = SASL(MockConnectionsManager())
+    # sasl._connections = MockConnectionsManager()
     sasl._db_connection_factory = db_connection_factory
     element = ET.Element("{urn:ietf:params:xml:ns:xmpp-sasl}auth")
     auth_text = base64.b64encode(b'\x00username\x00wrongpassword').decode('ascii')
@@ -64,8 +64,10 @@ def test_handle_auth_failure(MockConnectionsManager, db_connection_factory):
 
     assert result == SE.not_authorized()
 
-def test_handle_iq_register_conflict(db_connection_factory):
-    sasl = SASL(db_connection_factory)
+
+@patch('pyjabber.network.ConnectionManager.ConnectionManager')
+def test_handle_iq_register_conflict(MockConnectionsManager, db_connection_factory):
+    sasl = SASL(MockConnectionsManager(), db_connection_factory)
     element = ET.Element("iq", attrib={"type": "set", "id": "123"})
     query = ET.SubElement(element, "{jabber:iq:register}query")
     username = ET.SubElement(query, "{jabber:iq:register}username")
@@ -78,8 +80,10 @@ def test_handle_iq_register_conflict(db_connection_factory):
     expected_result = (Signal.RESET, SE.conflict_error("123"))
     assert result == expected_result
 
-def test_handle_iq_register_success(db_connection_factory):
-    sasl = SASL(db_connection_factory)
+
+@patch('pyjabber.network.ConnectionManager.ConnectionManager')
+def test_handle_iq_register_success(MockConnectionsManager, db_connection_factory):
+    sasl = SASL(MockConnectionsManager(), db_connection_factory)
     element = ET.Element("iq", attrib={"type": "set", "id": "123"})
     query = ET.SubElement(element, "{jabber:iq:register}query")
     username = ET.SubElement(query, "{jabber:iq:register}username")

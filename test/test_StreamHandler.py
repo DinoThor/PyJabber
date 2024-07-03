@@ -28,7 +28,7 @@ def test_stream_handler_initialization():
 
     assert handler._buffer == buffer
     assert handler._starttls == starttls
-    assert handler._connections == connection_manager
+    assert handler._connection_manager == connection_manager
     assert handler._stage == Stage.CONNECTED
     assert handler._elem is None
     assert handler._jid is None
@@ -112,7 +112,7 @@ def test_handle_open_stream_sasl_continue(mock_sasl, mock_connection):
     def mock_db_connection_factory():
         return mock_conn
 
-    sasl_instance = SASL(db_connection_factory=mock_db_connection_factory)
+    sasl_instance = SASL(connection_manager=mock_connection, db_connection_factory=mock_db_connection_factory)
     sasl_instance._connections = MagicMock()
     mock_sasl.return_value = sasl_instance
 
@@ -146,7 +146,7 @@ def test_handle_open_stream_bind(monkeypatch):
     res_elem.text = "resource_id"
 
     connections = Mock()
-    handler._connections = connections
+    handler._connection_manager = connections
     connections.get_jid.return_value = "user"
 
     clark_notation_bind = CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "bind"))
