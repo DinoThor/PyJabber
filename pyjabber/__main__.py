@@ -66,7 +66,7 @@ def main(
         family=socket.AF_INET if family == "ipv4" else socket.AF_INET6,
         connection_timeout=timeout,
         enable_tls1_3=tls1_3,
-        traefik_certs=spade
+        spade=spade
     )
 
     server.start(debug)
