@@ -1,4 +1,3 @@
-import asyncio
 from enum import Enum
 from typing import Union
 from uuid import uuid4
@@ -32,19 +31,14 @@ class Signal(Enum):
     RESET = 0
     DONE = 1
 
-    def __eq__(self, other):
-        if other is None:
-            return False
-        return self.value == other.value
 
-
-class StreamHandler:
-    def __init__(self, buffer, starttls, connection_manager) -> None:
+class ServerStreamHandler():
+    def __init__(self, buffer, starttls) -> None:
         self._buffer = buffer
         self._starttls = starttls
 
         self._streamFeature = StreamFeature()
-        self._connections: ConnectionManager = connection_manager
+        self._connections = ConnectionManager()
         self._stage = Stage.CONNECTED
 
         self._elem = None

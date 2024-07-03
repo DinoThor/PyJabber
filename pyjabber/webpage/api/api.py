@@ -2,10 +2,11 @@ import hashlib
 import json
 import os
 import xml.etree.ElementTree as ET
+from contextlib import closing
 
 from aiohttp import web
-from contextlib import closing
 from loguru import logger
+
 from pyjabber.db.database import connection
 
 

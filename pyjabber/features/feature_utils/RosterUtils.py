@@ -1,7 +1,8 @@
-from typing import List
-from contextlib import closing
-from pyjabber.db.database import connection
 import xml.etree.ElementTree as ET
+from contextlib import closing
+from typing import List
+
+from pyjabber.db.database import connection
 
 
 def retrieve_roster(jid: str) -> List[str]:  # pragma: no cover
@@ -13,7 +14,8 @@ def retrieve_roster(jid: str) -> List[str]:  # pragma: no cover
 
 def update(id: int, item: ET) -> str:  # pragma: no cover
     with closing(connection()) as con:
-        con.execute("UPDATE roster SET rosterItem = ? WHERE id = ?", (ET.tostring(item).decode(), id))
+        con.execute("UPDATE roster SET rosterItem = ? WHERE id = ?",
+                    (ET.tostring(item).decode(), id))
         con.commit()
         res = con.execute("SELECT rosterItem from roster WHERE id = ?", (id,))
         res = res.fetchone()

@@ -1,5 +1,5 @@
-from enum import Enum
 import xml.etree.ElementTree as ET
+from enum import Enum
 
 
 class IQ(ET.Element):
@@ -10,13 +10,13 @@ class IQ(ET.Element):
         ERROR = "error"
 
     def __init__(
-        self,
-        type: TYPE,
-        id: str = None,
-        from_: str = None,
-        to: str = None,
-        tag: str = "iq",
-        **extra: str) -> None:
+            self,
+            type: TYPE,
+            id: str = None,
+            from_: str = None,
+            to: str = None,
+            tag: str = "iq",
+            **extra: str) -> None:
 
         attrib = {
             k: v for k, v in (

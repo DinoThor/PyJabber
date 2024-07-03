@@ -1,5 +1,6 @@
 from threading import Lock
 
+
 class Singleton(type):
     """
     This is a thread-safe implementation of Singleton.

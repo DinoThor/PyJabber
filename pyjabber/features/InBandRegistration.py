@@ -1,5 +1,5 @@
-from xml.etree import ElementTree as ET
 from typing import Dict
+from xml.etree import ElementTree as ET
 
 
 class InBandRegistration(ET.Element):
@@ -9,5 +9,5 @@ class InBandRegistration(ET.Element):
         attrib: Dict[str, str] = {
             "xmlns": "http://jabber.org/features/iq-register"
         },
-        **extra: str) -> None:
+            **extra: str) -> None:
         super().__init__(tag, attrib, **extra)

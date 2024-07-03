@@ -1,6 +1,6 @@
 import enum
-from uuid import uuid4
 import xml.etree.ElementTree as ET
+from uuid import uuid4
 
 
 class Namespaces(enum.Enum):
@@ -13,19 +13,20 @@ class Namespaces(enum.Enum):
 
 
 class Stream(ET.Element):
+
     class Namespaces(enum.Enum):
         XMLSTREAM = "http://etherx.jabber.org/streams"
         CLIENT = "jabber:client"
         SERVER = "jabber:server"
 
     def __init__(
-        self,
-        id=None,
-        from_=None,
-        to=None,
-        version="1.0",
-        xml_lang="en",
-        xmlns=Namespaces.CLIENT.value):
+            self,
+            id=None,
+            from_=None,
+            to=None,
+            version="1.0",
+            xml_lang="en",
+            xmlns=Namespaces.CLIENT.value):
 
         if not id:
             id = str(uuid4())

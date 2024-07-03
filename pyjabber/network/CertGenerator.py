@@ -11,13 +11,13 @@ from cryptography.hazmat.primitives import serialization
 import datetime
 
 
-def check_hostname_cert_exists(host: str):
+def check_hostname_cert_exists():
     previous_path = os.getcwd()
     file_path = os.path.dirname(os.path.abspath(__file__))
 
     os.chdir(os.path.join(file_path, "certs"))
 
-    for file in [f"{host}_key.pem", f"{host}_csr.pem", f"{host}_cert.pem"]:
+    for file in ["domain_key.pem", "domain_csr.pem", "domain_cert.pem"]:
         if os.path.isfile(file) is False:
             os.chdir(os.path.join(previous_path))
             logger.debug("Missing hostname certificate")
@@ -27,14 +27,14 @@ def check_hostname_cert_exists(host: str):
     return True
 
 
-def generate_hostname_cert(host):
+def generate_hostname_cert():
     logger.debug("Generating hostname certificate")
     previous_path = os.getcwd()
     file_path = os.path.dirname(os.path.abspath(__file__))
 
     os.chdir(os.path.join(file_path, "certs"))
 
-    for file in [f"{host}_key.pem", f"{host}_csr.pem", f"{host}_cert.pem"]:
+    for file in ["domain_key.pem", "domain_csr.pem", "domain_cert.pem"]:
         if os.path.isfile(file):
             os.remove(file)
 
@@ -44,7 +44,7 @@ def generate_hostname_cert(host):
         backend=default_backend()
     )
 
-    with open(f"{host}_key.pem", "wb") as f:
+    with open("domain_key.pem", "wb") as f:
         f.write(domain_key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.TraditionalOpenSSL,
@@ -60,7 +60,7 @@ def generate_hostname_cert(host):
         critical=False,
     ).sign(domain_key, hashes.SHA256(), default_backend())
 
-    with open(f"{host}_csr.pem", "wb") as f:
+    with open("domain_csr.pem", "wb") as f:
         f.write(csr.public_bytes(serialization.Encoding.PEM))
 
     with open("ca_key.pem", "rb") as f:
@@ -90,7 +90,7 @@ def generate_hostname_cert(host):
         critical=False,
     ).sign(ca_key, hashes.SHA256(), default_backend())
 
-    with open(f"{host}_cert.pem", "wb") as f:
+    with open("domain_cert.pem", "wb") as f:
         f.write(domain_cert.public_bytes(serialization.Encoding.PEM))
 
     os.chdir(previous_path)

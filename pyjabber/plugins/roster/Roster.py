@@ -1,5 +1,7 @@
 import xml.etree.ElementTree as ET
 from contextlib import closing
+from enum import Enum
+from typing import List
 
 from pyjabber.db.database import connection
 from pyjabber.plugins.PluginInterface import Plugin
@@ -54,7 +56,7 @@ class Roster(Plugin):
 
             return ET.tostring(iq_res)
 
-        except:
+        except BaseException:
             raise Exception()
 
     def handle_set(self, element: ET.Element):
@@ -79,7 +81,8 @@ class Roster(Plugin):
 
             roster = res
             roster = [ET.fromstring(r[-1]) for r in roster]
-            match_item = [i for i in roster if i.attrib["jid"] == new_item.attrib["jid"]]
+            match_item = [i for i in roster if i.attrib["jid"]
+                          == new_item.attrib["jid"]]
 
             if match_item:
                 # Delete roster item
@@ -103,11 +106,12 @@ class Roster(Plugin):
                                  ET.tostring(match_item[0])))
                     con.commit()
 
-
             else:
                 if not remove:
-                    con.execute("INSERT INTO roster(jid, rosterItem) VALUES (?, ?)",
-                                (jid, ET.tostring(new_item).decode()))
+                    con.execute(
+                        "INSERT INTO roster(jid, rosterItem) VALUES (?, ?)",
+                        (jid,
+                         ET.tostring(new_item).decode()))
                     con.commit()
 
             res = ET.Element(
