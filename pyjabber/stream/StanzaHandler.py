@@ -1,6 +1,5 @@
 import os
 import pickle
-import re
 import xml.etree.ElementTree as ET
 
 import xmlschema

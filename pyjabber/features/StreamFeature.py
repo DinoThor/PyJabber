@@ -6,7 +6,6 @@ class NonUniqueFeature(Exception):
     """
     Exception raised when a non unique feature is found on the manager
     """
-    pass
 
 
 class StreamFeature(ET.Element):

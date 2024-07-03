@@ -1,6 +1,5 @@
 from xml.etree import ElementTree as ET
 
-from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.plugins.PluginInterface import Plugin
 
 

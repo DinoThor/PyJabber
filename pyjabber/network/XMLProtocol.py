@@ -1,9 +1,9 @@
 import asyncio
 import os
 import ssl
-from xml import sax
 
 from loguru import logger
+from xml import sax
 
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
@@ -17,14 +17,7 @@ class XMLProtocol(asyncio.Protocol):
     Protocol to manage the network connection between nodes in the XMPP network. Handles the transport layer.
     """
 
-    def __init__(
-            self,
-            namespace,
-            connection_timeout,
-            connection_manager,
-            traefik_certs,
-            queue_message,
-            enable_tls1_3=False):
+    def __init__(self, namespace, connection_timeout, connection_manager, spade, queue_message, enable_tls1_3=False):
         self._xmlns = namespace
         self._transport = None
         self._xml_parser = None
@@ -34,7 +27,7 @@ class XMLProtocol(asyncio.Protocol):
         self._connection_manager: ConnectionManager = connection_manager
 
         self._enable_tls1_3 = enable_tls1_3
-        self._traefik_certs = traefik_certs
+        self._spade = spade
         self._queue_message = queue_message
 
     def connection_made(self, transport):
@@ -49,8 +42,7 @@ class XMLProtocol(asyncio.Protocol):
 
             self._xml_parser = sax.make_parser()
             self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
-            self._xml_parser.setFeature(
-                sax.handler.feature_external_ges, False)
+            self._xml_parser.setFeature(sax.handler.feature_external_ges, False)
             self._xml_parser.setContentHandler(
                 XMLParser(
                     self._transport,
@@ -66,11 +58,9 @@ class XMLProtocol(asyncio.Protocol):
                     callback=self.connection_timeout
                 )
 
-            self._connection_manager.connection(
-                self._transport.get_extra_info('peername'))
+            self._connection_manager.connection(self._transport.get_extra_info('peername'))
 
-            logger.info(
-                f"Connection from {self._transport.get_extra_info('peername')}")
+            logger.info(f"Connection from {self._transport.get_extra_info('peername')}")
         else:
             logger.error("Invalid transport")
 
@@ -81,8 +71,7 @@ class XMLProtocol(asyncio.Protocol):
         :param exc: Exception that caused the connection to close
         :type exc: Exception
         """
-        logger.info(
-            f"Connection lost from {self._transport.get_extra_info('peername')}: Reason {exc}")
+        logger.info(f"Connection lost from {self._transport.get_extra_info('peername')}: Reason {exc}")
 
         self._transport = None
         self._xml_parser = None
@@ -96,7 +85,7 @@ class XMLProtocol(asyncio.Protocol):
         """
         try:
             logger.debug(f"Data received: {data.decode()}")
-        except BaseException:
+        except:
             logger.debug(f"Binary data recived")
 
         self._timeout_monitor.reset()
@@ -130,8 +119,7 @@ class XMLProtocol(asyncio.Protocol):
         """
         Called when the stream is not responding for a long tikem
         """
-        logger.debug(
-            f"Connection timeout from {self._transport.get_extra_info('peername')}")
+        logger.debug(f"Connection timeout from {self._transport.get_extra_info('peername')}")
 
         self._transport.write("<connection-timeout/>".encode())
         self._transport.close()
@@ -154,12 +142,9 @@ class XMLProtocol(asyncio.Protocol):
         if not self._enable_tls1_3:
             ssl_context.options |= ssl.OP_NO_TLSv1_3
 
-        certfile = "_wildcard.spade.upv.es.pem" if self._traefik_certs else "localhost.pem"
-        keyfile = "_wildcard.spade.upv.es-key.pem" if self._traefik_certs else "localhost-key.pem"
-
         ssl_context.load_cert_chain(
-            certfile=os.path.join(FILE_AUTH, "certs", certfile),
-            keyfile=os.path.join(FILE_AUTH, "certs", keyfile),
+            certfile=os.path.join(FILE_AUTH, "certs", "domain_cert.pem"),
+            keyfile=os.path.join(FILE_AUTH, "certs", "domain_key.pem"),
         )
 
         new_transport = await self._loop.start_tls(

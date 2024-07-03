@@ -1,10 +1,8 @@
-import asyncio
 from enum import Enum
 from typing import Union
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
-from loguru import logger
 
 from pyjabber.features import InBandRegistration as IBR
 from pyjabber.features.ResourceBinding import ResourceBinding
@@ -44,7 +42,7 @@ class StreamHandler:
         self._starttls = starttls
 
         self._streamFeature = StreamFeature()
-        self._connections: ConnectionManager = connection_manager
+        self._connection_manager: ConnectionManager = connection_manager
         self._stage = Stage.CONNECTED
 
         self._elem = None

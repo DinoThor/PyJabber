@@ -1,8 +1,6 @@
 import xml.etree.ElementTree as ET
 from uuid import uuid4
 
-from pyjabber.features.feature_utils import RosterUtils as RU
-
 
 def create_roster_entry(jid, to, roster_manager):
     iq = ET.Element(

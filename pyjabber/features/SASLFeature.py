@@ -7,7 +7,6 @@ from xml.etree import ElementTree as ET
 
 from pyjabber.db.database import connection
 from pyjabber.features.FeatureInterface import FeatureInterface
-from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.utils import ClarkNotation as CN
 

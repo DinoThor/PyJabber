@@ -1,7 +1,5 @@
 from xml.etree import ElementTree as ET
 
-from pyjabber.features.FeatureInterface import FeatureInterface
-
 
 class ResourceBinding(ET.Element):
     def __init__(self) -> None:

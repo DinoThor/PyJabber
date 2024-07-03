@@ -1,20 +1,11 @@
 import base64
-import ssl
-from enum import Enum
 from typing import Union
-from uuid import uuid4
 from xml.etree import ElementTree as ET
 
-from loguru import logger
 
-from pyjabber.features import InBandRegistration as IBR
-from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.features.SASLFeature import SASLFeature, mechanismEnum
 from pyjabber.features.StartTLSFeature import StartTLSFeature
-from pyjabber.features.StreamFeature import StreamFeature
-from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stream.StreamHandler import Signal, Stage, StreamHandler
-from pyjabber.utils import ClarkNotation as CN
 
 
 class StreamServerIncomingHandler(StreamHandler):
@@ -62,7 +53,7 @@ class StreamServerIncomingHandler(StreamHandler):
                 elif elem.text == "=":
                     pass
                 else:
-                    host = base64.b64decode(elem.text).decode()
+                    base64.b64decode(elem.text).decode()
                     self._buffer.write(
                         b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")
                     self._stage = Stage.AUTH

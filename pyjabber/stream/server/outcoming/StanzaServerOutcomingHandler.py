@@ -4,8 +4,6 @@ import xml.etree.ElementTree as ET
 
 import xmlschema
 
-from pyjabber.features.presence.PresenceFeature import Presence
-from pyjabber.plugins.PluginManager import PluginManager
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.utils import ClarkNotation as CN
 
@@ -17,7 +15,8 @@ class StanzaServerOutcomingHandler:
         self._buffer = buffer
         self._connection_manager = connection_manager
         self._peername = buffer.get_extra_info('peername')
-        self._host = None #self._connections.get_jid(self._peername)
+        self._host = None
+        # self._connections.get_jid(self._peername)
         # self._pluginManager = PluginManager(self._jid)
         # self._presenceManager = Presence()
 
@@ -32,7 +31,8 @@ class StanzaServerOutcomingHandler:
 
     def feed(self, element: ET.Element):
         try:
-            schema: xmlschema.XMLSchema = self._schemas[CN.deglose(element.tag)[0]]
+            schema: xmlschema.XMLSchema = self._schemas[CN.deglose(element.tag)[
+                0]]
             if schema.is_valid(ET.tostring(element)) is False:
                 self._buffer.write(SE.bad_request())
         except KeyError:

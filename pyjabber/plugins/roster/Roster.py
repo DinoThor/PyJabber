@@ -1,7 +1,5 @@
 import xml.etree.ElementTree as ET
 from contextlib import closing
-from enum import Enum
-from typing import List
 
 from pyjabber.db.database import connection
 from pyjabber.plugins.PluginInterface import Plugin

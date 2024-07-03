@@ -6,9 +6,7 @@ from xml.etree.ElementTree import Element
 from pyjabber.features.feature_utils import RosterUtils as RU
 from pyjabber.features.FeatureInterface import FeatureInterface
 from pyjabber.features.presence.utils import create_roster_entry
-from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.plugins.roster.Roster import Roster
-from pyjabber.stanzas.error import StanzaError as SE
 
 
 class Presence(FeatureInterface):
