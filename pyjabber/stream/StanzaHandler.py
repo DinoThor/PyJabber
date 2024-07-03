@@ -1,72 +1,88 @@
-import enum
-from uuid import uuid4
+import os
+import pickle
+import re
 import xml.etree.ElementTree as ET
 
+import xmlschema
 
-class Namespaces(enum.Enum):
-    '''
-    Defines the available namespaces in the protocol.
-    '''
-    XMLSTREAM = "http://etherx.jabber.org/streams"
-    CLIENT = "jabber:client"
-    SERVER = "jabber:server"
+from pyjabber.features.presence.PresenceFeature import Presence
+from pyjabber.plugins.PluginManager import PluginManager
+from pyjabber.stanzas.error import StanzaError as SE
+from pyjabber.utils import ClarkNotation as CN
+
+FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
-class Stream(ET.Element):
-    class Namespaces(enum.Enum):
-        XMLSTREAM = "http://etherx.jabber.org/streams"
-        CLIENT = "jabber:client"
-        SERVER = "jabber:server"
+class StanzaHandler:
+    def __init__(self, buffer, connection_manager, queue_message) -> None:
+        self._buffer = buffer
+        self._connections = connection_manager
+        self._queue_message = queue_message
 
-    def __init__(
-        self,
-        id=None,
-        from_=None,
-        to=None,
-        version="1.0",
-        xml_lang="en",
-        xmlns=Namespaces.CLIENT.value):
+        self._peername = buffer.get_extra_info('peername')
+        self._jid = self._connections.get_jid(self._peername)
 
-        if not id:
-            id = str(uuid4())
+        self._pluginManager = PluginManager(self._jid)
+        self._presenceManager = Presence(self._jid, self._connections)
 
-        attrib = {
-            k: v for k, v in (
-                ("id", id),
-                ("from", from_),
-                ("to", to),
-                ("version", version),
-                ("xml:lang", xml_lang),
-                ("xmlns", xmlns)) if v is not None
+        self._functions = {
+            "{jabber:client}iq": self.handle_iq,
+            "{jabber:client}message": self.handle_msg,
+            "{jabber:client}presence": self.handle_pre
         }
 
-        attrib["xmlns:stream"] = Namespaces.XMLSTREAM.value
+        with open(FILE_PATH + "/schemas/schemas.pkl", "rb") as schemasDump:
+            self._schemas = pickle.load(schemasDump)
 
-        super().__init__("stream:stream", attrib)
+    def feed(self, element: ET.Element):
+        try:
+            schema: xmlschema.XMLSchema = self._schemas[CN.deglose(element.tag)[
+                0]]
+            if schema.is_valid(ET.tostring(element)) is False:
+                self._buffer.write(SE.bad_request())
+                return
+        except KeyError:
+            self._buffer.write(SE.feature_not_implemented())
+            return
 
-    def open_tag(self) -> bytes:
-        tag = f'<{self.tag}'
-        for a in self.attrib:
-            tag += f" {a}='{self.attrib[a]}'"
-        tag += '>'
-        return tag.encode()
+        try:
+            self._functions[element.tag](element)
+        except KeyError:
+            raise Exception()
 
+    ############################################################
+    ############################################################
 
-def responseStream(attrs):
-    attrs = dict(attrs)
+    def handle_iq(self, element: ET.Element):
+        res = self._pluginManager.feed(element)
+        if res:
+            self._buffer.write(res)
 
-    id = str(uuid4())
-    from_ = attrs.pop((None, "from"), None)
-    to = attrs.pop((None, "to"), None)
-    version = attrs.pop((None, "version"), "1.0")
-    lang = attrs.pop(("http://www.w3.org/XML/1998/namespace", "lang"), None)
+    def handle_msg(self, element: ET.Element):
+        """
+            Router the message to the client
 
-    stream = Stream(
-        id=id,
-        from_=to,
-        to=from_,
-        version=version,
-        xml_lang=lang
-    )
+            If the destination client is a user of a remote server, it will queue the message into the QueueMessage
+            object and try to connect to the remote server
 
-    return stream.open_tag()
+            :param element: the message in the ElementTree format
+        """
+        bare_jid = element.attrib["to"].split("/")[0]
+
+        if False:  # re.match(r'^.+@localhost$', bare_jid):
+            for buffer in self._connections.get_buffer(bare_jid):
+                buffer[-1].write(ET.tostring(element))
+
+        else:
+            server_buffer = self._connections.get_server_buffer(bare_jid)
+            if server_buffer:
+                server_buffer[-1].write(ET.tostring(element))
+
+            else:
+                server_host = element.attrib["to"].split("@")[-1]
+                self._queue_message.enqueue(server_host, ET.tostring(element))
+
+    def handle_pre(self, element: ET.Element):
+        res = self._presenceManager.feed(element, self._jid)
+        if res:
+            self._buffer.write(res)
