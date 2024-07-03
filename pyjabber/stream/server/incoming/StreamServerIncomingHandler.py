@@ -1,18 +1,19 @@
+import base64
 import ssl
 from enum import Enum
 from typing import Union
-from loguru import logger
 from uuid import uuid4
-import base64
 from xml.etree import ElementTree as ET
 
+from loguru import logger
+
 from pyjabber.features import InBandRegistration as IBR
+from pyjabber.features.ResourceBinding import ResourceBinding
+from pyjabber.features.SASLFeature import SASLFeature, mechanismEnum
 from pyjabber.features.StartTLSFeature import StartTLSFeature
 from pyjabber.features.StreamFeature import StreamFeature
-from pyjabber.features.SASLFeature import SASLFeature, mechanismEnum
-from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber.stream.StreamHandler import StreamHandler, Signal, Stage
+from pyjabber.stream.StreamHandler import Signal, Stage, StreamHandler
 from pyjabber.utils import ClarkNotation as CN
 
 
@@ -20,7 +21,8 @@ class StreamServerIncomingHandler(StreamHandler):
     def __init__(self, buffer, starttls, connection_manager) -> None:
         super().__init__(buffer, starttls, connection_manager)
 
-    def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
+    def handle_open_stream(
+            self, elem: ET.Element = None) -> Union[Signal, None]:
         if elem is None:
             if self._stage == Stage.CONNECTED:
                 self._streamFeature.reset()
@@ -31,13 +33,15 @@ class StreamServerIncomingHandler(StreamHandler):
 
             elif self._stage == Stage.SSL:
                 self._streamFeature.reset()
-                self._streamFeature.register(SASLFeature(mechanismList=[mechanismEnum.EXTERNAL]))
+                self._streamFeature.register(SASLFeature(
+                    mechanismList=[mechanismEnum.EXTERNAL]))
                 self._buffer.write(self._streamFeature.to_bytes())
                 self._stage = Stage.SASL
                 return
 
             elif self._stage == Stage.AUTH:
-                self._buffer.write(b"<features xmlns='http://etherx.jabber.org/streams'/>")
+                self._buffer.write(
+                    b"<features xmlns='http://etherx.jabber.org/streams'/>")
                 self._stage == Stage.READY
                 return Signal.DONE
 
@@ -51,21 +55,22 @@ class StreamServerIncomingHandler(StreamHandler):
             return Signal.RESET
 
         elif self._stage == Stage.SASL and elem.tag == "{urn:ietf:params:xml:ns:xmpp-sasl}auth":
-            if "mechanism" in elem.attrib.keys() and elem.attrib["mechanism"] == "EXTERNAL":
+            if "mechanism" in elem.attrib.keys(
+            ) and elem.attrib["mechanism"] == "EXTERNAL":
                 if elem.text is None:
                     raise Exception()
                 elif elem.text == "=":
                     pass
                 else:
                     host = base64.b64decode(elem.text).decode()
-                    self._buffer.write(b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")
+                    self._buffer.write(
+                        b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")
                     self._stage = Stage.AUTH
                     return Signal.RESET
 
         else:
-            self._buffer.write(b"<features xmlns='http://etherx.jabber.org/streams'/>")
-
-
+            self._buffer.write(
+                b"<features xmlns='http://etherx.jabber.org/streams'/>")
 
         # elif elem.tag == "{http://etherx.jabber.org/streams}features":
         #     children = [child.tag for child in elem]
