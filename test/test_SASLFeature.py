@@ -93,7 +93,7 @@ def test_handle_iq_register_success(MockConnectionsManager, db_connection_factor
 
     result = sasl.handleIQ(element)
 
-    expected_result = sasl.iq_register_result("123")
+    expected_result = iq_register_result("123")
     assert result == (Signal.RESET, expected_result)
 
 

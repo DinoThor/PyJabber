@@ -60,8 +60,8 @@ class Server:
                     con.cursor().executescript(schema.read())
                 con.commit()
 
-        if CertGenerator.check_hostname_cert_exists() is False:
-            CertGenerator.generate_hostname_cert()
+        if CertGenerator.check_hostname_cert_exists(self._host) is False:
+            CertGenerator.generate_hostname_cert(self._host)
 
         if self._spade:
             if not os.path.isfile(os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik.pem")):
@@ -69,16 +69,16 @@ class Server:
             if not os.path.isfile(os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik-key.pem")):
                 wget.download("http://traefik.me/privkey.pem", os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik-key.pem"))
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         self._client_listener = await loop.create_server(
             lambda: XMLProtocol(
                 namespace='jabber:client',
+                host=self._host,
                 connection_timeout=self._connection_timeout,
                 connection_manager=self._connection_manager,
+                queue_message=self._queue_message,
                 enable_tls1_3=self._enable_tls1_3,
-                spade=self._spade,
-                queue_message=self._queue_message
             ),
             host=self._host,
             port=self._client_port,
@@ -91,11 +91,11 @@ class Server:
         self._server_listener = await loop.create_server(
             lambda: XMLServerIncomingProtocol(
                 namespace='jabber:server',
+                host=self._host,
                 connection_timeout=self._connection_timeout,
                 connection_manager=self._connection_manager,
+                queue_message=self._queue_message,
                 enable_tls1_3=self._enable_tls1_3,
-                spade=self._spade,
-                queue_message=self._queue_message
             ),
             host="0.0.0.0",
             port=self._server_port,
@@ -127,34 +127,33 @@ class Server:
 
     def task_s2s(self, host):
         host = host.split("@")[-1]
-        asyncio.get_running_loop().create_task(self.server_connection(host))
+        loop = asyncio.get_running_loop()
 
-    async def server_connection(self, host):
-        loop = asyncio.get_event_loop()
+        asyncio.ensure_future(self.server_connection(host, loop), loop=loop)
 
+    async def server_connection(self, host, loop):
         await loop.create_connection(
             lambda: XMLServerOutcomingProtocol(
                 namespace="jabber:server",
                 host=host,
-                my_host=self._public_ip,
+                public_host=self._public_ip,
                 connection_timeout=self._connection_timeout,
                 connection_manager=self._connection_manager,
                 queue_message=self._queue_message,
                 enable_tls1_3=self._enable_tls1_3,
-                spade=self._spade
             ),
             host=host,
-            port=5270
+            port=5269
         )
 
     def raise_exit(self):
         raise SystemExit(1)
 
-    def start(self, debug: bool = False):
+    def start(self, debug: bool = True):
         loop = asyncio.get_event_loop()
         loop.set_debug(debug)
 
-        nest_asyncio.apply(loop)
+        # nest_asyncio.apply(loop)
 
         try:
             loop.add_signal_handler(signal.SIGINT, self.raise_exit)

@@ -24,20 +24,21 @@ class XMLServerOutcomingProtocol(XMLProtocol):
             self,
             namespace,
             host,
+            public_host,
+            connection_timeout,
             connection_manager,
             queue_message,
-            traefik_certs=False,
-            enable_tls1_3=False,
-            connection_timeout=None):
+            enable_tls1_3=False):
 
         super().__init__(
             namespace,
+            host,
             connection_timeout,
             connection_manager,
-            traefik_certs,
             queue_message,
             enable_tls1_3)
-        self._host = host
+
+        self._public_host = public_host
 
     def connection_made(self, transport):
         """
@@ -59,7 +60,9 @@ class XMLServerOutcomingProtocol(XMLProtocol):
                     self.task_tls,
                     self._connection_manager,
                     self._queue_message,
-                    self._host)
+                    self._host,
+                    self._public_host,
+                )
             )
 
             if self._connection_timeout:

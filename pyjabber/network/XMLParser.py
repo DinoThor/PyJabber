@@ -17,18 +17,19 @@ class XMLParser(ContentHandler):
     Inheriting from sax.ContentHandler
     """
 
-    def __init__(self, buffer, starttls, connection_manager, queue_message):
+    def __init__(self, host, buffer, starttls, connection_manager, queue_message):
         super().__init__()
-        self._state = self.StreamState.CONNECTED
+
+        self._host = host
         self._buffer = buffer
         self._connection_manager = connection_manager
         self._queue_message = queue_message
 
-        self._streamHandler = StreamHandler(
-            self._buffer, starttls, connection_manager)
+        self._state = self.StreamState.CONNECTED
         self._stanzaHandler = None
-
         self._stack = []
+        self._streamHandler = StreamHandler(
+            self._host, self._buffer, starttls, connection_manager)
 
     class StreamState(Enum):
         """
@@ -47,7 +48,7 @@ class XMLParser(ContentHandler):
         self._streamHandler.buffer = value
 
     def startElementNS(self, name, qname, attrs):
-        logger.debug(f"Start element NS: {name}")
+        logger.debug(f"Start element from <{hex(id(self._buffer))}>: {name}")
 
         if self._stack:  # "<stream:stream>" tag already present in the data stack
             elem = ET.Element(
@@ -101,7 +102,7 @@ class XMLParser(ContentHandler):
                     self._stack.clear()
                 elif signal == Signal.DONE:
                     self._stanzaHandler = StanzaHandler(
-                        self._buffer, self._connection_manager, self._queue_message)
+                        self._host, self._buffer, self._connection_manager, self._queue_message)
                     self._state = self.StreamState.READY
 
     def characters(self, content: str) -> None:

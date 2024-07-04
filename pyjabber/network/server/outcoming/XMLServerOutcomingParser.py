@@ -15,11 +15,20 @@ class XMLServerOutcomingParser(XMLParser):
     Inheriting from sax.ContentHandler
     """
 
-    def __init__(self, buffer, starttls, connection_manager, queue_message, host, my_host):
+    def __init__(
+            self,
+            buffer,
+            starttls,
+            connection_manager,
+            queue_message,
+            host,
+            public_host):
+
         super().__init__(buffer, starttls, connection_manager, queue_message)
+
         self._host = host
-        self._my_host = my_host
-        self._streamHandler = StreamServerOutcomingHandler(self._buffer, starttls, connection_manager, my_host)
+        self._public_host = public_host
+        self._streamHandler = StreamServerOutcomingHandler(self._buffer, starttls, connection_manager, public_host)
         self.initial_stream()
 
     def startElementNS(self, name, qname, attrs):
@@ -70,7 +79,7 @@ class XMLServerOutcomingParser(XMLParser):
 
     def initial_stream(self):
         initial_stream = Stream.Stream(
-            from_=self._my_host,
+            from_=self._public_host,
             to=self._host,
             xmlns=Stream.Namespaces.SERVER.value
         )

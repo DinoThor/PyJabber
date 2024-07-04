@@ -37,7 +37,8 @@ class Signal(Enum):
 
 
 class StreamHandler:
-    def __init__(self, buffer, starttls, connection_manager) -> None:
+    def __init__(self, host, buffer, starttls, connection_manager) -> None:
+        self._host = host
         self._buffer = buffer
         self._starttls = starttls
 
@@ -64,6 +65,7 @@ class StreamHandler:
             self._buffer.write(self._streamFeature.to_bytes())
 
             self._stage = Stage.OPENED
+            return
 
         # TLS feature offered
         elif self._stage == Stage.OPENED:
@@ -72,6 +74,9 @@ class StreamHandler:
                 self._starttls()
                 self._stage = Stage.SSL
                 return Signal.RESET
+
+            else:
+                raise Exception()
 
         # TLS Handshake made. Starting SASL
         elif self._stage == Stage.SSL:
@@ -136,7 +141,7 @@ class StreamHandler:
                     jidRes = ET.SubElement(bindRes, "jid")
 
                     currentJid = self._connection_manager.get_jid(self._buffer.get_extra_info('peername'))
-                    jidRes.text = f"{currentJid}@{socket.gethostname()}/{resource_id}"
+                    jidRes.text = f"{currentJid}@{self._host}/{resource_id}"
 
                     self._buffer.write(ET.tostring(iqRes))
 

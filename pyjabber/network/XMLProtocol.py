@@ -1,5 +1,6 @@
 import asyncio
 import os
+import socket
 import ssl
 
 from loguru import logger
@@ -17,18 +18,26 @@ class XMLProtocol(asyncio.Protocol):
     Protocol to manage the network connection between nodes in the XMPP network. Handles the transport layer.
     """
 
-    def __init__(self, namespace, connection_timeout, connection_manager, spade, queue_message, enable_tls1_3=False):
+    def __init__(
+            self,
+            namespace,
+            host,
+            connection_timeout,
+            connection_manager,
+            queue_message,
+            enable_tls1_3=False):
+
         self._xmlns = namespace
+        self._host = host
+        self._connection_timeout = connection_timeout
+        self._connection_manager: ConnectionManager = connection_manager
+        self._queue_message = queue_message
+        self._enable_tls1_3 = enable_tls1_3
+
         self._transport = None
         self._xml_parser = None
         self._timeout_monitor = None
-        self._loop = asyncio.get_event_loop()
-        self._connection_timeout = connection_timeout
-        self._connection_manager: ConnectionManager = connection_manager
 
-        self._enable_tls1_3 = enable_tls1_3
-        self._spade = spade
-        self._queue_message = queue_message
 
     def connection_made(self, transport):
         """
@@ -45,6 +54,7 @@ class XMLProtocol(asyncio.Protocol):
             self._xml_parser.setFeature(sax.handler.feature_external_ges, False)
             self._xml_parser.setContentHandler(
                 XMLParser(
+                    self._host,
                     self._transport,
                     self.task_tls,
                     self._connection_manager,
@@ -84,11 +94,12 @@ class XMLProtocol(asyncio.Protocol):
         :type data: Byte array
         """
         try:
-            logger.debug(f"Data received: {data.decode()}")
+            logger.debug(f"Data received from <{hex(id(self._transport))}>: {data.decode()}")
         except:
             logger.debug(f"Binary data recived")
 
-        self._timeout_monitor.reset()
+        if self._timeout_monitor:
+            self._timeout_monitor.reset()
 
         '''
         Some XMPP clients/libraries send the XML header
@@ -132,34 +143,26 @@ class XMLProtocol(asyncio.Protocol):
     ###########################################################################
 
     def task_tls(self):
-        tls = self._loop.create_task(self.enable_tls())
-        self._loop.run_until_complete(tls)
+        loop = asyncio.get_running_loop()
+        asyncio.ensure_future(self.enable_tls(loop), loop=loop)
 
-    async def enable_tls(self):
+    async def enable_tls(self, loop):
         parser = self._xml_parser.getContentHandler()
 
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         if not self._enable_tls1_3:
             ssl_context.options |= ssl.OP_NO_TLSv1_3
 
         ssl_context.load_cert_chain(
-            certfile=os.path.join(FILE_AUTH, "certs", "domain_cert.pem"),
-            keyfile=os.path.join(FILE_AUTH, "certs", "domain_key.pem"),
+            certfile=os.path.join(FILE_AUTH, "certs", f"{socket.gethostname()}_cert.pem"),
+            keyfile=os.path.join(FILE_AUTH, "certs", f"{socket.gethostname()}_key.pem"),
         )
 
-        try:
-            new_transport = await self._loop.start_tls(
-                transport=self._transport,
-                protocol=self,
-                sslcontext=ssl_context,
-                server_side=True)
-        except Exception as e:
-            logger.error("TLS handshake failed. Closing connection")
-            self.connection_lost(e)
-            return
-
-        # self._transport.close()
-        self._transport = new_transport
+        self._transport = await loop.start_tls(
+            transport=self._transport,
+            protocol=self,
+            sslcontext=ssl_context,
+            server_side=True)
 
         parser.buffer = self._transport
-        logger.debug(f"Done TLS")
+        logger.debug(f"Done TLS for <{hex(id(self))}>")

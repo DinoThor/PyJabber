@@ -24,17 +24,17 @@ class XMLServerIncomingProtocol(XMLProtocol):
     def __init__(
             self,
             namespace,
+            host,
+            connection_timeout,
             connection_manager,
             queue_message,
-            traefik_certs=False,
-            enable_tls1_3=False,
-            connection_timeout=None):
+            enable_tls1_3=False):
 
         super().__init__(
             namespace,
+            host,
             connection_timeout,
             connection_manager,
-            traefik_certs,
             queue_message,
             enable_tls1_3)
 
@@ -87,32 +87,3 @@ class XMLServerIncomingProtocol(XMLProtocol):
 
         self._transport = None
         self._xml_parser = None
-
-    ###########################################################################
-    ###########################################################################
-    ###########################################################################
-    # async def enable_tls(self):
-    #     parser = self._xml_parser.getContentHandler()
-    #
-    #     certfile = "traefik.pem" if self._traefik_certs else "localhost.pem"
-    #     keyfile = "traefik-key.pem" if self._traefik_certs else "localhost-key.pem"
-    #
-    #     ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    #     if not self._enable_tls1_3:
-    #         ssl_context.options |= ssl.OP_NO_TLSv1_3
-    #
-    #     ssl_context.load_cert_chain(
-    #         certfile=os.path.join(FILE_AUTH, "..", "..", "certs", certfile),
-    #         keyfile=os.path.join(FILE_AUTH, "..", "..", "certs", keyfile),
-    #     )
-    #
-    #     new_transport = await self._loop.start_tls(
-    #         transport=self._transport,
-    #         protocol=self,
-    #         sslcontext=ssl_context,
-    #     )
-    #
-    #     self._transport = new_transport
-    #     parser.buffer = self._transport
-    #
-    #     logger.debug(f"Done TLS")

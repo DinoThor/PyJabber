@@ -22,8 +22,18 @@ class Signal(Enum):
     DONE = 1
 
 
+def iq_register_result(id: str) -> bytes:
+    iq = ET.Element(
+        "iq",
+        attrib={
+            "type": "result",
+            "id": id,
+            "from": "localhost"})
+    return ET.tostring(iq)
+
+
 class SASL(FeatureInterface):
-    def __init__(self, connection_manager, db_connection_factory=connection()):
+    def __init__(self, connection_manager, db_connection_factory=connection):
         self._handlers = {
             "iq": self.handleIQ,
             "auth": self.handleAuth
@@ -74,7 +84,7 @@ class SASL(FeatureInterface):
                     con.execute(
                         "INSERT INTO credentials(jid, hash_pwd) VALUES (?, ?)", (new_jid, hash_pwd))
                     con.commit()
-                    return Signal.RESET, self.iq_register_result(
+                    return Signal.RESET, iq_register_result(
                         element.attrib["id"])
 
         else:
@@ -96,15 +106,6 @@ class SASL(FeatureInterface):
             return Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>"
 
         return SE.not_authorized()
-
-    def iq_register_result(self, id: str) -> bytes:
-        iq = ET.Element(
-            "iq",
-            attrib={
-                "type": "result",
-                "id": id,
-                "from": "localhost"})
-        return ET.tostring(iq)
 
 
 def SASLFeature(
