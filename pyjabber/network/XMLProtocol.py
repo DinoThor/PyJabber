@@ -85,8 +85,9 @@ class XMLProtocol(asyncio.Protocol):
         """
         try:
             logger.debug(f"Data received: {data.decode()}")
-        except:
-            logger.debug(f"Binary data recived")
+
+        except UnicodeDecodeError:
+            logger.debug("Binary data recived")
 
         self._timeout_monitor.reset()
 
@@ -157,4 +158,4 @@ class XMLProtocol(asyncio.Protocol):
         self._transport = new_transport
 
         parser.buffer = self._transport
-        logger.debug(f"Done TLS")
+        logger.debug("Done TLS")

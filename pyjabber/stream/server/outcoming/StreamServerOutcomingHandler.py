@@ -1,14 +1,7 @@
 from typing import Union
 from xml.etree import ElementTree as ET
 
-from pyjabber.features import InBandRegistration as IBR
-from pyjabber.features.ResourceBinding import ResourceBinding
-from pyjabber.features.SASLFeature import SASL, SASLFeature
-from pyjabber.features.StartTLSFeature import StartTLSFeature
-from pyjabber.features.StreamFeature import StreamFeature
-from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stream.StreamHandler import Signal, Stage, StreamHandler
-from pyjabber.utils import ClarkNotation as CN
 
 
 class StreamServerOutcomingHandler(StreamHandler):

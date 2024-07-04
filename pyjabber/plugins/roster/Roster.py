@@ -79,8 +79,7 @@ class Roster(Plugin):
 
             roster = res
             roster = [ET.fromstring(r[-1]) for r in roster]
-            match_item = [i for i in roster if i.attrib["jid"]
-                          == new_item.attrib["jid"]]
+            match_item = [i for i in roster if i.attrib["jid"] == new_item.attrib["jid"]]
 
             if match_item:
                 # Delete roster item

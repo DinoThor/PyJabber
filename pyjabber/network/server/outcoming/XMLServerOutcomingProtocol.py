@@ -1,11 +1,9 @@
-import asyncio
 import os
 import ssl
 from xml import sax
 
 from loguru import logger
 
-from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.server.outcoming.XMLServerOutcomingParser import (
     XMLServerOutcomingParser,
 )
@@ -117,4 +115,4 @@ class XMLServerOutcomingProtocol(XMLProtocol):
         self._transport = new_transport
         parser.buffer = self._transport
 
-        logger.debug(f"Done TLS")
+        logger.debug("Done TLS")

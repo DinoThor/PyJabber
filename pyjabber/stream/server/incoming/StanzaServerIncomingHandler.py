@@ -1,13 +1,8 @@
 import os
-import pickle
 import xml.etree.ElementTree as ET
 
-import xmlschema
 
-from pyjabber.features.presence.PresenceFeature import Presence
-from pyjabber.plugins.PluginManager import PluginManager
 from pyjabber.stanzas.error import StanzaError as SE
-from pyjabber.utils import ClarkNotation as CN
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -17,7 +12,7 @@ class StanzaServerIncomingHandler:
         self._buffer = buffer
         self._connection_manager = connection_manager
         self._peername = buffer.get_extra_info('peername')
-        self._host = None  #self._connections.get_jid(self._peername)
+        self._host = None  # self._connections.get_jid(self._peername)
         # self._pluginManager = PluginManager(self._jid)
         # self._presenceManager = Presence()
 
@@ -44,7 +39,6 @@ class StanzaServerIncomingHandler:
 
         for buffer in reciver_buffer:
             buffer[-1].write(ET.tostring(element))
-
 
     def handle_pre(self, element: ET.Element):
         res = self._presenceManager.feed(element, self._jid)

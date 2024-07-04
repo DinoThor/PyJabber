@@ -23,7 +23,7 @@ class Signal(Enum):
 
 
 class SASL(FeatureInterface):
-    def __init__(self,connection_manager,  db_connection_factory=connection()):
+    def __init__(self, connection_manager, db_connection_factory=connection()):
         self._handlers = {
             "iq": self.handleIQ,
             "auth": self.handleAuth
@@ -96,7 +96,6 @@ class SASL(FeatureInterface):
             return Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>"
 
         return SE.not_authorized()
-
 
     def iq_register_result(self, id: str) -> bytes:
         iq = ET.Element(
