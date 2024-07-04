@@ -11,6 +11,7 @@ def setUp():
     mock_buffer = MagicMock()
     mock_buffer.get_extra_info.return_value = '127.0.0.1'
     mock_queue_message = MagicMock()
+    mock_host = "domain.es"
 
     with patch('pyjabber.network.ConnectionManager.ConnectionManager') as MockConnectionsManager, \
          patch('pyjabber.features.presence.PresenceFeature.Presence') as MockPresence:
@@ -23,7 +24,8 @@ def setUp():
         with open(schemas_path, 'rb') as f:
             schemas = pickle.load(f)
 
-        handler = StanzaHandler(mock_buffer, mock_connections, mock_queue_message)
+        handler = StanzaHandler(mock_host, mock_buffer, mock_connections, mock_queue_message)
+        handler._host = mock_host
         handler._schemas = schemas
         handler._connections = mock_connections
         handler._presenceManager = mock_presence

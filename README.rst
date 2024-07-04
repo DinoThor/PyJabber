@@ -1,6 +1,10 @@
+.. class:: center
 ========
 PyJabber
 ========
+
+.. image:: res/pyjabber_logo.png
+   :width: 100
 
 
 .. image:: https://img.shields.io/pypi/v/pyjabber.svg

@@ -26,7 +26,9 @@ def test_stream_handler_initialization():
     buffer = Mock()
     starttls = Mock()
     connection_manager = Mock()
-    handler = StreamHandler(buffer, starttls, connection_manager)
+    host = Mock()
+
+    handler = StreamHandler(host, buffer, starttls, connection_manager)
 
     assert handler._buffer == buffer
     assert handler._starttls == starttls
@@ -39,7 +41,9 @@ def test_stream_handler_buffer_property():
     buffer = Mock()
     starttls = Mock()
     connection_manager = Mock()
-    handler = StreamHandler(buffer, starttls, connection_manager)
+    host = Mock()
+
+    handler = StreamHandler(host, buffer, starttls, connection_manager)
 
     new_buffer = Mock()
     handler.buffer = new_buffer
@@ -50,7 +54,9 @@ def test_handle_open_stream_connected():
     buffer = MagicMock()
     starttls = Mock()
     connection_manager = Mock()
-    handler = StreamHandler(buffer, starttls, connection_manager)
+    host = Mock()
+
+    handler = StreamHandler(host, buffer, starttls, connection_manager)
 
     handler.handle_open_stream()
 
@@ -61,7 +67,9 @@ def test_handle_open_stream_opened():
     buffer = MagicMock()
     starttls = Mock()
     connection_manager = Mock()
-    handler = StreamHandler(buffer, starttls, connection_manager)
+    host = Mock()
+
+    handler = StreamHandler(host, buffer, starttls, connection_manager)
     handler._stage = Stage.OPENED
 
     elem = ET.Element("starttls")
@@ -76,7 +84,9 @@ def test_handle_open_stream_ssl():
     buffer = MagicMock()
     starttls = Mock()
     connection_manager = Mock()
-    handler = StreamHandler(buffer, starttls, connection_manager)
+    host = Mock()
+
+    handler = StreamHandler(host, buffer, starttls, connection_manager)
     handler._stage = Stage.SSL
 
     handler.handle_open_stream()
@@ -93,7 +103,9 @@ def test_handle_open_stream_sasl_continue(mock_sasl, mock_connection):
     buffer = MagicMock()
     starttls = Mock()
     connection_manager = Mock()
-    handler = StreamHandler(buffer, starttls, connection_manager)
+    host = Mock()
+
+    handler = StreamHandler(host, buffer, starttls, connection_manager)
     handler._stage = Stage.SASL
 
     password = b'password'
@@ -127,7 +139,9 @@ def test_handle_open_stream_auth():
     buffer = MagicMock()
     starttls = Mock()
     connection_manager = Mock()
-    handler = StreamHandler(buffer, starttls, connection_manager)
+    host = Mock()
+
+    handler = StreamHandler(host, buffer, starttls, connection_manager)
     handler._stage = Stage.AUTH
 
     handler.handle_open_stream()
@@ -139,7 +153,9 @@ def test_handle_open_stream_bind(monkeypatch):
     buffer = MagicMock()
     starttls = Mock()
     connection_manager = Mock()
-    handler = StreamHandler(buffer, starttls, connection_manager)
+    host = Mock()
+
+    handler = StreamHandler(host, buffer, starttls, connection_manager)
     handler._stage = Stage.BIND
 
     iq_elem = ET.Element("iq", attrib={"type": "set", "id": "123"})
@@ -163,7 +179,7 @@ def test_handle_open_stream_bind(monkeypatch):
     connections.get_jid.assert_called_once_with(buffer.get_extra_info('peername'))
     connections.set_jid.assert_called_once_with(
         buffer.get_extra_info('peername'),
-        f'user@{socket.gethostname()}/resource_id',
+        f'user@{host}/resource_id',
         buffer
     )
 
