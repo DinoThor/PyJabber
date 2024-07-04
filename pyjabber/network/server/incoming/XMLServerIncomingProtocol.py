@@ -1,16 +1,12 @@
-import asyncio
 import os
-import ssl
 from xml import sax
 
 from loguru import logger
 
-from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.server.incoming.XMLServerIncomingParser import (
     XMLServerIncomingParser,
 )
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
-from pyjabber.network.XMLParser import XMLParser
 from pyjabber.network.XMLProtocol import XMLProtocol
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))

@@ -24,7 +24,7 @@ def bad_request() -> bytes:
        <bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
    </error>
    """
-    return f"<error type='modify'><bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>".encode()
+    return "<error type='modify'><bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>".encode()
 
 
 def conflict_error(id: str) -> bytes:
@@ -95,7 +95,7 @@ def not_acceptable(text: str = None) -> bytes:
         return f"<error type='modify'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'><text>{text}</text></not-acceptable></error>".encode(
         )
     else:
-        return f"<error type='modify'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>".encode()
+        return "<error type='modify'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>".encode()
 
 
 def not_authorized() -> bytes:

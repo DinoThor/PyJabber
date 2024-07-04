@@ -34,7 +34,7 @@ class XMLServerOutcomingParser(XMLParser):
     def startElementNS(self, name, qname, attrs):
         logger.debug(f"Start element NS: {name}")
 
-        clark = CN.clarkFromTuple(name)
+        CN.clarkFromTuple(name)
         if CN.clarkFromTuple(name) == '{http://etherx.jabber.org/streams}stream' and self._stack:
             # ERROR Stream already present in stack
             raise Exception()
