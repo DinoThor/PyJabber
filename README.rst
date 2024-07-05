@@ -1,11 +1,11 @@
-.. class:: center
-========
-PyJabber
-========
+.. raw:: html
 
-.. image:: res/pyjabber_logo.png
-   :width: 100
-
+    <p align="center">
+        <picture>
+          <img src="_static/pyjabber_logo.png" width="128">
+        </picture>
+        <h1 align="center">PyJabber</h1>
+    </p>
 
 .. image:: https://img.shields.io/pypi/v/pyjabber.svg
         :target: https://pypi.org/project/pyjabber/

@@ -22,7 +22,6 @@ setup(
         "xmlschema==3.3.0",
         "cryptography~=42.0.8",
         "colorama~=0.4.6"
-
     ],
     include_package_data=True,
     classifiers=[
@@ -30,10 +29,10 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     entry_points={
         "console_scripts": [
-            "pyjabber=pyjabber:main",
+            "pyjabber=pyjabber.cli:main",
         ],
     },
 )
