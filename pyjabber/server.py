@@ -31,7 +31,7 @@ class Server:
         family=socket.AF_INET,
         connection_timeout=60,
         enable_tls1_3=False,
-        spade=False
+        cert_path=None
     ):
         # Server
         self._host = host
@@ -43,10 +43,10 @@ class Server:
         self._adminServer = None
         self._public_ip = None
         self._connection_timeout = connection_timeout
+        self._cert_path = cert_path
 
         # Client handler
         self._enable_tls1_3 = enable_tls1_3
-        self._spade = spade
         self._connection_manager = ConnectionManager(self.task_s2s)
         self._queue_message = QueueMessage(self._connection_manager)
 
@@ -63,11 +63,10 @@ class Server:
         if CertGenerator.check_hostname_cert_exists(self._host) is False:
             CertGenerator.generate_hostname_cert(self._host)
 
-        if self._spade:
-            if not os.path.isfile(os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik.pem")):
-                wget.download("http://traefik.me/fullchain.pem", os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik.pem"))
-            if not os.path.isfile(os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik-key.pem")):
-                wget.download("http://traefik.me/privkey.pem", os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik-key.pem"))
+        if not os.path.isfile(os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik.pem")):
+            wget.download("http://traefik.me/fullchain.pem", os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik.pem"))
+        if not os.path.isfile(os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik-key.pem")):
+            wget.download("http://traefik.me/privkey.pem", os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik-key.pem"))
 
         loop = asyncio.get_running_loop()
 
@@ -77,6 +76,7 @@ class Server:
                 host=self._host,
                 connection_timeout=self._connection_timeout,
                 connection_manager=self._connection_manager,
+                cert_path=self._cert_path,
                 queue_message=self._queue_message,
                 enable_tls1_3=self._enable_tls1_3,
             ),
@@ -94,6 +94,7 @@ class Server:
                 host=self._host,
                 connection_timeout=self._connection_timeout,
                 connection_manager=self._connection_manager,
+                cert_path=self._cert_path,
                 queue_message=self._queue_message,
                 enable_tls1_3=self._enable_tls1_3,
             ),

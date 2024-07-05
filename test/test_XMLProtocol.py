@@ -17,6 +17,7 @@ def test_connection_made(mock_connections_manager, mock_make_parser):
 
     namespace = "jabber:client"
     host = "domain.com"
+    cert_path = None
     connection_timeout = 30
     connection_manager = mock_connections_manager.return_value
     queue_message = MagicMock()
@@ -27,6 +28,7 @@ def test_connection_made(mock_connections_manager, mock_make_parser):
             namespace=namespace,
             connection_timeout=connection_timeout,
             connection_manager=connection_manager,
+            cert_path=cert_path,
             queue_message=queue_message
         )
         protocol.connection_made(mock_transport)
@@ -46,6 +48,7 @@ def test_connection_made_with_timeout(mock_monitor):
 
     namespace = "jabber:client"
     host = MagicMock()
+    cert_path = None
     connection_timeout = 30
     connection_manager = MagicMock()
     queue_message = MagicMock()
@@ -54,6 +57,7 @@ def test_connection_made_with_timeout(mock_monitor):
         protocol = XMLProtocol(
             host=host,
             namespace=namespace,
+            cert_path=cert_path,
             connection_timeout=connection_timeout,
             connection_manager=connection_manager,
             queue_message=queue_message
@@ -67,6 +71,7 @@ def test_connection_made_with_timeout(mock_monitor):
 def test_connection_lost():
     namespace = "jabber:client"
     host = MagicMock()
+    cert_path = None
     connection_timeout = 30
     connection_manager = MagicMock()
     queue_message = MagicMock()
@@ -76,6 +81,7 @@ def test_connection_lost():
         namespace=namespace,
         connection_timeout=connection_timeout,
         connection_manager=connection_manager,
+        cert_path=cert_path,
         queue_message=queue_message
     )
     mock_transport = MagicMock()
@@ -90,6 +96,7 @@ def test_connection_lost():
 def test_data_received():
     namespace = "jabber:client"
     host = MagicMock()
+    cert_path = None
     connection_timeout = 30
     connection_manager = MagicMock()
     queue_message = MagicMock()
@@ -99,6 +106,7 @@ def test_data_received():
         namespace=namespace,
         connection_timeout=connection_timeout,
         connection_manager=connection_manager,
+        cert_path=cert_path,
         queue_message=queue_message
     )
     mock_transport = MagicMock()
@@ -117,6 +125,7 @@ def test_data_received():
 def test_eof_received():
     namespace = "jabber:client"
     host = MagicMock()
+    cert_path = None
     connection_timeout = 30
     connection_manager = MagicMock()
     queue_message = MagicMock()
@@ -126,6 +135,7 @@ def test_eof_received():
         namespace=namespace,
         connection_timeout=connection_timeout,
         connection_manager=connection_manager,
+        cert_path=cert_path,
         queue_message=queue_message
     )
     mock_transport = MagicMock()
@@ -146,6 +156,7 @@ def test_eof_received():
 def test_connection_timeout():
     namespace = "jabber:client"
     host = MagicMock()
+    cert_path = None
     connection_timeout = 30
     connection_manager = MagicMock()
     queue_message = MagicMock()
@@ -155,6 +166,7 @@ def test_connection_timeout():
         namespace=namespace,
         connection_timeout=connection_timeout,
         connection_manager=connection_manager,
+        cert_path=cert_path,
         queue_message=queue_message
     )
     mock_transport = MagicMock()
@@ -173,6 +185,7 @@ def test_connection_timeout():
 def test_enable_tls(mock_create_default_context, mock_get_running_loop):
     namespace = "jabber:client"
     host = MagicMock()
+    cert_path = None
     connection_timeout = 30
     connection_manager = MagicMock()
     queue_message = MagicMock()
@@ -182,6 +195,7 @@ def test_enable_tls(mock_create_default_context, mock_get_running_loop):
         namespace=namespace,
         connection_timeout=connection_timeout,
         connection_manager=connection_manager,
+        cert_path=cert_path,
         queue_message=queue_message
     )
     mock_transport = MagicMock()

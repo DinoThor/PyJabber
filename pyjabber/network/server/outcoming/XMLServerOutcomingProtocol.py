@@ -33,6 +33,7 @@ class XMLServerOutcomingProtocol(XMLProtocol):
             host,
             connection_timeout,
             connection_manager,
+            None,
             queue_message,
             enable_tls1_3)
 
@@ -97,16 +98,13 @@ class XMLServerOutcomingProtocol(XMLProtocol):
     async def enable_tls(self):
         parser = self._xml_parser.getContentHandler()
 
-        certfile = "_wildcard.spade.upv.es.pem" if self._traefik_certs else "localhost.pem"
-        keyfile = "_wildcard.spade.upv.es-key.pem" if self._traefik_certs else "localhost-key.pem"
-
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         if not self._enable_tls1_3:
             ssl_context.options |= ssl.OP_NO_TLSv1_3
 
         ssl_context.load_cert_chain(
-            certfile=os.path.join(FILE_AUTH, "..", "..", "certs", certfile),
-            keyfile=os.path.join(FILE_AUTH, "..", "..", "certs", keyfile),
+            certfile=os.path.join(FILE_AUTH, "..", "..", "certs", "traefik.pem"),
+            keyfile=os.path.join(FILE_AUTH, "..", "..", "certs", "traefik-key.pem"),
         )
 
         new_transport = await self._loop.start_tls(

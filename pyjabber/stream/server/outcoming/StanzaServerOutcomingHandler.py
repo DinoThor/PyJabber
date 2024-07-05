@@ -1,11 +1,7 @@
 import os
-import pickle
 import xml.etree.ElementTree as ET
 
-import xmlschema
-
 from pyjabber.stanzas.error import StanzaError as SE
-from pyjabber.utils import ClarkNotation as CN
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -16,7 +12,6 @@ class StanzaServerOutcomingHandler:
         self._connection_manager = connection_manager
         self._peername = buffer.get_extra_info('peername')
         self._host = self._connection_manager.get_server_host(self._peername)
-        self._presenceManager = Presence(self._host)
 
         self._functions = {
             "{jabber:client}iq": self.handle_iq,

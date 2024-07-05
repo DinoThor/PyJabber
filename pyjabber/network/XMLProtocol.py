@@ -24,6 +24,7 @@ class XMLProtocol(asyncio.Protocol):
             host,
             connection_timeout,
             connection_manager,
+            cert_path,
             queue_message,
             enable_tls1_3=False):
 
@@ -31,6 +32,7 @@ class XMLProtocol(asyncio.Protocol):
         self._host = host
         self._connection_timeout = connection_timeout
         self._connection_manager: ConnectionManager = connection_manager
+        self._cert_path = cert_path
         self._queue_message = queue_message
         self._enable_tls1_3 = enable_tls1_3
 
@@ -153,10 +155,16 @@ class XMLProtocol(asyncio.Protocol):
         if not self._enable_tls1_3:
             ssl_context.options |= ssl.OP_NO_TLSv1_3
 
-        ssl_context.load_cert_chain(
-            certfile=os.path.join(FILE_AUTH, "certs", f"{socket.gethostname()}_cert.pem"),
-            keyfile=os.path.join(FILE_AUTH, "certs", f"{socket.gethostname()}_key.pem"),
-        )
+        if self._cert_path:
+            ssl_context.load_cert_chain(
+                certfile=os.path.join(self._cert_path, f"{self._host}_cert.pem"),
+                keyfile=os.path.join(self._cert_path, "certs", f"{self._host}_key.pem"),
+            )
+        else:
+            ssl_context.load_cert_chain(
+                certfile=os.path.join(FILE_AUTH, "certs", f"{socket.gethostname()}_cert.pem"),
+                keyfile=os.path.join(FILE_AUTH, "certs", f"{socket.gethostname()}_key.pem"),
+            )
 
         self._transport = await loop.start_tls(
             transport=self._transport,
