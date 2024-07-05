@@ -32,7 +32,7 @@ setup(
     python_requires=">=3.8",
     entry_points={
         "console_scripts": [
-            "pyjabber=pyjabber.cli:main",
+            "pyjabber=pyjabber.__main__:main",
         ],
     },
 )
