@@ -52,6 +52,7 @@ class XMLServerIncomingProtocol(XMLProtocol):
                 sax.handler.feature_external_ges, False)
             self._xml_parser.setContentHandler(
                 XMLServerIncomingParser(
+                    self._host,
                     self._transport,
                     self.task_tls,
                     self._connection_manager,
