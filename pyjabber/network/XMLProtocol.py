@@ -132,10 +132,13 @@ class XMLProtocol(asyncio.Protocol):
         """
         Called when the stream is not responding for a long tikem
         """
-        logger.debug(f"Connection timeout from {self._transport.get_extra_info('peername')}")
+        peer = self._transport.get_extra_info('peername')
+        logger.debug(f"Connection timeout from {peer}")
 
         self._transport.write("<connection-timeout/>".encode())
-        self._transport.close()
+        self._transport.close(peer)
+
+        self._connection_manager.disconnection(peer)
 
         self._transport = None
         self._xml_parser = None
@@ -162,8 +165,8 @@ class XMLProtocol(asyncio.Protocol):
             )
         else:
             ssl_context.load_cert_chain(
-                certfile=os.path.join(FILE_AUTH, "certs", f"{socket.gethostname()}_cert.pem"),
-                keyfile=os.path.join(FILE_AUTH, "certs", f"{socket.gethostname()}_key.pem"),
+                certfile=os.path.join(FILE_AUTH, "certs", f"{self._host}_cert.pem"),
+                keyfile=os.path.join(FILE_AUTH, "certs", f"{self._host}_key.pem"),
             )
 
         self._transport = await loop.start_tls(

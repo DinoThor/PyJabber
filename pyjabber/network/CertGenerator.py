@@ -51,7 +51,7 @@ def generate_hostname_cert(host):
             encryption_algorithm=serialization.NoEncryption()
         ))
 
-    domain_name = socket.gethostname()
+    domain_name = host
     csr = x509.CertificateSigningRequestBuilder().subject_name(x509.Name([
         x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"Spade"),
         x509.NameAttribute(NameOID.COMMON_NAME, domain_name),
