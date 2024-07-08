@@ -5,17 +5,17 @@ from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stream.QueueMessage import QueueMessage
 
 @pytest.fixture
+def setup_queue_message(event_loop):
+    connection_manager = MagicMock(ConnectionManager)
+    queue_message = QueueMessage(connection_manager)
+    return queue_message, connection_manager
+
+@pytest.fixture
 def event_loop():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     yield loop
     loop.close()
-
-@pytest.fixture
-def setup_queue_message(event_loop):
-    connection_manager = MagicMock(ConnectionManager)
-    queue_message = QueueMessage(connection_manager, loop=event_loop)
-    return queue_message, connection_manager
 
 
 
