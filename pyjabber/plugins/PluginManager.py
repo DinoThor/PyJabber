@@ -26,6 +26,8 @@ class PluginManager():
         except IndexError:
             if element.attrib["type"] == "result":
                 return
+            else:
+                return SE.service_unavaliable()
 
         tag, _ = CN.deglose(child.tag)
 

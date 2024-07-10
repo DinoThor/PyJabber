@@ -9,9 +9,9 @@ from pyjabber.stream.StreamHandler import StreamHandler, Signal, Stage
 
 
 class StreamServerIncomingHandler(StreamHandler):
-
     STARTTLS = "{urn:ietf:params:xml:ns:xmpp-tls}starttls"
     AUTH = "{urn:ietf:params:xml:ns:xmpp-sasl}auth"
+
     def __init__(self, host, buffer, starttls, connection_manager) -> None:
         super().__init__(host, buffer, starttls, connection_manager)
 

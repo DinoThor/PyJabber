@@ -28,7 +28,7 @@ class XMLServerOutcomingParser(XMLParser):
 
         self._host = host
         self._public_host = public_host
-        self._streamHandler = StreamServerOutcomingHandler(self._buffer, starttls, connection_manager, public_host)
+        self._streamHandler = StreamServerOutcomingHandler(public_host,buffer, starttls, connection_manager)
         self.initial_stream()
 
     def startElementNS(self, name, qname, attrs):

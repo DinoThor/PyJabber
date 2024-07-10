@@ -1,7 +1,5 @@
 import os
-import pickle
 import xml.etree.ElementTree as ET
-import xmlschema
 
 from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.stanzas.error import StanzaError as SE
@@ -42,6 +40,4 @@ class StanzaServerIncomingHandler:
             buffer[-1].write(ET.tostring(element))
 
     def handle_pre(self, element: ET.Element):
-        res = self._presenceManager.feed(element, self._jid)
-        if res:
-            self._buffer.write(res)
+        return

@@ -132,18 +132,18 @@ class Server:
 
         asyncio.ensure_future(self.server_connection(host, loop), loop=loop)
 
-    async def server_connection(self, host, loop):
+    async def server_connection(self, remote_host, loop):
         await loop.create_connection(
             lambda: XMLServerOutcomingProtocol(
                 namespace="jabber:server",
-                host=host,
-                public_host=self._public_ip,
+                host=remote_host,
+                public_host=self._host,
                 connection_timeout=self._connection_timeout,
                 connection_manager=self._connection_manager,
                 queue_message=self._queue_message,
                 enable_tls1_3=self._enable_tls1_3,
             ),
-            host=host,
+            host=remote_host,
             port=5269
         )
 

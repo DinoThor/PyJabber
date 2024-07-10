@@ -95,7 +95,7 @@ class XMLServerOutcomingProtocol(XMLProtocol):
     ###########################################################################
     ###########################################################################
     ###########################################################################
-    async def enable_tls(self):
+    async def enable_tls(self, loop):
         parser = self._xml_parser.getContentHandler()
 
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
@@ -107,7 +107,7 @@ class XMLServerOutcomingProtocol(XMLProtocol):
             keyfile=os.path.join(FILE_AUTH, "..", "..", "certs", "traefik-key.pem"),
         )
 
-        new_transport = await self._loop.start_tls(
+        new_transport = await loop.start_tls(
             transport=self._transport,
             protocol=self,
             sslcontext=ssl_context,

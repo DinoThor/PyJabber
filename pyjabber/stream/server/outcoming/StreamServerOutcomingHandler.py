@@ -13,14 +13,14 @@ class StreamServerOutcomingHandler(StreamHandler):
     FEATURES = "{http://etherx.jabber.org/streams}features"
     STARTTLS = "{urn:ietf:params:xml:ns:xmpp-tls}starttls"
 
-    def __init__(self, buffer, starttls, connection_manager) -> None:
-        super().__init__(buffer, starttls, connection_manager)
+    def __init__(self, buffer, starttls, connection_manager, host) -> None:
+        super().__init__(host, buffer, starttls, connection_manager)
 
     def handle_open_stream(
             self, elem: ET.Element = None) -> Union[Signal, None]:
         if self._stage == Stage.READY:
             peer = self.buffer.get_extra_info('peername')
-            self._connections.set_server_transport(peer, self.buffer)
+            self._connection_manager.set_server_transport(peer, self.buffer)
             return Signal.DONE
 
         elif elem.tag == self.FEATURES:
@@ -41,7 +41,7 @@ class StreamServerOutcomingHandler(StreamHandler):
 
             elif self.DIALBACK in children and self._stage == Stage.READY:
                 peer = self.buffer.get_extra_info('peername')
-                self._connections.set_server_transport(peer, self.buffer)
+                self._connection_manager.set_server_transport(peer, self.buffer)
                 return Signal.DONE
 
         elif elem.tag == self.PROCEED:

@@ -55,6 +55,13 @@ class StanzaHandler:
     ############################################################
 
     def handle_iq(self, element: ET.Element):
+        """
+            Process the iq stanza with the PluginManager (PM) class
+            If the feature/XEP requested is not available, the PM instance
+            will send a
+
+            :param element: The stanza in the ElementTree format
+        """
         res = self._pluginManager.feed(element)
         if res:
             self._buffer.write(res)
