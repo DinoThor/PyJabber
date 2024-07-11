@@ -3,7 +3,6 @@ import colorama
 import os
 import signal
 import socket
-import nest_asyncio
 import urllib.request
 import wget
 
@@ -23,6 +22,17 @@ SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
 class Server:
+    """
+        Server class
+
+        :param host: Host for the clients connection
+        :param client_port: Port for client connections (5222 by default)
+        :param server_port: Port for server-to-server connections (5269 by default)
+        :param family: Type of AddressFamily (IPv4 or IPv6)
+        :param connection_timeout: Max time without any response from a client. After that, the server will terminate the connection
+        :param enable_tls1_3: Boolean. Enables the use of TLSv1.3 in the STARTTLS process
+        :parm cert_path: Path to custom domain certs. By default, the server generates its own certificates for hostname
+    """
     def __init__(
         self,
         host=socket.gethostname(),
@@ -70,6 +80,8 @@ class Server:
 
         loop = asyncio.get_running_loop()
 
+        lan_ip = self.query_local_ip()
+
         self._client_listener = await loop.create_server(
             lambda: XMLProtocol(
                 namespace='jabber:client',
@@ -80,13 +92,13 @@ class Server:
                 queue_message=self._queue_message,
                 enable_tls1_3=self._enable_tls1_3,
             ),
-            host=self._host,
+            host=[self._host, lan_ip],
             port=self._client_port,
             family=self._family
         )
 
         logger.info(f"Client domain => {self._host}")
-        logger.info(f"Server is listening clients on {self._client_listener.sockets[0].getsockname()}")
+        logger.info(f"Server is listening clients on {[s.getsockname() for s in self._client_listener.sockets]}")
 
         self._server_listener = await loop.create_server(
             lambda: XMLServerIncomingProtocol(
@@ -103,7 +115,7 @@ class Server:
             family=self._family
         )
 
-        logger.info(f"Server is listening servers on {self._server_listener.sockets[0].getsockname()}")
+        logger.info(f"Server is listening servers on {[s.getsockname() for s in self._server_listener.sockets]}")
 
         public_ip = urllib.request.urlopen("https://api.ipify.org/")
         if public_ip.status == 200:
@@ -133,11 +145,16 @@ class Server:
         asyncio.ensure_future(self.server_connection(host, loop), loop=loop)
 
     async def server_connection(self, remote_host, loop):
+        """
+            Task to connect to another XMPP server
+            :param remote_host: Host of the remote server to connect
+            :param loop: Asyncio running loop. Necessary to perform task
+        """
         await loop.create_connection(
             lambda: XMLServerOutcomingProtocol(
                 namespace="jabber:server",
                 host=remote_host,
-                public_host=self._host,
+                public_host=self._public_ip,
                 connection_timeout=self._connection_timeout,
                 connection_manager=self._connection_manager,
                 queue_message=self._queue_message,
@@ -147,14 +164,31 @@ class Server:
             port=5269
         )
 
+    def query_local_ip(self):
+        """
+            Return the local IP of the host machine
+        """
+        try:
+            connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            connection.connect(("8.8.8.8", 80))
+            local_ip_address = connection.getsockname()[0]
+            return local_ip_address
+        except Exception as e:
+            logger.error("Unable to retrieve LAN IP")
+            raise self.raise_exit()
+        finally:
+            connection.close()
+
     def raise_exit(self):
         raise SystemExit(1)
 
-    def start(self, debug: bool = True):
+    def start(self, debug: bool = False):
+        """
+            Start the already created and configuration server
+            :param debug: Boolean. Enables debug mode in asyncio
+        """
         loop = asyncio.get_event_loop()
         loop.set_debug(debug)
-
-        # nest_asyncio.apply(loop)
 
         try:
             loop.add_signal_handler(signal.SIGINT, self.raise_exit)

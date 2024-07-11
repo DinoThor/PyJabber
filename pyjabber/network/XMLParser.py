@@ -13,8 +13,13 @@ from pyjabber.utils import ClarkNotation as CN
 
 class XMLParser(ContentHandler):
     """
-    Manages the stream data and process the XML objects.
-    Inheriting from sax.ContentHandler
+        Manages the stream data and process the XML objects.
+        Inheriting from sax.ContentHandler
+
+        :param host: Host of the running server
+        :param buffer: Transport instance of the connected client. Used to send replays
+        :param starttls: Coroutine launched when server and client start the connection upgrade process to TLS
+        :param connection_manager: Global instance of the Connection Manager class (Singleton)
     """
 
     def __init__(self, host, buffer, starttls, connection_manager, queue_message):

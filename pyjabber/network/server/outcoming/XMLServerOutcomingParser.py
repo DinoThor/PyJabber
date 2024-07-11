@@ -24,11 +24,11 @@ class XMLServerOutcomingParser(XMLParser):
             host,
             public_host):
 
-        super().__init__(buffer, starttls, connection_manager, queue_message)
+        super().__init__(host, buffer, starttls, connection_manager, queue_message)
 
         self._host = host
         self._public_host = public_host
-        self._streamHandler = StreamServerOutcomingHandler(public_host,buffer, starttls, connection_manager)
+        self._streamHandler = StreamServerOutcomingHandler(public_host, buffer, starttls, connection_manager)
         self.initial_stream()
 
     def startElementNS(self, name, qname, attrs):

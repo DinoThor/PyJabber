@@ -98,7 +98,7 @@ class XMLServerOutcomingProtocol(XMLProtocol):
     async def enable_tls(self, loop):
         parser = self._xml_parser.getContentHandler()
 
-        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
         if not self._enable_tls1_3:
             ssl_context.options |= ssl.OP_NO_TLSv1_3
 
