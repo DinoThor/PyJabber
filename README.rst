@@ -12,7 +12,11 @@
 
 .. image:: https://img.shields.io/github/actions/workflow/status/dinothor/pyjabber/python-app.yml
         :target: https://github.com/DinoThor/PyJabber/actions
-        :alt: CI status
+        :alt: Build Status
+
+.. image:: https://coveralls.io/repos/github/DinoThor/PyJabber/badge.svg?branch=develop
+        :target: https://coveralls.io/github/DinoThor/PyJabber?branch=develop
+        :alt: Coverage Status
 
 .. image:: https://readthedocs.org/projects/pyjabber/badge/?version=latest
         :target: https://pyjabber.readthedocs.io/en/latest/?version=latest
