@@ -1,10 +1,9 @@
 import xml.etree.ElementTree as ET
+from abc import ABCMeta, abstractmethod
+from typing import Dict
 
-from abc import ABCMeta
-from abc import abstractmethod
 
-
-class FeatureInterface(metaclass = ABCMeta):
+class FeatureInterface(metaclass=ABCMeta):
     @abstractmethod
-    def feed(element: ET.Element, extra: dict[str, any] = None):
+    def feed(self, element: ET.Element, extra: Dict[str, any] = None):
         pass

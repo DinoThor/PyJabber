@@ -1,26 +1,28 @@
+from typing import Dict
 from xml.etree import ElementTree as ET
+
 
 class NonUniqueFeature(Exception):
     """
     Exception raised when a non unique feature is found on the manager
     """
-    pass
+
 
 class StreamFeature(ET.Element):
     """Class to manage server features."""
     __slots__ = [
         "_features"
-    ] 
+    ]
 
     def __init__(
-            self, 
-            tag     : str               = "stream:features", 
-            attrib  : dict[str, str]    = {
-                "xmlns": "http://etherx.jabber.org/streams"
-            }, 
-            **extra : str) -> None:
+        self,
+        tag: str = "stream:features",
+        attrib: Dict[str, str] = {
+            "xmlns": "http://etherx.jabber.org/streams"
+        },
+            **extra: str) -> None:
         super().__init__(tag, attrib, **extra)
-        self._features: dict[str, ET.Element] = {}
+        self._features: Dict[str, ET.Element] = {}
 
     def register(self, feature: ET.Element):
         """
@@ -44,14 +46,13 @@ class StreamFeature(ET.Element):
         """
         self._features.clear()
 
-
     def tostring(self) -> str:
         """
         Return a string representation of the xml message
         """
-        return self.tobytes().decode()
+        return self.to_bytes().decode()
 
-    def tobytes(self) -> bytes:
+    def to_bytes(self) -> bytes:
         """
         Return an encoded xml message
         """

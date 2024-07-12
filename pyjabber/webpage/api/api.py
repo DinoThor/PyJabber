@@ -1,11 +1,10 @@
 import hashlib
 import json
-import os
-import xml.etree.ElementTree as ET
+from contextlib import closing
 
 from aiohttp import web
-from contextlib import closing
 from loguru import logger
+
 from pyjabber.db.database import connection
 
 
@@ -27,10 +26,10 @@ async def handleRoster(request):
 
             if not user_jid:
                 return web.json_response({"status": "error", "message": "User not found"}, status=404)
-            
+
             res = con.execute("SELECT rosterItem FROM roster WHERE jid LIKE ?", (f"{user_jid}%", ))
             roster = res.fetchall()
-            
+
             response = [{"item": r[0]} for r in roster]
 
         return web.Response(text=json.dumps(response))
@@ -55,10 +54,10 @@ async def handleDelete(request):
 
             if user_id not in [r[0] for r in res]:
                 return web.json_response({"status": "error", "message": "User not found"}, status=404)
-            
+
             res = con.execute("SELECT jid FROM credentials WHERE id = ?", (user_id, ))
             user_jid = res.fetchone()[0]
-            
+
             con.execute("DELETE FROM credentials WHERE id = ?", (user_id, ))
             con.execute("DELETE FROM roster WHERE jid LIKE ?", (f"{user_jid}%", ))
             con.commit()
@@ -101,7 +100,7 @@ async def handleRegister(request):
 
         logger.info(f"User with jid {data['jid']} created")
         return web.json_response(response_data, status=200)
-    
+
     except Exception as e:
         error_response = {
             "status": "error",

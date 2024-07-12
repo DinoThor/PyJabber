@@ -1,80 +1,127 @@
 import asyncio
+import colorama
 import os
 import signal
 import socket
+import urllib.request
+import wget
 
 from contextlib import closing
 from loguru import logger
 
 from pyjabber.db.database import connection
-from pyjabber.network.XMLProtocol  import XMLProtocol
-from pyjabber.network.ConnectionsManager import ConectionsManager
-from pyjabber.webpage.adminPage import serverInstance
-
-CLIENT_PORT = 5222
-CLIENT_NS   = "jabber:client"
-
-SERVER_PORT = 5269
-SERVER_NS   = "jabber:server"
+from pyjabber.network.XMLProtocol import XMLProtocol
+from pyjabber.network.server.incoming.XMLServerIncomingProtocol import XMLServerIncomingProtocol
+from pyjabber.network.server.outcoming.XMLServerOutcomingProtocol import XMLServerOutcomingProtocol
+from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.stream.QueueMessage import QueueMessage
+from pyjabber.webpage.adminPage import admin_instance
+from pyjabber.network import CertGenerator
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
-class Server():
-    _slots__ = [
-        "_host",
-        "_client_port",
-        "_server_port",
-        "_family",
-        "_adminServer",
-        "_client_listener",
-        "_server_listener",
-        "_connection_timeout",
-        "_features"
-    ]
 
+class Server:
+    """
+        Server class
+
+        :param host: Host for the clients connections
+        :param client_port: Port for client connections (5222 by default)
+        :param server_port: Port for server-to-server connections (5269 by default)
+        :param family: Type of AddressFamily (IPv4 or IPv6)
+        :param connection_timeout: Max time without any response from a client. After that, the server will terminate the connection
+        :param enable_tls1_3: Boolean. Enables the use of TLSv1.3 in the STARTTLS process
+        :parm cert_path: Path to custom domain certs. By default, the server generates its own certificates for hostname
+    """
     def __init__(
         self,
-        host                = ["localhost",],
-        client_port         = CLIENT_PORT,
-        server_port         = SERVER_PORT,
-        family              = socket.AF_INET,
-        connection_timeout  = 60,
-
+        host=socket.gethostname(),
+        client_port=5222,
+        server_port=5269,
+        family=socket.AF_INET,
+        connection_timeout=60,
+        enable_tls1_3=False,
+        cert_path=None
     ):
-        self._host                  = host
-        self._client_port           = client_port
-        self._server_port           = server_port
-        self._family                = family
-        self._client_listener       = None
-        self._server_listener       = None
-        self._adminServer           = None
-        self._connection_timeout    = connection_timeout
+        # Server
+        self._host = host
+        self._client_port = client_port
+        self._server_port = server_port
+        self._family = family
+        self._client_listener = None
+        self._server_listener = None
+        self._adminServer = None
+        self._public_ip = None
+        self._connection_timeout = connection_timeout
+        self._cert_path = cert_path
 
-        self._connections           = ConectionsManager()
+        # Client handler
+        self._enable_tls1_3 = enable_tls1_3
+        self._connection_manager = ConnectionManager(self.task_s2s)
+        self._queue_message = QueueMessage(self._connection_manager)
 
     async def run_server(self):
         logger.info("Starting server...")
 
-        if os.path.isfile(SERVER_FILE_PATH + "/db/server.db") is False:
+        if os.path.isfile(os.path.join(SERVER_FILE_PATH, "db", "server.db")) is False:
             logger.debug("No database found. Initializing one...")
             with closing(connection()) as con:
                 with open(SERVER_FILE_PATH + "/db/schema.sql", "r") as schema:
                     con.cursor().executescript(schema.read())
                 con.commit()
 
+        if CertGenerator.check_hostname_cert_exists(self._host) is False:
+            CertGenerator.generate_hostname_cert(self._host)
+
+        if not os.path.isfile(os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik.pem")):
+            wget.download("http://traefik.me/fullchain.pem", os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik.pem"))
+        if not os.path.isfile(os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik-key.pem")):
+            wget.download("http://traefik.me/privkey.pem", os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik-key.pem"))
+
         loop = asyncio.get_running_loop()
+
+        lan_ip = self.query_local_ip()
 
         self._client_listener = await loop.create_server(
             lambda: XMLProtocol(
-                namespace           = CLIENT_NS,
-                connection_timeout  = self._connection_timeout,
+                namespace='jabber:client',
+                host=self._host,
+                connection_timeout=self._connection_timeout,
+                connection_manager=self._connection_manager,
+                cert_path=self._cert_path,
+                queue_message=self._queue_message,
+                enable_tls1_3=self._enable_tls1_3,
             ),
-            host    = self._host,
-            port    = self._client_port,
-            family  = self._family
+            host=[self._host, lan_ip],
+            port=self._client_port,
+            family=self._family
         )
 
-        logger.info(f"Server is listening clients on {self._client_listener.sockets[0].getsockname()}")
+        logger.info(f"Client domain => {self._host}")
+        logger.info(f"Server is listening clients on {[s.getsockname() for s in self._client_listener.sockets]}")
+
+        self._server_listener = await loop.create_server(
+            lambda: XMLServerIncomingProtocol(
+                namespace='jabber:server',
+                host=self._host,
+                connection_timeout=self._connection_timeout,
+                connection_manager=self._connection_manager,
+                cert_path=self._cert_path,
+                queue_message=self._queue_message,
+                enable_tls1_3=self._enable_tls1_3,
+            ),
+            host="0.0.0.0",
+            port=self._server_port,
+            family=self._family
+        )
+
+        logger.info(f"Server is listening servers on {[s.getsockname() for s in self._server_listener.sockets]}")
+
+        public_ip = urllib.request.urlopen("https://api.ipify.org/")
+        if public_ip.status == 200:
+            self._public_ip = public_ip.read().decode()
+            self._public_ip = self._public_ip.replace(".", "-") + ".traefik.me"
+            logger.info(f"S2S domain ==> {colorama.Fore.RED}{self._public_ip.replace('.', '-')}")
 
         logger.info("Server started...")
 
@@ -91,10 +138,55 @@ class Server():
 
         logger.info("Server stopped...")
 
+    def task_s2s(self, host):
+        host = host.split("@")[-1]
+        loop = asyncio.get_running_loop()
+
+        asyncio.ensure_future(self.server_connection(host, loop), loop=loop)
+
+    async def server_connection(self, remote_host, loop):
+        """
+            Task to connect to another XMPP server
+            :param remote_host: Host of the remote server to connect
+            :param loop: Asyncio running loop. Necessary to perform task
+        """
+        await loop.create_connection(
+            lambda: XMLServerOutcomingProtocol(
+                namespace="jabber:server",
+                host=remote_host,
+                public_host=self._public_ip,
+                connection_timeout=self._connection_timeout,
+                connection_manager=self._connection_manager,
+                queue_message=self._queue_message,
+                enable_tls1_3=self._enable_tls1_3,
+            ),
+            host=remote_host,
+            port=5269
+        )
+
+    def query_local_ip(self):
+        """
+            Return the local IP of the host machine
+        """
+        try:
+            connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            connection.connect(("8.8.8.8", 80))
+            local_ip_address = connection.getsockname()[0]
+            return local_ip_address
+        except Exception as e:
+            logger.error("Unable to retrieve LAN IP")
+            raise self.raise_exit()
+        finally:
+            connection.close()
+
     def raise_exit(self):
         raise SystemExit(1)
 
-    def start(self, debug:bool = False):
+    def start(self, debug: bool = False):
+        """
+            Start the already created and configuration server
+            :param debug: Boolean. Enables debug mode in asyncio
+        """
         loop = asyncio.get_event_loop()
         loop.set_debug(debug)
 
@@ -105,12 +197,14 @@ class Server():
         except NotImplementedError:  # pragma: no cover
             pass
 
-        try:        
-            main_task   = loop.create_task(self.run_server(), name="main_server")
-            loop.run_until_complete(main_task)
-            loop.run_until_complete(serverInstance())
-            loop.run_forever()
-            
+        try:
+            # XMPP Server
+            main_server = loop.create_task(self.run_server())
+            loop.run_until_complete(main_server)
+
+            # Control Panel Webpage | localhost:9090
+            admin_server = admin_instance()
+            loop.run_until_complete(admin_server)
 
         except (SystemExit, KeyboardInterrupt):  # pragma: no cover
             pass
@@ -120,11 +214,10 @@ class Server():
             tasks = asyncio.all_tasks(loop)
             for task in tasks:
                 task.cancel()
-            loop.run_until_complete(asyncio.gather(*tasks, return_exceptions = True))
-
+            loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
 
             # Close the server
-            close_task = loop.create_task(self.stop(), name="close_server")
+            close_task = loop.create_task(self.stop())
             loop.run_until_complete(close_task)
             loop.close()
             asyncio.set_event_loop(None)

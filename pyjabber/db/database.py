@@ -3,7 +3,5 @@ import sqlite3
 
 
 def connection() -> sqlite3.Connection:
-    abspath = os.path.abspath(__file__)
-    dname = os.path.dirname(abspath)
-
+    dname = os.path.dirname(os.path.abspath(__file__))
     return sqlite3.connect(dname + '/server.db')
