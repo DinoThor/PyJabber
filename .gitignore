@@ -117,3 +117,9 @@ mytesting/
 
 # Node modules
 node_modules/
+
+# Certs
+
+pyjabber/network/certs/*
+!pyjabber/network/certs/ca_cert.pem
+!pyjabber/network/certs/ca_key.pem
