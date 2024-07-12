@@ -3,8 +3,8 @@ import pyjabber
 
 setup(
     name="pyjabber",
-    version='{{VERSION_PLACEHOLDER}}',
-    author="Aarón Raya",
+    version=pyjabber.__version__,
+    author="Aarón Raya  ",
     author_email="aaron.raya.lopez@gmail.com",
     description="A Python XMPP server",
     long_description=open("README.rst").read(),
