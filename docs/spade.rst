@@ -10,16 +10,12 @@ This leads to a scenario where servers are deployed dynamically, on machines wit
 goes through a configuration, verification, certification and release in the public domain. Trying to avoid any need of interaction with the
 user in the deployment of the server, we've opted to use the following architecture
 
-.. image:: res/spade.png
-  :alt: Spade architecture
-  :scale: 50%
-
 Local Bound
 -----------
 Let's use a fictional environment compound of 4 agents, all allocated in the same local network.
 A random agent takes the action, and deploy a server reachable for the other 3 agent via the local network. This new server will
-be serving to the clients in the domain of his own hostname ().
-This means, that the agents should adopt the JID format of ``{unique-name}@localhost``.
+be serving to the clients in the domain of his own hostname.
+This means, that the agents should adopt the JID format of ``{unique-name}@hostname``.
 
 For example, a list of agents connected to a server deployed in the ``testing-desktop`` machine takes the following format:
 

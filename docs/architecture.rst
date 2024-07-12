@@ -27,9 +27,3 @@ Client Stream
     of the application will be, and stanzas of **IQ**, **PRESENCE** and **MESSAGE** are treated.
     The StanzaHandler object comes with all the plugins (XEPs) and features available, and it's his responsibility to treat any received
     message and his routing or request processing and response
-
-Server Stream
--------------
-A connection made to a known server will follow a different pattern with the Client Stream process. Now, the PyJabber server acts
-as as normal client, opening a connection, stream, and negotiating the necessary features. The main difference is the use of "jabber:server"
-namespace in the Stream tags.

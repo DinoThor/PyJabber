@@ -1,9 +1,6 @@
 .. raw:: html
 
     <p align="center">
-        <picture>
-          <img src="_static/pyjabber_logo.png" width="128">
-        </picture>
         <h1 align="center">PyJabber</h1>
     </p>
 

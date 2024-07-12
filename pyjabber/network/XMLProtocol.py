@@ -1,6 +1,5 @@
 import asyncio
 import os
-import socket
 import ssl
 
 from loguru import logger
@@ -16,6 +15,14 @@ FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
 class XMLProtocol(asyncio.Protocol):
     """
     Protocol to manage the network connection between nodes in the XMPP network. Handles the transport layer.
+
+    :param namespace: namespace of the XML tags (jabber:client or jabber:server)
+    :param host: Host for connections
+    :param connection_timeout: Max time without any response from a client. After that, the server will terminate the connection
+    :param connection_manager: Global instance of Connection Manager (Singleton)
+    :param cert_path: Path to custom domain certs. By default, the server generates its own certificates for hostname
+    :param queue_message: Global instance of Queue Message class (Singleton)
+    :param enable_tls1_3: Boolean. Enables the use of TLSv1.3 in the STARTTLS process
     """
 
     def __init__(
@@ -148,10 +155,18 @@ class XMLProtocol(asyncio.Protocol):
     ###########################################################################
 
     def task_tls(self):
+        """
+            Sync function to call the STARTTLS coroutine
+        """
         loop = asyncio.get_running_loop()
         asyncio.ensure_future(self.enable_tls(loop), loop=loop)
 
     async def enable_tls(self, loop):
+        """
+            Coroutine to upgrade the connection to TLS
+            It swaps the transport for the XMLProtocol, and XMLParser
+            :param loop: Running asyncio loop
+        """
         parser = self._xml_parser.getContentHandler()
 
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)

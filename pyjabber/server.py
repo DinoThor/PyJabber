@@ -25,7 +25,7 @@ class Server:
     """
         Server class
 
-        :param host: Host for the clients connection
+        :param host: Host for the clients connections
         :param client_port: Port for client connections (5222 by default)
         :param server_port: Port for server-to-server connections (5269 by default)
         :param family: Type of AddressFamily (IPv4 or IPv6)
