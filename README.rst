@@ -1,8 +1,6 @@
-.. raw:: html
-
-    <p align="center">
-        <h1 align="center">PyJabber</h1>
-    </p>
+========
+PyJabber
+========
 
 .. image:: https://img.shields.io/pypi/v/pyjabber.svg
         :target: https://pypi.org/project/pyjabber/
