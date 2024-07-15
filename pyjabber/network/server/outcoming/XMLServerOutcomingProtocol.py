@@ -1,3 +1,4 @@
+import asyncio
 import os
 import ssl
 from xml import sax
@@ -95,17 +96,20 @@ class XMLServerOutcomingProtocol(XMLProtocol):
     ###########################################################################
     ###########################################################################
     ###########################################################################
-    async def enable_tls(self, loop):
+
+    def task_tls(self):
+        """
+            Sync function to call the STARTTLS coroutine
+        """
+        loop = asyncio.get_running_loop()
+        asyncio.ensure_future(self.enable_tls(loop), loop=loop)
+
+    async def enable_tls(self, loop: asyncio.AbstractEventLoop):
         parser = self._xml_parser.getContentHandler()
 
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+        ssl_context = ssl.create_default_context()
         if not self._enable_tls1_3:
             ssl_context.options |= ssl.OP_NO_TLSv1_3
-
-        ssl_context.load_cert_chain(
-            certfile=os.path.join(FILE_AUTH, "..", "..", "certs", "traefik.pem"),
-            keyfile=os.path.join(FILE_AUTH, "..", "..", "certs", "traefik-key.pem"),
-        )
 
         new_transport = await loop.start_tls(
             transport=self._transport,

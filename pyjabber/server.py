@@ -38,6 +38,7 @@ class Server:
         host=socket.gethostname(),
         client_port=5222,
         server_port=5269,
+        server_out_port=5269,
         family=socket.AF_INET,
         connection_timeout=60,
         enable_tls1_3=False,
@@ -47,6 +48,7 @@ class Server:
         self._host = host
         self._client_port = client_port
         self._server_port = server_port
+        self._server_out_port =server_out_port
         self._family = family
         self._client_listener = None
         self._server_listener = None
@@ -161,7 +163,7 @@ class Server:
                 enable_tls1_3=self._enable_tls1_3,
             ),
             host=remote_host,
-            port=5269
+            port=self._server_out_port
         )
 
     def query_local_ip(self):
