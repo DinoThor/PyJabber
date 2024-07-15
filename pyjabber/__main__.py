@@ -15,6 +15,8 @@ from pyjabber.server import Server
               show_default=True, help='Server-to-client port')
 @click.option('--server_port', type=int, default=5269,
               show_default=True, help='Server-to-server port')
+@click.option('--server_out_port', type=int, default=5269,
+              show_default=True, help='Server-to-server port (Outcoming connection)')
 @click.option('--family',
               type=click.Choice(['ipv4',
                                  'ipv6'],
@@ -40,6 +42,7 @@ def main(
         host,
         client_port,
         server_port,
+        server_out_port,
         family,
         tls1_3,
         timeout,
@@ -64,6 +67,7 @@ def main(
         host=host,
         client_port=client_port,
         server_port=server_port,
+        server_out_port=server_out_port,
         family=socket.AF_INET if family == "ipv4" else socket.AF_INET6,
         connection_timeout=timeout,
         enable_tls1_3=tls1_3,

@@ -165,6 +165,7 @@ class XMLProtocol(asyncio.Protocol):
         """
             Coroutine to upgrade the connection to TLS
             It swaps the transport for the XMLProtocol, and XMLParser
+
             :param loop: Running asyncio loop
         """
         parser = self._xml_parser.getContentHandler()
