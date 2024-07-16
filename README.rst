@@ -12,8 +12,8 @@ PyJabber
         :target: https://github.com/DinoThor/PyJabber/actions
         :alt: Build Status
 
-.. image:: https://coveralls.io/repos/github/DinoThor/PyJabber/badge.svg?branch=develop
-        :target: https://coveralls.io/github/DinoThor/PyJabber?branch=develop
+.. image:: https://coveralls.io/repos/github/DinoThor/PyJabber/badge.svg?branch=master
+        :target: https://coveralls.io/github/DinoThor/PyJabber?branch=master
         :alt: Coverage Status
 
 .. image:: https://readthedocs.org/projects/pyjabber/badge/?version=latest
