@@ -45,17 +45,14 @@ def conflict_error(id: str) -> bytes:
     return ET.tostring(iq)
 
 
-def feature_not_implemented(xmlns, feature) -> bytes:
+def feature_not_implemented(xmlns) -> bytes:
     """
     <error type='cancel'>
         <feature-not-implemented
             xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
-        <unsupported
-            xmlns='{xmlns}'
-            feature='{feature}'/>
     </error>
     """
-    return f"<error type='cancel'><feature-not-implemented xmlns='{XMLNS}'/><unsupported xmlns='{xmlns}#errors'feature='{feature}'/></error>".encode(
+    return f"<error type='cancel'><feature-not-implemented xmlns='{XMLNS}'/></error>".encode(
     )
 
 
