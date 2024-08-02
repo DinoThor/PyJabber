@@ -9,7 +9,7 @@ from pyjabber.server import Server
 
 
 @click.command
-@click.option('--host', type=str, default=socket.gethostname(),
+@click.option('--host', type=str, default='localhost',
               show_default=True, help='Host name')
 @click.option('--client_port', type=int, default=5222,
               show_default=True, help='Server-to-client port')

@@ -4,7 +4,7 @@ import pyjabber
 setup(
     name="pyjabber",
     version=pyjabber.__version__,
-    author="Aarón Raya  ",
+    author="Aarón Raya Lopez, Manel Soler Sanz",
     author_email="aaron.raya.lopez@gmail.com",
     description="A Python XMPP server",
     long_description=open("README.rst").read(),

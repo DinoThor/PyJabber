@@ -13,7 +13,7 @@ class StanzaServerIncomingHandler:
         self._connection_manager = connection_manager
         self._peername = buffer.get_extra_info('peername')
         self._host = self._connection_manager.get_server_host(self._peername)
-        self._presenceManager = Presence(self._host)
+        self._presenceManager = Presence(self._host,self._connection_manager)
 
         self._functions = {
             "{jabber:client}iq": self.handle_iq,

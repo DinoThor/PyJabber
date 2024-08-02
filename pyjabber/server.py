@@ -1,10 +1,8 @@
 import asyncio
-import colorama
 import os
 import signal
 import socket
 import urllib.request
-import wget
 
 from contextlib import closing
 from loguru import logger
@@ -25,7 +23,7 @@ class Server:
     """
         Server class
 
-        :param host: Host for the clients connections
+        :param host: Host for the clients connections (localhost by default)
         :param client_port: Port for client connections (5222 by default)
         :param server_port: Port for server-to-server connections (5269 by default)
         :param family: Type of AddressFamily (IPv4 or IPv6)
@@ -35,7 +33,7 @@ class Server:
     """
     def __init__(
         self,
-        host=socket.gethostname(),
+        host='localhost',
         client_port=5222,
         server_port=5269,
         server_out_port=5269,
@@ -48,7 +46,7 @@ class Server:
         self._host = host
         self._client_port = client_port
         self._server_port = server_port
-        self._server_out_port =server_out_port
+        self._server_out_port = server_out_port
         self._family = family
         self._client_listener = None
         self._server_listener = None
@@ -72,13 +70,8 @@ class Server:
                     con.cursor().executescript(schema.read())
                 con.commit()
 
-        if CertGenerator.check_hostname_cert_exists(self._host) is False:
+        if CertGenerator.check_hostname_cert_exists(self._host) is False and self._cert_path is None:
             CertGenerator.generate_hostname_cert(self._host)
-
-        if not os.path.isfile(os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik.pem")):
-            wget.download("http://traefik.me/fullchain.pem", os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik.pem"))
-        if not os.path.isfile(os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik-key.pem")):
-            wget.download("http://traefik.me/privkey.pem", os.path.join(SERVER_FILE_PATH, "network", "certs", "traefik-key.pem"))
 
         loop = asyncio.get_running_loop()
 
@@ -112,19 +105,12 @@ class Server:
                 queue_message=self._queue_message,
                 enable_tls1_3=self._enable_tls1_3,
             ),
-            host="0.0.0.0",
+            host=["0.0.0.0"],
             port=self._server_port,
             family=self._family
         )
 
         logger.info(f"Server is listening servers on {[s.getsockname() for s in self._server_listener.sockets]}")
-
-        public_ip = urllib.request.urlopen("https://api.ipify.org/")
-        if public_ip.status == 200:
-            self._public_ip = public_ip.read().decode()
-            self._public_ip = self._public_ip.replace(".", "-") + ".traefik.me"
-            logger.info(f"S2S domain ==> {colorama.Fore.RED}{self._public_ip.replace('.', '-')}")
-
         logger.info("Server started...")
 
     async def stop(self):
@@ -170,16 +156,16 @@ class Server:
         """
             Return the local IP of the host machine
         """
+        mock_connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
-            connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            connection.connect(("8.8.8.8", 80))
-            local_ip_address = connection.getsockname()[0]
+            mock_connection.connect(("8.8.8.8", 80))
+            local_ip_address = mock_connection.getsockname()[0]
             return local_ip_address
         except Exception as e:
             logger.error("Unable to retrieve LAN IP")
             raise self.raise_exit()
         finally:
-            connection.close()
+            mock_connection.close()
 
     def raise_exit(self):
         raise SystemExit(1)

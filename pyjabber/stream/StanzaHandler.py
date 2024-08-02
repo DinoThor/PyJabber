@@ -37,13 +37,14 @@ class StanzaHandler:
             self._schemas = pickle.load(schemasDump)
 
     def feed(self, element: ET.Element):
+        ns, _ = CN.deglose(element.tag)
         try:
-            schema: xmlschema.XMLSchema = self._schemas[CN.deglose(element.tag)[0]]
+            schema: xmlschema.XMLSchema = self._schemas[ns]
             if schema.is_valid(ET.tostring(element)) is False:
                 self._buffer.write(SE.bad_request())
                 return
         except KeyError:
-            self._buffer.write(SE.feature_not_implemented())
+            self._buffer.write(SE.feature_not_implemented(ns))
             return
 
         try:
