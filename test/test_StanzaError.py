@@ -45,8 +45,8 @@ def test_conflict_error():
 def test_feature_not_implemented():
     xmlns = "custom:namespace"
     feature = "some_feature"
-    expected = f"<error type='cancel'><feature-not-implemented xmlns='{XMLNS}'/><unsupported xmlns='{xmlns}#errors'feature='{feature}'/></error>".encode()
-    assert feature_not_implemented(xmlns, feature) == expected
+    expected = f"<error type='cancel'><feature-not-implemented xmlns='{XMLNS}'/></error>".encode()
+    assert feature_not_implemented(xmlns) == expected
 
 
 def test_invalid_xml():
