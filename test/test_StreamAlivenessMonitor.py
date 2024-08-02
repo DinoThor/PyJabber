@@ -33,7 +33,7 @@ def test_monitor_initialization(monitor):
     mon, _ = monitor
     assert mon._timeout_task is None
 
-@pytest.mark.asyncio
+
 async def test_monitor_reset(monitor):
     mon, _ = monitor
     mon.reset()
