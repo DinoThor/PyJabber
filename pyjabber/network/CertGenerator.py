@@ -95,4 +95,4 @@ def generate_hostname_cert(host):
 
     os.chdir(previous_path)
 
-    logger.debug(f"Certificate generated for => {socket.gethostname()}")
+    logger.debug(f"Certificate generated for => {host}")

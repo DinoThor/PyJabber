@@ -8,6 +8,7 @@ from xml.etree import ElementTree as ET
 from pyjabber.db.database import connection
 from pyjabber.features.FeatureInterface import FeatureInterface
 from pyjabber.stanzas.error import StanzaError as SE
+from pyjabber.stanzas.IQ import IQ
 from pyjabber.utils import ClarkNotation as CN
 
 
@@ -20,9 +21,6 @@ class mechanismEnum(Enum):
 class Signal(Enum):
     RESET = 0
     DONE = 1
-
-
-
 
 
 class SASL(FeatureInterface):
@@ -55,7 +53,7 @@ class SASL(FeatureInterface):
         if query is None:
             raise Exception()
 
-        elif element.attrib["type"] == "set":
+        if element.attrib["type"] == "set":
             new_jid = query.find(
                 CN.clarkFromTuple(
                     (self._ns, "username"))).text
@@ -66,7 +64,7 @@ class SASL(FeatureInterface):
                 credentials = res.fetchone()
 
                 if credentials:
-                    return Signal.RESET, SE.conflict_error(
+                    return SE.conflict_error(
                         element.attrib["id"])
                 else:
                     pwd = query.find(
@@ -77,11 +75,20 @@ class SASL(FeatureInterface):
                     con.execute(
                         "INSERT INTO credentials(jid, hash_pwd) VALUES (?, ?)", (new_jid, hash_pwd))
                     con.commit()
-                    return Signal.RESET, self.iq_register_result(
+                    return self.iq_register_result(
                         element.attrib["id"])
 
-        else:
-            raise Exception()
+        elif element.attrib["type"] == "get":
+            iq = IQ(
+                type=IQ.TYPE.RESULT.value,
+                id=element.attrib["id"] if "id" in element.attrib.keys() else None,
+            )
+            query = ET.Element('{jabber:iq:register}query')
+            ET.SubElement(query, "username")
+            ET.SubElement(query, "password")
+            iq.append(query)
+
+            return ET.tostring(iq)
 
     def handleAuth(
             self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:

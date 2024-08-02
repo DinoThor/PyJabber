@@ -80,6 +80,18 @@ def test_handle_iq_register_conflict(MockConnectionsManager, db_connection_facto
     expected_result = (Signal.RESET, SE.conflict_error("123"))
     assert result == expected_result
 
+@patch('pyjabber.network.ConnectionManager.ConnectionManager')
+def test_get_fields(MockConnectionsManager, db_connection_factory):
+    sasl = SASL(MockConnectionsManager(), db_connection_factory)
+
+    element = ET.Element("{jabber:iq:register}iq", attrib={"type": "get"})
+    ET.SubElement(element, "{jabber:iq:register}query")
+
+    response = sasl.feed(element)
+
+    assert response is not None
+    assert response == b'<iq xmlns:ns0="jabber:iq:register" type="result"><ns0:query><username /><password /></ns0:query></iq>'
+
 
 @patch('pyjabber.network.ConnectionManager.ConnectionManager')
 def test_handle_iq_register_success(MockConnectionsManager, db_connection_factory):
