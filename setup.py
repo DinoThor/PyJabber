@@ -12,16 +12,12 @@ setup(
     url="https://github.com/DinoThor/PyJabber",
     packages=find_packages(),
     install_requires=[
-        "aiohttp==3.9.5",
+        "aiohttp==3.10.5",
         "click==8.1.7",
+        "cryptography==43.0.1",
         "loguru==0.7.2",
-        "nest-asyncio==1.6.0",
-        "setuptools~=69.5.1",
-        "slixmpp~=1.8.5",
-        "wget~=3.2",
-        "xmlschema==3.3.0",
-        "cryptography~=42.0.8",
-        "colorama~=0.4.6"
+        "slixmpp==1.8.5",
+        "xmlschema==3.3.2"
     ],
     include_package_data=True,
     classifiers=[
