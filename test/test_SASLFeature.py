@@ -77,8 +77,7 @@ def test_handle_iq_register_conflict(MockConnectionsManager, db_connection_facto
 
     result = sasl.handleIQ(element)
 
-    expected_result = (Signal.RESET, SE.conflict_error("123"))
-    assert result == expected_result
+    assert result == SE.conflict_error("123")
 
 @patch('pyjabber.network.ConnectionManager.ConnectionManager')
 def test_get_fields(MockConnectionsManager, db_connection_factory):
@@ -105,8 +104,7 @@ def test_handle_iq_register_success(MockConnectionsManager, db_connection_factor
 
     result = sasl.handleIQ(element)
 
-    expected_result = sasl.iq_register_result("123")
-    assert result == (Signal.RESET, expected_result)
+    assert result == sasl.iq_register_result("123")
 
 
 def test_sasl_feature():
