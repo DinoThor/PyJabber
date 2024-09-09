@@ -12,6 +12,6 @@ sphinx-wagtail-theme==6.3.0
 tox==4.16.0
 twine==5.1.1
 wheel==0.43.0
-xmlschema==3.3.0
+xmlschema==3.3.2
 Sphinx==7.1.2
 build==1.2.1
