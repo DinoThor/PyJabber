@@ -1,4 +1,4 @@
-aiohttp==3.10.0
+aiohttp==3.10.5
 black==24.4.2
 bump2version==1.0.1
 click==8.1.7
