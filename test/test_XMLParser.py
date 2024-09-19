@@ -153,7 +153,8 @@ def test_end_element_ns_mismatched_tag():
 @patch('pyjabber.stream.StanzaHandler.StanzaHandler')
 @patch('pyjabber.stream.StreamHandler.Signal')
 @patch('pyjabber.stream.StreamHandler.StreamHandler.handle_open_stream')
-def test_end_element_ns_stream_handling(mock_handle_open_stream, mock_signal, mock_stanza_handler):
+@patch('pyjabber.features.presence.PresenceFeature')
+def test_end_element_ns_stream_handling(mock_handle_open_stream, mock_signal, mock_stanza_handler, mock_presence_feature):
     buffer = MagicMock()
     starttls = Mock()
     connection_manager = Mock()
@@ -171,6 +172,8 @@ def test_end_element_ns_stream_handling(mock_handle_open_stream, mock_signal, mo
 
     mock_stanza = mock_stanza_handler.return_value
     mock_stanza.feed = MagicMock()
+
+    mock_presence_feature.jid = "test@localhost"
 
     handler.endElementNS(("namespace", "dummy"), "dummy")
 

@@ -19,4 +19,31 @@ def update(id: int, item: ET) -> str:  # pragma: no cover
         con.commit()
         res = con.execute("SELECT rosterItem from roster WHERE id = ?", (id,))
         res = res.fetchone()
-    return res[0]
+
+    if res:
+        return res[0]
+    else:
+        return ""
+
+
+def store_pending_sub(from_: str, to_: str, item: ET.Element) -> None:
+    with closing(connection()) as con:
+        con.execute("INSERT INTO pendingsub values (?, ?, ?)", (from_, to_, ET.tostring(item).decode()))
+        con.commit()
+
+
+def check_pending_sub(jid: str) -> List[str]:
+    with closing(connection()) as con:
+        res = con.execute("SELECT * FROM pendingsub WHERE jid_to = ?", (jid,))
+        pending = res.fetchall()
+
+        con.execute("DELETE FROM pendingsub WHERE jid_to = ?", (jid,))
+        con.commit()
+    return pending
+
+def check_pending_sub_to(jid: str, to: str) -> ET.Element:
+    with closing(connection()) as con:
+        res = con.execute("SELECT * FROM pendingsub WHERE jid_from = ? AND jid_to = ?", (jid, to))
+        res = res.fetchone()
+    if res:
+        return res

@@ -19,6 +19,13 @@ class Presence(FeatureInterface):
         }
         self._connections = connection_manager
         self._jid = jid
+        self._bare_jid = self._jid.split("/")[0]
+
+        pending = RU.check_pending_sub(self._bare_jid)
+        for p in pending:
+            buffer = self._connections.get_buffer(jid)
+            for b in buffer:
+                b[-1].write(p[-1].encode())
 
     def feed(self, element: Element, extra: Dict[str, Any] = None):
         if "type" in element.attrib:
@@ -31,24 +38,29 @@ class Presence(FeatureInterface):
 
     def handle_subscribe(self, element: ET.Element):
         to = element.attrib["to"].split("/")[0]
-        bare_jid = self._jid.split("/")[0]
-        roster_manager = Roster(bare_jid)
+
+        pending = RU.check_pending_sub_to(self._bare_jid, to)
+
+        if pending:
+            return
+
+        roster_manager = Roster(self._bare_jid)
 
         if "from" not in element.attrib:
             element.attrib["from"] = self._jid
 
         # Handle presence locally
         if to.split("@")[1] == "localhost":
-            roster = RU.retrieve_roster(bare_jid)
+            roster = RU.retrieve_roster(self._bare_jid)
             buffer = self._connections.get_buffer(to)
 
             item = [item for item in roster
                     if ET.fromstring(item[2]).attrib["jid"] == to]
 
             if not item:
-                create_roster_entry(bare_jid, to, roster_manager)
+                create_roster_entry(self._bare_jid, to, roster_manager)
 
-                roster = RU.retrieve_roster(bare_jid)
+                roster = RU.retrieve_roster(self._bare_jid)
                 buffer = self._connections.get_buffer(to)
 
                 item = [item for item in roster
@@ -74,18 +86,22 @@ class Presence(FeatureInterface):
                 newItem.attrib["ask"] = "subscribe"
                 RU.update(item=newItem, id=item[0])
 
-            petition = ET.Element(
-                "presence",
-                attrib={
-                    "from": element.attrib['from'],
-                    "to": element.attrib['to'],
-                    "id": element.attrib['id'],
-                    "type": "subscribe"
-                }
-            )
-            for b in buffer:
-                b[-1].write(ET.tostring(petition))
-                return
+            if buffer:
+                petition = ET.Element(
+                    "presence",
+                    attrib={
+                        "from": element.attrib['from'],
+                        "to": element.attrib['to'],
+                        "id": element.attrib['id'],
+                        "type": "subscribe"
+                    }
+                )
+                for b in buffer:
+                    b[-1].write(ET.tostring(petition))
+
+            else:
+                RU.store_pending_sub(self._bare_jid, to, element)
+
 
     def handle_subscribed(self, element: ET.Element):
         to = element.attrib["to"]
@@ -201,7 +217,7 @@ class Presence(FeatureInterface):
                     query.append(item)
                     res.append(query)
 
-                    bob[-1].write(ET.tostring(res))
+                    alice[-1].write(ET.tostring(res))
 
     def handle_initial_presence(self, element: ET.Element):
         bare_jid = self._jid.split("/")[0]
