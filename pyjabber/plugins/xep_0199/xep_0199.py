@@ -21,4 +21,4 @@ class Ping(Plugin):
                 )
             )
 
-            return [res]
+            return res
