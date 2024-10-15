@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Dict, List, Tuple, Union
 from xml.etree import ElementTree as ET
 
+from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.db.database import connection
 from pyjabber.features.FeatureInterface import FeatureInterface
 from pyjabber.stanzas.error import StanzaError as SE
@@ -24,13 +25,13 @@ class Signal(Enum):
 
 
 class SASL(FeatureInterface):
-    def __init__(self, connection_manager, db_connection_factory=connection):
+    def __init__(self, db_connection_factory=connection):
         self._handlers = {
             "iq": self.handleIQ,
             "auth": self.handleAuth
         }
         self._ns = "jabber:iq:register"
-        self._connection_manager = connection_manager
+        self._connection_manager = ConnectionManager()
         self._db_connection_factory = db_connection_factory
         self._peername = None
 

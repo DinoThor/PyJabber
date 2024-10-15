@@ -6,17 +6,18 @@ from pyjabber.plugins.PluginInterface import Plugin
 # Plugins
 from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.plugins.xep_0199.xep_0199 import Ping
+from pyjabber.plugins.xep_0030.xep_0030 import Disco
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.utils import ClarkNotation as CN
 
 
-class PluginManager():
+class PluginManager:
     def __init__(self, jid) -> None:
-
         self._jid = jid
         self._plugins: Dict[str, Plugin] = {
             'jabber:iq:roster': Roster,
-            'urn:xmpp:ping': Ping
+            'urn:xmpp:ping': Ping,
+            'http://jabber.org/protocol/disco#info': Disco
         }
         self._activePlugins: Dict[str, Plugin] = {}
 

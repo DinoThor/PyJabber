@@ -25,7 +25,6 @@ class XMLServerOutcomingProtocol(XMLProtocol):
             host,
             public_host,
             connection_timeout,
-            connection_manager,
             queue_message,
             enable_tls1_3=False):
 
@@ -33,7 +32,6 @@ class XMLServerOutcomingProtocol(XMLProtocol):
             namespace,
             host,
             connection_timeout,
-            connection_manager,
             None,
             queue_message,
             enable_tls1_3)
@@ -58,7 +56,6 @@ class XMLServerOutcomingProtocol(XMLProtocol):
                 XMLServerOutcomingParser(
                     self._transport,
                     self.task_tls,
-                    self._connection_manager,
                     self._queue_message,
                     self._host,
                     self._public_host,

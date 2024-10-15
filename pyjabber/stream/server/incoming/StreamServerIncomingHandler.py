@@ -12,8 +12,8 @@ class StreamServerIncomingHandler(StreamHandler):
     STARTTLS = "{urn:ietf:params:xml:ns:xmpp-tls}starttls"
     AUTH = "{urn:ietf:params:xml:ns:xmpp-sasl}auth"
 
-    def __init__(self, host, buffer, starttls, connection_manager) -> None:
-        super().__init__(host, buffer, starttls, connection_manager)
+    def __init__(self, host, buffer, starttls) -> None:
+        super().__init__(host, buffer, starttls)
 
     def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
         if elem is None:

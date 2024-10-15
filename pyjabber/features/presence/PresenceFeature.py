@@ -3,6 +3,7 @@ from typing import Any, Dict
 from uuid import uuid4
 from xml.etree.ElementTree import Element
 
+from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.features.feature_utils import RosterUtils as RU
 from pyjabber.features.FeatureInterface import FeatureInterface
 from pyjabber.features.presence.utils import create_roster_entry
@@ -10,14 +11,14 @@ from pyjabber.plugins.roster.Roster import Roster
 
 
 class Presence(FeatureInterface):
-    def __init__(self, jid, connection_manager) -> None:
+    def __init__(self, jid) -> None:
         self._handlers = {
             "subscribe": self.handle_subscribe,
             "subscribed": self.handle_subscribed,
             "unsubscribed": self.handle_unsubscribed,
             "unavailable": self.handle_unavailable
         }
-        self._connections = connection_manager
+        self._connections = ConnectionManager()
         self._jid = jid
         self._bare_jid = self._jid.split("/")[0]
 

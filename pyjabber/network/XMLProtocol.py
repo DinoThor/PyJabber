@@ -19,7 +19,6 @@ class XMLProtocol(asyncio.Protocol):
     :param namespace: namespace of the XML tags (jabber:client or jabber:server)
     :param host: Host for connections
     :param connection_timeout: Max time without any response from a client. After that, the server will terminate the connection
-    :param connection_manager: Global instance of Connection Manager (Singleton)
     :param cert_path: Path to custom domain certs. By default, the server generates its own certificates for hostname
     :param queue_message: Global instance of Queue Message class (Singleton)
     :param enable_tls1_3: Boolean. Enables the use of TLSv1.3 in the STARTTLS process
@@ -30,7 +29,6 @@ class XMLProtocol(asyncio.Protocol):
             namespace,
             host,
             connection_timeout,
-            connection_manager,
             cert_path,
             queue_message,
             enable_tls1_3=False):
@@ -38,7 +36,7 @@ class XMLProtocol(asyncio.Protocol):
         self._xmlns = namespace
         self._host = host
         self._connection_timeout = connection_timeout
-        self._connection_manager: ConnectionManager = connection_manager
+        self._connection_manager = ConnectionManager()
         self._cert_path = cert_path
         self._queue_message = queue_message
         self._enable_tls1_3 = enable_tls1_3
@@ -66,7 +64,6 @@ class XMLProtocol(asyncio.Protocol):
                     self._host,
                     self._transport,
                     self.task_tls,
-                    self._connection_manager,
                     self._queue_message
                 )
             )

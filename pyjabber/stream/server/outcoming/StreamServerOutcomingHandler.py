@@ -13,8 +13,8 @@ class StreamServerOutcomingHandler(StreamHandler):
     FEATURES = "{http://etherx.jabber.org/streams}features"
     STARTTLS = "{urn:ietf:params:xml:ns:xmpp-tls}starttls"
 
-    def __init__(self, host, buffer, starttls, connection_manager) -> None:
-        super().__init__(host, buffer, starttls, connection_manager)
+    def __init__(self, host, buffer, starttls) -> None:
+        super().__init__(host, buffer, starttls)
 
     def handle_open_stream(
             self, elem: ET.Element = None) -> Union[Signal, None]:

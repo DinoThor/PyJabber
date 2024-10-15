@@ -11,8 +11,9 @@ class ConnectionManager(metaclass=Singleton):
     JID = "jid"
     TRANSPORT = "transport"
 
-    def __init__(self, task_s2s) -> None:
-        self._task_s2s = task_s2s
+    def __init__(self, task_s2s=None) -> None:
+        if task_s2s:
+            self._task_s2s = task_s2s
 
         self._peerList = {}
         self._remoteList = {}

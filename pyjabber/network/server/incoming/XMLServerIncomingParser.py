@@ -23,9 +23,9 @@ class XMLServerIncomingParser(XMLParser):
     Manages the stream data and process the XML objects.
     Inheriting from sax.ContentHandler
     """
-    def __init__(self, host, buffer, starttls, connection_manager, queue_message):
-        super().__init__(host, buffer, starttls, connection_manager, queue_message)
-        self._streamHandler = StreamServerIncomingHandler(host, buffer, starttls, connection_manager)
+    def __init__(self, host, buffer, starttls, queue_message):
+        super().__init__(host, buffer, starttls, queue_message)
+        self._streamHandler = StreamServerIncomingHandler(host, buffer, starttls)
 
     def startElementNS(self, name, qname, attrs):
         logger.debug(f"Start element NS: {name}")
@@ -79,5 +79,5 @@ class XMLServerIncomingParser(XMLParser):
                 if signal == Signal.RESET and "stream" in self._stack[-1].tag:
                     self._stack.clear()
                 elif signal == Signal.DONE:
-                    self._stanzaHandler = StanzaServerIncomingHandler(self._buffer, self._connection_manager)
+                    self._stanzaHandler = StanzaServerIncomingHandler(self._buffer)
                     self._state = StreamState.READY

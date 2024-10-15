@@ -2,7 +2,6 @@ import asyncio
 import os
 import signal
 import socket
-import urllib.request
 
 from contextlib import closing
 from loguru import logger
@@ -82,7 +81,6 @@ class Server:
                 namespace='jabber:client',
                 host=self._host,
                 connection_timeout=self._connection_timeout,
-                connection_manager=self._connection_manager,
                 cert_path=self._cert_path,
                 queue_message=self._queue_message,
                 enable_tls1_3=self._enable_tls1_3,
@@ -100,7 +98,6 @@ class Server:
                 namespace='jabber:server',
                 host=self._host,
                 connection_timeout=self._connection_timeout,
-                connection_manager=self._connection_manager,
                 cert_path=self._cert_path,
                 queue_message=self._queue_message,
                 enable_tls1_3=self._enable_tls1_3,
@@ -144,7 +141,6 @@ class Server:
                 host=remote_host,
                 public_host=self._public_ip,
                 connection_timeout=self._connection_timeout,
-                connection_manager=self._connection_manager,
                 queue_message=self._queue_message,
                 enable_tls1_3=self._enable_tls1_3,
             ),

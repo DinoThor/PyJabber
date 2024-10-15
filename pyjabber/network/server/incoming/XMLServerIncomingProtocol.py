@@ -22,7 +22,6 @@ class XMLServerIncomingProtocol(XMLProtocol):
             namespace,
             host,
             connection_timeout,
-            connection_manager,
             cert_path,
             queue_message,
             enable_tls1_3=False):
@@ -31,7 +30,6 @@ class XMLServerIncomingProtocol(XMLProtocol):
             namespace,
             host,
             connection_timeout,
-            connection_manager,
             cert_path,
             queue_message,
             enable_tls1_3)
@@ -55,7 +53,6 @@ class XMLServerIncomingProtocol(XMLProtocol):
                     self._host,
                     self._transport,
                     self.task_tls,
-                    self._connection_manager,
                     self._queue_message)
             )
 

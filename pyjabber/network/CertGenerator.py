@@ -1,5 +1,4 @@
 import os
-import socket
 from loguru import logger
 
 from cryptography import x509
