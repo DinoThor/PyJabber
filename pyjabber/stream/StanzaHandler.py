@@ -8,6 +8,7 @@ import xmlschema
 
 from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.plugins.PluginManager import PluginManager
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.utils import ClarkNotation as CN
@@ -16,11 +17,11 @@ FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
 class StanzaHandler:
-    def __init__(self, host, buffer, queue_message) -> None:
+    def __init__(self, host, buffer) -> None:
         self._host = host
         self._buffer = buffer
         self._connections = ConnectionManager()
-        self._queue_message = queue_message
+        self._queue_message = QueueMessage()
 
         self._peername = buffer.get_extra_info('peername')
         self._jid = self._connections.get_jid(self._peername)

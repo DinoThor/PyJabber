@@ -23,19 +23,17 @@ class XMLParser(ContentHandler):
         :param queue_message: Global instance of Queue Message class (Singleton)
     """
 
-    def __init__(self, host, buffer, starttls, queue_message): #, connection_manager, queue_message):
+    def __init__(self, host, buffer, starttls):
         super().__init__()
 
         self._host = host
         self._buffer = buffer
-        # self._connection_manager = connection_manager
-        self._queue_message = queue_message
 
         self._state = self.StreamState.CONNECTED
         self._stanzaHandler = None
         self._stack = []
         self._streamHandler = StreamHandler(
-            self._host, self._buffer, starttls)#, connection_manager)
+            self._host, self._buffer, starttls)
 
     class StreamState(Enum):
         """
@@ -107,8 +105,7 @@ class XMLParser(ContentHandler):
                 if signal == Signal.RESET and "stream" in self._stack[-1].tag:
                     self._stack.clear()
                 elif signal == Signal.DONE:
-                    self._stanzaHandler = StanzaHandler(
-                        self._host, self._buffer, self._queue_message) # self._connection_manager
+                    self._stanzaHandler = StanzaHandler(self._host, self._buffer)
                     self._state = self.StreamState.READY
 
     def characters(self, content: str) -> None:

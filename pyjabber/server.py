@@ -16,6 +16,7 @@ from pyjabber.webpage.adminPage import admin_instance
 from pyjabber.network import CertGenerator
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/config.yaml')
 
 
 class Server:
@@ -56,6 +57,8 @@ class Server:
 
         # Client handler
         self._enable_tls1_3 = enable_tls1_3
+
+        # Singletons
         self._connection_manager = ConnectionManager(self.task_s2s)
         self._queue_message = QueueMessage(self._connection_manager)
 
@@ -82,7 +85,6 @@ class Server:
                 host=self._host,
                 connection_timeout=self._connection_timeout,
                 cert_path=self._cert_path,
-                queue_message=self._queue_message,
                 enable_tls1_3=self._enable_tls1_3,
             ),
             host=[self._host, lan_ip],

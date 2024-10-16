@@ -20,7 +20,6 @@ class XMLProtocol(asyncio.Protocol):
     :param host: Host for connections
     :param connection_timeout: Max time without any response from a client. After that, the server will terminate the connection
     :param cert_path: Path to custom domain certs. By default, the server generates its own certificates for hostname
-    :param queue_message: Global instance of Queue Message class (Singleton)
     :param enable_tls1_3: Boolean. Enables the use of TLSv1.3 in the STARTTLS process
     """
 
@@ -30,7 +29,6 @@ class XMLProtocol(asyncio.Protocol):
             host,
             connection_timeout,
             cert_path,
-            queue_message,
             enable_tls1_3=False):
 
         self._xmlns = namespace
@@ -38,13 +36,11 @@ class XMLProtocol(asyncio.Protocol):
         self._connection_timeout = connection_timeout
         self._connection_manager = ConnectionManager()
         self._cert_path = cert_path
-        self._queue_message = queue_message
         self._enable_tls1_3 = enable_tls1_3
 
         self._transport = None
         self._xml_parser = None
         self._timeout_monitor = None
-
 
     def connection_made(self, transport):
         """
@@ -64,7 +60,6 @@ class XMLProtocol(asyncio.Protocol):
                     self._host,
                     self._transport,
                     self.task_tls,
-                    self._queue_message
                 )
             )
 
@@ -87,10 +82,11 @@ class XMLProtocol(asyncio.Protocol):
         :param exc: Exception that caused the connection to close
         :type exc: Exception
         """
-        logger.info(f"Connection lost from {self._transport.get_extra_info('peername')}: Reason {exc}")
+        if self._transport:
+            logger.info(f"Connection lost from {self._transport.get_extra_info('peername')}: Reason {exc}")
 
-        self._transport = None
-        self._xml_parser = None
+            self._transport = None
+            self._xml_parser = None
 
     def data_received(self, data):
         """
@@ -140,7 +136,7 @@ class XMLProtocol(asyncio.Protocol):
         logger.debug(f"Connection timeout from {peer}")
 
         self._transport.write("<connection-timeout/>".encode())
-        self._transport.close(peer)
+        self._transport.close()
 
         self._connection_manager.disconnection(peer)
 
