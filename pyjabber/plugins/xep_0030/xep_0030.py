@@ -1,9 +1,9 @@
 from yaml import load, Loader
-
 from xml.etree import ElementTree as ET
 
+from pyjabber.metadata import Metadata
+
 from pyjabber.plugins.PluginInterface import Plugin
-from pyjabber.config.config import CONFIG_FILE
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
 
@@ -22,13 +22,13 @@ class Disco(Plugin):
         if element.find('{http://jabber.org/protocol/disco#info}query') is not None:
             return self._handlers['info'](element)
         elif element.find('{http://jabber.org/protocol/disco#items}query') is not None:
-            return self._handlers['info'](element)
+            return self._handlers['items'](element)
         else:
             pass
 
     def handle_info(self, element: ET.Element):
         # Server info
-        plugins = load(open(CONFIG_FILE), Loader=Loader)['plugins']
+        plugins = load(open(Metadata().config_path), Loader=Loader)['plugins']
         if element.attrib['to'] == 'localhost':
             element_id = element.get('id')
             element_to = element.attrib.get('to')
@@ -47,4 +47,27 @@ class Disco(Plugin):
             return ET.tostring(iq_res)
 
     def handle_items(self, element: ET.Element):
-        pass
+        # Server info
+        items = load(open(Metadata().config_path), Loader=Loader)['items']
+        if element.attrib['to'] == 'localhost':
+            element_id = element.get('id')
+            element_to = element.attrib.get('to')
+            element_from = element.attrib.get('from')
+
+            iq_res = IQ(type=IQ.TYPE.RESULT.value, id=element_id, from_=element_to, to=element_from)
+            query = ET.SubElement(iq_res, 'query', attrib={'xmlns': 'http://jabber.org/protocol/disco#items'})
+            ET.SubElement(
+                query,
+                'identity',
+                attrib={'category': 'server', 'type': 'im', 'name': 'PyJabber Server'})
+
+            for i in items:
+                [*keys], [*values] = zip(*i.items())
+                if '$' in values[0][0]:
+                    jid = values[0][0].replace('$', Metadata().host)
+                else:
+                    jid = values[0][0]
+
+                ET.SubElement(query, 'item', attrib={'jid': jid, 'name': keys[0]})
+
+            return ET.tostring(iq_res)

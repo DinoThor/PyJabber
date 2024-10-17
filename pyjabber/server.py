@@ -14,9 +14,9 @@ from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.webpage.adminPage import admin_instance
 from pyjabber.network import CertGenerator
+from pyjabber.metadata import Metadata
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
-CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/config.yaml')
 
 
 class Server:
@@ -61,6 +61,12 @@ class Server:
         # Singletons
         self._connection_manager = ConnectionManager(self.task_s2s)
         self._queue_message = QueueMessage(self._connection_manager)
+
+        # Metadata
+        Metadata(
+            host=self._host,
+            config_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/config.yaml')
+        )
 
     async def run_server(self):
         logger.info("Starting server...")

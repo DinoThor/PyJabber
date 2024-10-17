@@ -14,10 +14,14 @@ from pyjabber.utils import ClarkNotation as CN
 class PluginManager:
     def __init__(self, jid) -> None:
         self._jid = jid
+
+        disco = Disco()
+
         self._plugins: Dict[str, Plugin] = {
             'jabber:iq:roster': Roster(self._jid),
             'urn:xmpp:ping': Ping(self._jid),
-            'http://jabber.org/protocol/disco#info': Disco()
+            'http://jabber.org/protocol/disco#info': disco,
+            'http://jabber.org/protocol/disco#items': disco
         }
 
     def feed(self, element: ET.Element):
