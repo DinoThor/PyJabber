@@ -17,9 +17,11 @@ plugins:
 
 # List of items and his associated JID, available via disco#items query
 # a dollar symbol ($) indicates a placeholder. Usually the server host
-# To disable an item, just comment the line with '#'
+# To disable an item, just comment the block with '#'
 items:
-    - Pubsub:
-          - 'pubsub.$'
-    - Test:
-          - 'test'
+    Pubsub:
+        Category: 'pubsub'
+        type: 'service'
+        var: 'http://jabber.org/protocol/pubsub'
+
+

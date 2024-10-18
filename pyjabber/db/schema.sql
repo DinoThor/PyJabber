@@ -16,3 +16,6 @@ CREATE TABLE `credentials`(
     `hash_pwd` VARCHAR(255) NOT NULL,
     PRIMARY KEY(`id`)
 );
+CREATE TABLE `pubsub`(
+    
+);
