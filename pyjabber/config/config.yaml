@@ -1,4 +1,4 @@
-# ===== PYJABBER CONFIGURATION FILE
+# ===== PYJABBER CONFIGURATION FILE =====
 
 # List of plugins available and shown in the XEP-0030 Discovery protocol
 # To disable a plugin, just comment the line with '#'
@@ -16,10 +16,16 @@ plugins:
     - 'urn:xmpp:ping'
 
 # List of items and his associated JID, available via disco#items query
+# to the server domain/host
 # a dollar symbol ($) indicates a placeholder. Usually the server host
 # To disable an item, just comment the block with '#'
 items:
-    Pubsub:
+    pubsub.$:
+        Category: 'pubsub'
+        type: 'service'
+        var: 'http://jabber.org/protocol/pubsub'
+
+    test.$:
         Category: 'pubsub'
         type: 'service'
         var: 'http://jabber.org/protocol/pubsub'

@@ -17,5 +17,6 @@ CREATE TABLE `credentials`(
     PRIMARY KEY(`id`)
 );
 CREATE TABLE `pubsub`(
-    
+    `metadata` VARCHAR(255),
+    PRIMARY KEY(`metadata`)
 );

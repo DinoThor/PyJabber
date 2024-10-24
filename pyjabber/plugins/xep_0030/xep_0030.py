@@ -1,19 +1,44 @@
+from typing import Literal
 from yaml import load, Loader
 from xml.etree import ElementTree as ET
 
 from pyjabber.metadata import Metadata
 
 from pyjabber.plugins.PluginInterface import Plugin
+from pyjabber.plugins.xep_0060.xep_0060 import PubSub
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
 
 
+def iq_skeleton(element: ET.Element, disco_type: Literal['info', 'items']):
+    iq_res = IQ(
+        type=IQ.TYPE.RESULT.value,
+        id=element.get('id'),
+        from_=element.get('to'),
+        to=element.get('from')
+    )
+    return iq_res, ET.SubElement(iq_res, 'query', attrib={'xmlns': f'http://jabber.org/protocol/disco#{disco_type}'})
+
+
 class Disco(Plugin):
-    def __init__(self):
-        self._handlers = {
-            "info": self.handle_info,
-            "items": self.handle_items
+    def __init__(cls, jid: str):
+        cls.jid = jid
+        cls._handlers = {
+            "info": cls.handle_info,
+            "items": cls.handle_items
         }
+        cls._host = Metadata().host
+        cls._config_path = Metadata().config_path
+        cls._items = list(load(open(cls._config_path), Loader=Loader).get('items'))
+
+        # Search if any item has the substring pubsub, and replace the placeholder
+        # with the server's host of the current session
+        # A none result means the pubsub feature is disable
+        cls._pubsub_jid = next((s for s in list(cls._items) if 'pubsub' in s), None)
+        if cls._pubsub_jid:
+            cls._pubsub_jid = cls._pubsub_jid.replace('$', cls._host)
+
+        cls._pubsub = PubSub()
 
     def feed(self, element: ET.Element):
         if len(element) != 1:
@@ -26,48 +51,67 @@ class Disco(Plugin):
         else:
             pass
 
-    def handle_info(self, element: ET.Element):
-        # Server info
-        plugins = load(open(Metadata().config_path), Loader=Loader)['plugins']
-        if element.attrib['to'] == 'localhost':
-            element_id = element.get('id')
-            element_to = element.attrib.get('to')
-            element_from = element.attrib.get('from')
+    def handle_info(self, element: ET.Element) -> object:
+        to = element.attrib.get('to')
 
-            iq_res = IQ(type=IQ.TYPE.RESULT.value, id=element_id, from_=element_to, to=element_from)
-            query = ET.SubElement(iq_res, 'query', attrib={'xmlns': 'http://jabber.org/protocol/disco#items'})
+        # Server info
+        if to == self._host or to is None:
+            return self.server_info(element)
+
+        # Pubsub info
+        if self._pubsub_jid and to == self._pubsub_jid:
+            iq_res, query = iq_skeleton(element, 'info')
             ET.SubElement(
                 query,
                 'identity',
-                attrib={'category': 'server', 'type': 'im', 'name': 'PyJabber Server'})
-
-            for feature in plugins:
-                ET.SubElement(query, 'feature', attrib={'var': feature})
-
+                attrib={'category': 'pubsub', 'type': 'service'}
+            )
+            ET.SubElement(query, 'feature', attrib={'var': 'http://jabber.org/protocol/pubsub'})
             return ET.tostring(iq_res)
 
     def handle_items(self, element: ET.Element):
-        # Server info
-        items = load(open(Metadata().config_path), Loader=Loader)['items']
-        if element.attrib['to'] == 'localhost':
-            element_id = element.get('id')
-            element_to = element.attrib.get('to')
-            element_from = element.attrib.get('from')
+        to = element.attrib.get('to')
 
-            iq_res = IQ(type=IQ.TYPE.RESULT.value, id=element_id, from_=element_to, to=element_from)
-            query = ET.SubElement(iq_res, 'query', attrib={'xmlns': 'http://jabber.org/protocol/disco#items'})
-            ET.SubElement(
-                query,
-                'identity',
-                attrib={'category': 'server', 'type': 'im', 'name': 'PyJabber Server'})
+        # Server items
+        if to == self._host or to is None:
+            return self.server_items(element)
 
-            for i in items:
-                [*keys], [*values] = zip(*i.items())
-                if '$' in values[0][0]:
-                    jid = values[0][0].replace('$', Metadata().host)
-                else:
-                    jid = values[0][0]
+        # Pubsub items
+        if self._pubsub_jid and to == self._pubsub_jid:
+            return self._pubsub.discover_items(element)
 
-                ET.SubElement(query, 'item', attrib={'jid': jid, 'name': keys[0]})
 
-            return ET.tostring(iq_res)
+    def server_info(self, element: ET.Element):
+        plugins = load(open(self._config_path), Loader=Loader)['plugins']
+        iq_res, query = iq_skeleton(element, 'info')
+        ET.SubElement(
+            query,
+            'identity',
+            attrib={'category': 'server', 'type': 'im', 'name': 'PyJabber Server'})
+
+        for feature in plugins:
+            ET.SubElement(query, 'feature', attrib={'var': feature})
+
+        return ET.tostring(iq_res)
+
+    def server_items(self, element: ET.Element):
+        items = load(open(self._config_path), Loader=Loader)['items']
+        iq_res, query = iq_skeleton(element, 'items')
+        ET.SubElement(
+            query,
+            'identity',
+            attrib={'category': 'server', 'type': 'im', 'name': 'PyJabber Server'})
+
+        for i in items:
+            [*keys], [*values] = zip(*i.items())
+            if '$' in values[0][0]:
+                jid = values[0][0].replace('$', Metadata().host)
+            else:
+                jid = values[0][0]
+
+            ET.SubElement(query, 'item', attrib={'jid': jid, 'name': keys[0]})
+
+        return ET.tostring(iq_res)
+
+    def pubsub_info(self, element: ET.Element):
+        pass
