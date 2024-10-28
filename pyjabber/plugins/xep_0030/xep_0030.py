@@ -1,13 +1,14 @@
+from abc import ABC
 from typing import Literal
 from yaml import load, Loader
 from xml.etree import ElementTree as ET
 
 from pyjabber.metadata import Metadata
 
-from pyjabber.plugins.PluginInterface import Plugin
 from pyjabber.plugins.xep_0060.xep_0060 import PubSub
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
+from pyjabber.utils import Singleton
 
 
 def iq_skeleton(element: ET.Element, disco_type: Literal['info', 'items']):
@@ -20,38 +21,37 @@ def iq_skeleton(element: ET.Element, disco_type: Literal['info', 'items']):
     return iq_res, ET.SubElement(iq_res, 'query', attrib={'xmlns': f'http://jabber.org/protocol/disco#{disco_type}'})
 
 
-class Disco(Plugin):
-    def __init__(cls, jid: str):
-        cls.jid = jid
-        cls._handlers = {
-            "info": cls.handle_info,
-            "items": cls.handle_items
+class Disco(metaclass=Singleton):
+    def __init__(self):
+        self._handlers = {
+            "info": self.handle_info,
+            "items": self.handle_items
         }
-        cls._host = Metadata().host
-        cls._config_path = Metadata().config_path
-        cls._items = list(load(open(cls._config_path), Loader=Loader).get('items'))
+        self._host = Metadata().host
+        self._config_path = Metadata().config_path
+        self._items = list(load(open(self._config_path), Loader=Loader).get('items'))
 
         # Search if any item has the substring pubsub, and replace the placeholder
         # with the server's host of the current session
         # A none result means the pubsub feature is disable
-        cls._pubsub_jid = next((s for s in list(cls._items) if 'pubsub' in s), None)
-        if cls._pubsub_jid:
-            cls._pubsub_jid = cls._pubsub_jid.replace('$', cls._host)
+        self._pubsub_jid = next((s for s in list(self._items) if 'pubsub' in s), None)
+        if self._pubsub_jid:
+            self._pubsub_jid = self._pubsub_jid.replace('$', self._host)
 
-        cls._pubsub = PubSub()
+        self._pubsub = PubSub()
 
-    def feed(self, element: ET.Element):
+    def feed(self, jid: str, element: ET.Element):
         if len(element) != 1:
             return SE.invalid_xml()
 
         if element.find('{http://jabber.org/protocol/disco#info}query') is not None:
-            return self._handlers['info'](element)
+            return self._handlers['info'](jid, element)
         elif element.find('{http://jabber.org/protocol/disco#items}query') is not None:
-            return self._handlers['items'](element)
+            return self._handlers['items'](jid, element)
         else:
             pass
 
-    def handle_info(self, element: ET.Element) -> object:
+    def handle_info(self, jid: str, element: ET.Element):
         to = element.attrib.get('to')
 
         # Server info
@@ -69,7 +69,7 @@ class Disco(Plugin):
             ET.SubElement(query, 'feature', attrib={'var': 'http://jabber.org/protocol/pubsub'})
             return ET.tostring(iq_res)
 
-    def handle_items(self, element: ET.Element):
+    def handle_items(self, jid: str, element: ET.Element):
         to = element.attrib.get('to')
 
         # Server items
@@ -78,8 +78,11 @@ class Disco(Plugin):
 
         # Pubsub items
         if self._pubsub_jid and to == self._pubsub_jid:
-            return self._pubsub.discover_items(element)
-
+            nodes = self._pubsub.discover_items(element)
+            iq_res, query = iq_skeleton(element, 'items')
+            for node in nodes:
+                ET.SubElement(query, 'item', attrib={'jid': self._pubsub_jid, 'node': node[0], 'name': node[1]})
+            return ET.tostring(iq_res)
 
     def server_info(self, element: ET.Element):
         plugins = load(open(self._config_path), Loader=Loader)['plugins']

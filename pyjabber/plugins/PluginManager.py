@@ -14,14 +14,12 @@ class PluginManager:
     def __init__(self, jid) -> None:
         self._jid = jid
 
-        disco = Disco(self._jid)
-
         self._plugins: Dict[str, object] = {
-            'jabber:iq:roster': Roster(self._jid),
-            'urn:xmpp:ping': Ping(self._jid),
-            'http://jabber.org/protocol/disco#info': disco,
-            'http://jabber.org/protocol/disco#items': disco,
-            'http://jabber.org/protocol/pubsub': PubSub(self._jid)
+            'jabber:iq:roster': Roster(),
+            'urn:xmpp:ping': Ping(),
+            'http://jabber.org/protocol/disco#info': Disco(),
+            'http://jabber.org/protocol/disco#items': Disco(),
+            'http://jabber.org/protocol/pubsub': PubSub()
         }
 
     def feed(self, element: ET.Element):
@@ -36,6 +34,6 @@ class PluginManager:
         tag, _ = CN.deglose(child.tag)
 
         try:
-            return self._plugins[tag].feed(element)
+            return self._plugins[tag].feed(self._jid, element)
         except KeyError:
             return SE.service_unavaliable()  # Plugin unavailable

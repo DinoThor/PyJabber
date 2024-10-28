@@ -1,15 +1,15 @@
 import xml.etree.ElementTree as ET
+from abc import ABC
 from contextlib import closing
 
 from pyjabber.db.database import connection
-from pyjabber.plugins.PluginInterface import Plugin
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
+from pyjabber.utils import Singleton
 
 
-class Roster(Plugin):
-    def __init__(self, jid: str, db_connection_factory=None) -> None:
-        self._jid = jid
+class Roster(metaclass=Singleton):
+    def __init__(self, db_connection_factory=None) -> None:
         self._handlers = {
             "get": self.handle_get,
             "set": self.handle_set,
@@ -22,17 +22,17 @@ class Roster(Plugin):
         }
         self._db_connection_factory = db_connection_factory or connection
 
-    def feed(self, element: ET.Element):
+    def feed(self, jid: str, element: ET.Element):
         if len(element) != 1:
             return SE.invalid_xml()
 
-        return self._handlers[element.attrib["type"]](element)
+        return self._handlers[element.attrib["type"]](jid, element)
 
     ############################################################
     ############################################################
 
-    def handle_get(self, element: ET.Element):
-        jid = self._jid.split("/")[0]
+    def handle_get(self, jid: str, element: ET.Element):
+        jid = jid.split("/")[0]
         try:
             with closing(self._db_connection_factory()) as con:
                 res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
@@ -57,9 +57,9 @@ class Roster(Plugin):
         except BaseException:
             raise Exception()
 
-    def handle_set(self, element: ET.Element):
+    def handle_set(self, jid: str, element: ET.Element):
         query = element.find(self._ns["query"])
-        jid = self._jid.split("/")[0]
+        jid = jid.split("/")[0]
 
         if query is None:
             raise Exception()
@@ -70,6 +70,7 @@ class Roster(Plugin):
             raise Exception()
 
         new_item = new_item[0]
+        remove = None
         if "subscription" in new_item.attrib.keys():
             remove = new_item.attrib["subscription"] == "remove"
 
