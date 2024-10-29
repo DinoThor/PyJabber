@@ -60,13 +60,23 @@ class Disco(metaclass=Singleton):
 
         # Pubsub info
         if self._pubsub_jid and to == self._pubsub_jid:
-            iq_res, query = iq_skeleton(element, 'info')
+            iq_res, query_res = iq_skeleton(element, 'info')
+
+            node = self._pubsub.discover_info(element)
+            if node:
+                ET.SubElement(
+                    query_res,
+                    'identity',
+                    attrib={'category': 'pubsub', 'type': node[-1]}
+                )
+                return ET.tostring(iq_res)
+
             ET.SubElement(
-                query,
+                query_res,
                 'identity',
                 attrib={'category': 'pubsub', 'type': 'service'}
             )
-            ET.SubElement(query, 'feature', attrib={'var': 'http://jabber.org/protocol/pubsub'})
+            ET.SubElement(query_res, 'feature', attrib={'var': 'http://jabber.org/protocol/pubsub'})
             return ET.tostring(iq_res)
 
     def handle_items(self, jid: str, element: ET.Element):
@@ -115,6 +125,3 @@ class Disco(metaclass=Singleton):
             ET.SubElement(query, 'item', attrib={'jid': jid, 'name': keys[0]})
 
         return ET.tostring(iq_res)
-
-    def pubsub_info(self, element: ET.Element):
-        pass

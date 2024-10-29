@@ -1,11 +1,10 @@
-from abc import ABC
 from xml.etree import ElementTree as ET
 
 from pyjabber.utils import Singleton
 
 
 class Ping(metaclass=Singleton):
-    def ping_response(self, jid: str, element: ET.Element):
+    def feed(self, jid: str, element: ET.Element):
         return ET.tostring(
             ET.Element(
                 "iq",

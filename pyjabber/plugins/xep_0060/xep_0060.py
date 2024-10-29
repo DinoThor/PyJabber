@@ -10,6 +10,17 @@ from pyjabber.db.database import connection
 from pyjabber.utils import Singleton
 
 
+def get_value_from_path(data, path):
+    keys = path.split('/')
+    value = data['root']
+    try:
+        for key in keys:
+            value = value[key]
+        return value
+    except KeyError:
+        return None
+
+
 class PubSub(metaclass=Singleton):
     def __init__(self, db_connection_factory=None):
         super().__init__()
@@ -49,3 +60,17 @@ class PubSub(metaclass=Singleton):
                 node_type = self._data[collection].get('type')
                 res.append((collection, name, node_type))
             return res
+
+    def discover_info(self, element: ET.Element):
+        """
+            Return the info for a given node
+            :return: algo
+        """
+        query = element.find('{http://jabber.org/protocol/disco#info}query')
+        if query is not None and query.attrib.get('node') is not None:
+            path = query.attrib.get('node')
+            node = get_value_from_path(self._data, path)
+            if node:
+                return (node['name'], node['type'])
+
+        return None
