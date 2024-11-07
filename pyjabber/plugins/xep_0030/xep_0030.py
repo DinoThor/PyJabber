@@ -1,11 +1,10 @@
-from abc import ABC
 from typing import Literal
 from yaml import load, Loader
 from xml.etree import ElementTree as ET
 
 from pyjabber.metadata import Metadata
 
-from pyjabber.plugins.xep_0060.xep_0060 import PubSub
+from pyjabber.plugins.xep_0060.xep_0060 import PubSub, NodeAttrib
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.utils import Singleton
@@ -37,8 +36,7 @@ class Disco(metaclass=Singleton):
         self._pubsub_jid = next((s for s in list(self._items) if 'pubsub' in s), None)
         if self._pubsub_jid:
             self._pubsub_jid = self._pubsub_jid.replace('$', self._host)
-
-        self._pubsub = PubSub()
+            self._pubsub = PubSub()
 
     def feed(self, jid: str, element: ET.Element):
         if len(element) != 1:
@@ -91,7 +89,7 @@ class Disco(metaclass=Singleton):
             nodes = self._pubsub.discover_items(element)
             iq_res, query = iq_skeleton(element, 'items')
             for node in nodes:
-                ET.SubElement(query, 'item', attrib={'jid': self._pubsub_jid, 'node': node[0], 'name': node[1]})
+                ET.SubElement(query, 'item', attrib={'jid': self._pubsub_jid, 'node': node[NodeAttrib.NODE], 'name': node[NodeAttrib.NAME]})
             return ET.tostring(iq_res)
 
     def server_info(self, element: ET.Element):

@@ -76,7 +76,6 @@ class Server:
             with closing(connection()) as con:
                 with open(SERVER_FILE_PATH + "/db/schema.sql", "r") as schema:
                     con.cursor().executescript(schema.read())
-                    con.execute("INSERT INTO pubsub VALUES (\'{\"root\": {}}\')")
                 con.commit()
 
         if CertGenerator.check_hostname_cert_exists(self._host) is False and self._cert_path is None:

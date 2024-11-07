@@ -17,6 +17,10 @@ CREATE TABLE `credentials`(
     PRIMARY KEY(`id`)
 );
 CREATE TABLE `pubsub`(
-    `metadata` VARCHAR(255),
-    PRIMARY KEY(`metadata`)
+    `node` VARCHAR(255),
+    `name` VARCHAR(255),
+    `type` VARCHAR(255),
+    `subscribers` VARCHAR(255),
+    `items` VARCHAR(255),
+    PRIMARY KEY(`node`)
 );

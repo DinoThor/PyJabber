@@ -52,8 +52,7 @@ def feature_not_implemented(xmlns) -> bytes:
             xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
     </error>
     """
-    return f"<error type='cancel'><feature-not-implemented xmlns='{XMLNS}'/></error>".encode(
-    )
+    return f"<error type='cancel'><feature-not-implemented xmlns='{XMLNS}'/></error>".encode()
 
 
 def invalid_xml() -> bytes:

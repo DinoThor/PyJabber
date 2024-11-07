@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+import re
 from typing import Dict
 
 # Plugins
@@ -17,9 +18,8 @@ class PluginManager:
         self._plugins: Dict[str, object] = {
             'jabber:iq:roster': Roster(),
             'urn:xmpp:ping': Ping(),
-            'http://jabber.org/protocol/disco#info': Disco(),
-            'http://jabber.org/protocol/disco#items': Disco(),
-            'http://jabber.org/protocol/pubsub': PubSub()
+            'http://jabber.org/protocol/disco*': Disco(),
+            'http://jabber.org/protocol/pubsub*': PubSub()
         }
 
     def feed(self, element: ET.Element):
@@ -34,6 +34,7 @@ class PluginManager:
         tag, _ = CN.deglose(child.tag)
 
         try:
+            tag = list(filter(lambda regex: re.search(regex, tag), list(self._plugins.keys())))[-1]
             return self._plugins[tag].feed(self._jid, element)
         except KeyError:
             return SE.service_unavaliable()  # Plugin unavailable
