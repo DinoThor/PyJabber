@@ -10,6 +10,8 @@ from pyjabber.features.StreamFeature import StreamFeature
 from pyjabber.features.SASLFeature import SASLFeature, SASL
 from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.stanzas.IQ import IQ
+from pyjabber.stream.JID import JID
 from pyjabber.utils import ClarkNotation as CN
 
 
@@ -114,43 +116,29 @@ class StreamHandler:
         elif self._stage == Stage.BIND:
             if "iq" in elem.tag:
                 if elem.attrib["type"] == "set":
-                    bindElem = elem.find(CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "bind")))
-                    resouce = bindElem.find(CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "resource")))
+                    bind_elem = elem.find("{urn:ietf:params:xml:ns:xmpp-bind}bind")
+                    resource_elem = bind_elem.find("{urn:ietf:params:xml:ns:xmpp-bind}resource")
 
-                    if resouce is not None:
-                        resource_id = resouce.text
+                    if resource_elem is not None and resource_elem.text:
+                        resource_id = resource_elem.text
                     else:
                         resource_id = uuid4()
 
-                    iqRes = ET.Element(
-                        "iq",
-                        attrib={
-                            "id": elem.attrib["id"],
-                            "type": "result"
-                        }
-                    )
+                    iq_res = IQ(type=IQ.TYPE.RESULT.value, id=elem.get('id'))
+                    bind_res = ET.SubElement(iq_res, "bind", attrib={"xmlns": "urn:ietf:params:xml:ns:xmpp-bind"})
 
-                    bindRes = ET.SubElement(
-                        iqRes,
-                        "bind",
-                        attrib={
-                            "xmlns": "urn:ietf:params:xml:ns:xmpp-bind"
-                        }
-                    )
+                    peername = self._buffer.get_extra_info('peername')
+                    username = self._connection_manager.get_jid(peername)
+                    new_jid = JID(user=username, domain=self._host, resource=resource_id)
 
-                    jidRes = ET.SubElement(bindRes, "jid")
+                    ET.SubElement(bind_res, 'jid').text = str(new_jid)
 
-                    currentJid = self._connection_manager.get_jid(self._buffer.get_extra_info('peername'))
-                    jidRes.text = f"{currentJid}@{self._host}/{resource_id}"
+                    self._buffer.write(ET.tostring(iq_res))
 
-                    self._buffer.write(ET.tostring(iqRes))
-
-                    # Stream is negotiated.
-                    # Update the connection register
-                    # with the jid and transport
-                    self._connection_manager.set_jid(
-                        self._buffer.get_extra_info('peername'),
-                        jidRes.text, self._buffer
-                    )
+                    """
+                    Stream is negotiated.
+                    Update the connection register with the jid and transport
+                    """
+                    self._connection_manager.set_jid(peername, new_jid, self._buffer)
 
             return Signal.DONE

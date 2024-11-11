@@ -18,9 +18,19 @@ CREATE TABLE `credentials`(
 );
 CREATE TABLE `pubsub`(
     `node` VARCHAR(255),
+    `owner` VARCHAR(255) NOT NULL,
     `name` VARCHAR(255),
     `type` VARCHAR(255),
-    `subscribers` VARCHAR(255),
-    `items` VARCHAR(255),
     PRIMARY KEY(`node`)
+);
+CREATE TABLE `pubsubSubscribers`(
+    `node` VARCHAR(255) NOT NULL,
+    `jid` VARCHAR(255),
+    `subscription` VARCHAR(255),
+    PRIMARY KEY(`jid`)
+);
+CREATE TABLE `pubsubItems`(
+    `node` VARCHAR(255),
+    `name` VARCHAR(255),
+    PRIMARY KEY(`node`, `name`)
 );

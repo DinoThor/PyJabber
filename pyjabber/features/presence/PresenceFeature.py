@@ -8,10 +8,11 @@ from pyjabber.features.feature_utils import RosterUtils as RU
 from pyjabber.features.FeatureInterface import FeatureInterface
 from pyjabber.features.presence.utils import create_roster_entry
 from pyjabber.plugins.roster.Roster import Roster
+from pyjabber.stream.JID import JID
 
 
 class Presence(FeatureInterface):
-    def __init__(self, jid) -> None:
+    def __init__(self, jid: JID) -> None:
         self._handlers = {
             "subscribe": self.handle_subscribe,
             "subscribed": self.handle_subscribed,
@@ -20,9 +21,8 @@ class Presence(FeatureInterface):
         }
         self._connections = ConnectionManager()
         self._jid = jid
-        self._bare_jid = self._jid.split("/")[0]
 
-        pending = RU.check_pending_sub(self._bare_jid)
+        pending = RU.check_pending_sub(self._jid.bare())
         for p in pending:
             buffer = self._connections.get_buffer(jid)
             for b in buffer:
@@ -38,34 +38,33 @@ class Presence(FeatureInterface):
         return None
 
     def handle_subscribe(self, element: ET.Element):
-        to = element.attrib["to"].split("/")[0]
-
-        pending = RU.check_pending_sub_to(self._bare_jid, to)
+        to = JID(element.attrib["to"])
+        pending = RU.check_pending_sub_to(self._jid.bare(), to.bare())
 
         if pending:
             return
 
-        roster_manager = Roster(self._bare_jid)
+        roster_manager = Roster(self._jid.bare())
 
         if "from" not in element.attrib:
-            element.attrib["from"] = self._jid
+            element.attrib["from"] = str(self._jid)
 
         # Handle presence locally
-        if to.split("@")[1] == "localhost":
-            roster = RU.retrieve_roster(self._bare_jid)
+        if to.domain == "localhost":
+            roster = RU.retrieve_roster(self._jid.bare())
             buffer = self._connections.get_buffer(to)
 
             item = [item for item in roster
-                    if ET.fromstring(item[2]).attrib["jid"] == to]
+                    if ET.fromstring(item[2]).attrib["jid"] == to.bare()]
 
             if not item:
-                create_roster_entry(self._bare_jid, to, roster_manager)
+                create_roster_entry(self._jid.bare(), to.bare(), roster_manager)
 
-                roster = RU.retrieve_roster(self._bare_jid)
+                roster = RU.retrieve_roster(self._jid.bare())
                 buffer = self._connections.get_buffer(to)
 
                 item = [item for item in roster
-                        if ET.fromstring(item[2]).attrib["jid"] == to]
+                        if ET.fromstring(item[2]).attrib["jid"] == to.bare()]
 
             item = item[0]
             ETitem = ET.fromstring(item[2])
@@ -74,9 +73,9 @@ class Presence(FeatureInterface):
                 petition = ET.Element(
                     "presence",
                     attrib={
-                        "from": element.attrib['to'],
-                        "to": element.attrib['from'],
-                        "id": element.attrib['id'],
+                        "from": element.attrib.get('to'),
+                        "to": element.attrib.get('from'),
+                        "id": element.attrib.get('id'),
                         "type": "subscribed"
                     }
                 )
@@ -101,21 +100,21 @@ class Presence(FeatureInterface):
                     b[-1].write(ET.tostring(petition))
 
             else:
-                RU.store_pending_sub(self._bare_jid, to, element)
+                RU.store_pending_sub(self._jid.bare(), to.bare(), element)
 
 
     def handle_subscribed(self, element: ET.Element):
-        to = element.attrib["to"]
-        bare_jid = self._jid.split("/")[0]
+        to = JID(element.attrib.get("to"))
+        bare_jid = self._jid.bare()
 
         if "from" not in element.attrib:
-            element.attrib["from"] = self._jid
+            element.attrib["from"] = str(self._jid)
 
         if to.split("@")[1] == "localhost":
             bufferBob = self._connections.get_buffer(to)
             bufferAlice = self._connections.get_buffer(bare_jid)
 
-            rosterBob = RU.retrieve_roster(to)
+            rosterBob = RU.retrieve_roster(str(to))
             rosterAlice = RU.retrieve_roster(bare_jid)
 
             if not rosterAlice:
@@ -221,7 +220,7 @@ class Presence(FeatureInterface):
                     alice[-1].write(ET.tostring(res))
 
     def handle_initial_presence(self, element: ET.Element):
-        bare_jid = self._jid.split("/")[0]
+        bare_jid = self._jid.bare()
         roster = RU.retrieve_roster(bare_jid)
 
         for r in roster:
@@ -237,11 +236,11 @@ class Presence(FeatureInterface):
                 b[-1].write(ET.tostring(presence))
 
     def handle_unsubscribed(self, element: ET.Element):
-        to = element.attrib["to"].split("/")[0]
-        bare_jid = self._jid.split("/")[0]
+        to = JID(element.attrib["to"]).bare()
+        bare_jid = self._jid.bare()
 
         if "from" not in element.attrib:
-            element.attrib["from"] = self._jid
+            element.attrib["from"] = str(self._jid)
 
         # Handle locally
         if to.split("@")[1] == "localhost":
@@ -301,10 +300,10 @@ class Presence(FeatureInterface):
                 b[-1].write(ET.tostring(roster_push))
 
     def handle_unavailable(self, element: ET.Element):
-        bare_jid = self._jid.split("/")[0]
+        bare_jid = self._jid.bare()
 
         if "from" not in element.attrib:
-            element.attrib["from"] = self._jid
+            element.attrib["from"] = str(self._jid)
 
         roster = RU.retrieve_roster(bare_jid)
 

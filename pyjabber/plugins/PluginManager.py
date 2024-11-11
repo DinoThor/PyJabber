@@ -8,11 +8,12 @@ from pyjabber.plugins.xep_0199.xep_0199 import Ping
 from pyjabber.plugins.xep_0030.xep_0030 import Disco
 from pyjabber.plugins.xep_0060.xep_0060 import PubSub
 from pyjabber.stanzas.error import StanzaError as SE
+from pyjabber.stream.JID import JID
 from pyjabber.utils import ClarkNotation as CN
 
 
 class PluginManager:
-    def __init__(self, jid) -> None:
+    def __init__(self, jid: JID) -> None:
         self._jid = jid
 
         self._plugins: Dict[str, object] = {

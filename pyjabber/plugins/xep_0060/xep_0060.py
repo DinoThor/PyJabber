@@ -3,6 +3,7 @@ import sqlite3
 from contextlib import closing
 from enum import Enum
 from typing import List, Dict
+from uuid import uuid4
 from xml.etree import ElementTree as ET
 
 from loguru import logger
@@ -10,14 +11,45 @@ from yaml import load, Loader
 
 from pyjabber.metadata import Metadata
 from pyjabber.db.database import connection
+from pyjabber.stanzas.IQ import IQ
+from pyjabber.stream.JID import JID
 from pyjabber.utils import Singleton, ClarkNotation as CN
+
 
 class NodeAttrib(Enum):
     NODE = 0
     NAME = 1
     TYPE = 2
-    SUBS = 3
-    ITEMS = 4
+    OWNER = 3
+
+
+class Subscription(Enum):
+    NONE = 0
+    PENDING = 1
+    UNCONFIGURED = 2
+    SUBSCRIBED = 3
+
+
+class NodeAccess(Enum):
+    OPEN = 0
+    PRESENCE = 1
+    ROSTER = 2
+    AUTHORIZE = 3
+    WHITELIST = 4
+
+
+class Affiliation:
+    """
+    Privileges for each affiliation identity
+    https://xmpp.org/extensions/xep-0060.html#affiliations
+    """
+    OWNER = ['SUB', 'RET', 'PUB', 'DEL', 'PUR', 'CON', 'DEL']
+    PUBLISHER = ['SUB', 'RET', 'PUB', 'DEL', 'PUR']
+    PUB_ONLY = ['PUB', 'DEL']
+    MEMBER = ['SUB', 'RET']
+    NONE = ['SUB']
+    OUTCAST = []
+
 
 class PubSub(metaclass=Singleton):
     def __init__(self, db_connection_factory=None):
@@ -35,30 +67,33 @@ class PubSub(metaclass=Singleton):
         self._db_connection_factory = db_connection_factory or connection
 
         self._nodes = None
+        self._subscribers = None
         self.update_memory_from_database()
 
         self._operations = {
             'create': self.create_node,
             'delete': self.delete_node,
+            'subscriptions': self.retrieve_subscriptions
         }
 
     def update_memory_from_database(self):
         with closing(self._db_connection_factory()) as con:
             res = con.execute("SELECT * FROM pubsub")
             self._nodes = res.fetchall()
+            res = con.execute("SELECT * FROM pubsubSubscribers")
+            self._subscribers = res.fetchall()
 
-    def feed(self, jid: str, element: ET.Element):
+    def feed(self, jid: JID, element: ET.Element):
         try:
             _, tag = CN.deglose(element[0].tag)
 
             if tag != 'pubsub':
-                return # TODO: malformed request
+                return  # TODO: malformed request
 
             _, operation = CN.deglose(element[0][0].tag)
-            return self._operations[operation](element[0][0])
+            return self._operations[operation](element, jid)
         except (KeyError, TypeError) as e:
-            pass # TODO: Malformed request
-
+            pass  # TODO: Malformed request
 
     def discover_items(self, element: ET.Element) -> List[tuple]:
         """
@@ -92,40 +127,72 @@ class PubSub(metaclass=Singleton):
 
         return None
 
-    def create_node(self, element: ET.Element):
-        new_node = element.attrib.get('node')
+    def create_node(self, element: ET.Element, jid: JID):
+        new_node = element[0][0].attrib.get('node')
         if new_node is None:
-            pass # TODO: malformed petition
+            iq_res = IQ(type=IQ.TYPE.ERROR.value, from_=Metadata().host, to=str(jid), id=element.attrib.get('id'))
+            auth_error = ET.fromstring(
+                "<error type='auth'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/><nodeid-required "
+                "xmlns='http://jabber.org/protocol/pubsub#errors'/></error>")
+            iq_res.append(auth_error)
+            return ET.tostring(iq_res)
 
         if [node for node in self._nodes if node[NodeAttrib.NODE.value] == new_node]:
-            return # TODO: node already exist with given name
+            iq_res = IQ(type=IQ.TYPE.ERROR.value, from_=Metadata().host, to=str(jid), id=element.attrib.get('id'))
+            auth_error = ET.fromstring(
+                "<error type='auth'><conflict xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>")
+            iq_res.append(auth_error)
+            return ET.tostring(iq_res)
 
         """
         A new item MUST follow the order described in the NodeAttrib enum
         for correct attribute access
         """
         item = (
-            new_node,   # NODE
-            None,       # NAME
-            'leaf',     # TYPE
-            '[]',       # SUBSCRIBERS LIST
-            '[]'        # ITEMS LIST
+            new_node,  # NODE
+            jid.user,  # OWNER
+            None,  # NAME
+            'leaf',  # TYPE
         )
 
         with closing(self._db_connection_factory()) as con:
-            con.execute("INSERT INTO pubsub VALUES (?,?,?,?,?)", item)
+            con.execute("INSERT INTO pubsub VALUES (?,?,?,?)", item)
             con.commit()
 
         self.update_memory_from_database()
 
+        return ET.tostring(IQ(
+            type=IQ.TYPE.RESULT.value,
+            from_=Metadata().host,
+            to=element.attrib.get('from'),
+            id=element.attrib.get('id')
+        ))
 
-    def delete_node(self, element: ET.Element):
-        del_node = element.attrib.get('node')
+    def delete_node(self, element: ET.Element, jid: JID):
+        del_node = element[0][0].attrib.get('node')
         if del_node is None:
-            pass  # TODO: malformed petition
+            iq_res = IQ(type=IQ.TYPE.ERROR.value, from_=Metadata().host, to=str(jid), id=element.attrib.get('id'))
+            auth_error = ET.fromstring(
+                "<error type='auth'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/><nodeid-required "
+                "xmlns='http://jabber.org/protocol/pubsub#errors'/></error>")
+            iq_res.append(auth_error)
+            return ET.tostring(iq_res)
 
-        if len([node for node in self._nodes if node[NodeAttrib.NODE.value] == del_node]) == 0:
-            return  # TODO: node not exist
+        try:
+            node_match = [node for node in self._nodes if node[NodeAttrib.NODE.value] == del_node][0]
+        except IndexError:
+            iq_res = IQ(type=IQ.TYPE.ERROR.value, from_=Metadata().host, to=str(jid), id=element.attrib.get('id'))
+            auth_error = ET.fromstring(
+                "<error type='cancel'><item-not-found xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>")
+            iq_res.append(auth_error)
+            return ET.tostring(iq_res)
+
+        if node_match[NodeAttrib.OWNER.value] != jid.user:
+            iq_res = IQ(type=IQ.TYPE.ERROR.value, from_=Metadata().host, to=str(jid), id=element.attrib.get('id'))
+            auth_error = ET.fromstring(
+                "<error type='auth'><forbidden xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>")
+            iq_res.append(auth_error)
+            return ET.tostring(iq_res)
 
         with closing(self._db_connection_factory()) as con:
             con.execute("DELETE FROM pubsub WHERE node = ?", (del_node,))
@@ -133,10 +200,29 @@ class PubSub(metaclass=Singleton):
 
         self.update_memory_from_database()
 
-    def subscribe_node(self, element: ET.Element):
+        return ET.tostring(IQ(
+            type=IQ.TYPE.RESULT.value,
+            from_=Metadata().host,
+            to=element.attrib.get('from'),
+            id=element.attrib.get('id')
+        ))
+
+    def retrieve_subscriptions(self, element: ET.Element, jid: str):
+        target_node = element[0][0].attrib.get('node')
+        if target_node:
+            pass
+
+        with closing(self._db_connection_factory()) as con:
+            res = con.execute("SELECT * FROM pubsubSubscribers WHERE jid = ?", (target_node,))
+            res = res.fetchall()
+
+    def retrieve_affiliations(self, element: ET.Element, jid: str):
         pass
 
-    def unsubscribe_node(self, element: ET.Element):
+    def subscribe_node(self, element: ET.Element, jid: str):
+        pass
+
+    def unsubscribe_node(self, element: ET.Element, jid: str):
         pass
 
     def error_factory(self, element: ET.Element):

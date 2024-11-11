@@ -4,7 +4,13 @@ from asyncio import Transport
 from typing import Dict, Union, Tuple
 from loguru import logger
 
+from pyjabber.stream.JID import JID as JIDClass
 from pyjabber.utils import Singleton
+
+
+peerName = Tuple[str, str]
+peerItem = Dict[JIDClass, Transport]
+peerList = [peerName, peerItem]
 
 
 class ConnectionManager(metaclass=Singleton):
@@ -15,14 +21,14 @@ class ConnectionManager(metaclass=Singleton):
         if task_s2s:
             self._task_s2s = task_s2s
 
-        self._peerList = {}
+        self._peerList: peerList = {}
         self._remoteList = {}
 
     ###########################################################################
     ############################### LOCAL BOUND ###############################
     ###########################################################################
 
-    def get_users_connected(self) -> Dict[str, Tuple[str, int]]:
+    def get_users_connected(self) -> peerList:
         """
             Return all the users connected
 
@@ -31,7 +37,7 @@ class ConnectionManager(metaclass=Singleton):
         """
         return self._peerList
 
-    def get_buffer(self, jid: str) -> List[Tuple[str, Transport]]:
+    def get_buffer(self, jid: Union[JIDClass, str]) -> List[Tuple[str, Transport]]:
         """
             Get all the available buffers associated with a jid.
 
@@ -47,10 +53,10 @@ class ConnectionManager(metaclass=Singleton):
 
         return [(self._peerList[key][self.JID], self._peerList[key][self.TRANSPORT])
                 for key, values in self._peerList.items()
-                if values[self.JID] is not None and re.match(f"{jid}/*", values[self.JID])
+                if values[self.JID] is not None and re.match(f"{str(jid)}/*", values[self.JID])
                 ]
 
-    def get_jid(self, peer) -> Union[str, None]:
+    def get_jid(self, peer) -> Union[JIDClass, None]:
         """
             Return the jid associated with the peername
 
@@ -61,7 +67,7 @@ class ConnectionManager(metaclass=Singleton):
         except KeyError:
             return None
 
-    def set_jid(self, peer: Tuple[str, int], jid: str, transport: Transport = None) -> Union[None, bool]:
+    def set_jid(self, peer: Tuple[str, int], jid: JIDClass, transport: Transport = None) -> Union[None, bool]:
         """
             Set/update the jid of a registered connection.
 

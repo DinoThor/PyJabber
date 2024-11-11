@@ -5,6 +5,7 @@ from contextlib import closing
 from pyjabber.db.database import connection
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
+from pyjabber.stream.JID import JID
 from pyjabber.utils import Singleton
 
 
@@ -22,7 +23,7 @@ class Roster(metaclass=Singleton):
         }
         self._db_connection_factory = db_connection_factory or connection
 
-    def feed(self, jid: str, element: ET.Element):
+    def feed(self, jid: JID, element: ET.Element):
         if len(element) != 1:
             return SE.invalid_xml()
 
@@ -31,8 +32,8 @@ class Roster(metaclass=Singleton):
     ############################################################
     ############################################################
 
-    def handle_get(self, jid: str, element: ET.Element):
-        jid = jid.split("/")[0]
+    def handle_get(self, jid: JID, element: ET.Element):
+        jid = jid.bare()
         try:
             with closing(self._db_connection_factory()) as con:
                 res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
@@ -57,9 +58,9 @@ class Roster(metaclass=Singleton):
         except BaseException:
             raise Exception()
 
-    def handle_set(self, jid: str, element: ET.Element):
+    def handle_set(self, jid: JID, element: ET.Element):
         query = element.find(self._ns["query"])
-        jid = jid.split("/")[0]
+        jid = jid.bare()
 
         if query is None:
             raise Exception()
