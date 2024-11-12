@@ -122,11 +122,10 @@ class XMLProtocol(asyncio.Protocol):
         """
         Called when the client or another server sends an EOF
         """
-        peer = self._transport.get_extra_info('peername')
-
-        logger.debug(f"EOF received from {peer}")
-
-        self._connection_manager.disconnection(peer)
+        if self._transport:
+            peer = self._transport.get_extra_info('peername')
+            logger.debug(f"EOF received from {peer}")
+            self._connection_manager.disconnection(peer)
 
     def connection_timeout(self):
         """
