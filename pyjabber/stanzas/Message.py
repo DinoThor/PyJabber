@@ -1,3 +1,4 @@
+from typing import Union
 from xml.etree import ElementTree as ET
 
 
@@ -7,8 +8,8 @@ class Message(ET.Element):
             mto: str,
             mfrom: str,
             id: str,
-            body: str,
-            mtype: str = "chat",
+            body: Union[str, ET.Element],
+            mtype: Union[str, None] = "chat",
             tag: str = "message",
             **extra: str) -> None:
 
@@ -22,7 +23,10 @@ class Message(ET.Element):
 
         super().__init__(tag, attrib, **extra)
 
-        body_elem = ET.Element("body")
-        body_elem.text = body
+        if type(body) == str:
+            body_elem = ET.Element("body")
+            body_elem.text = body
+            self.append(body_elem)
 
-        self.append(body_elem)
+        else:
+            self.append(body)

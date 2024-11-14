@@ -11,6 +11,7 @@ from pyjabber.network.XMLProtocol import XMLProtocol
 from pyjabber.network.server.incoming.XMLServerIncomingProtocol import XMLServerIncomingProtocol
 from pyjabber.network.server.outcoming.XMLServerOutcomingProtocol import XMLServerOutcomingProtocol
 from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.stanzas.Validator import Validator
 from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.webpage.adminPage import admin_instance
 from pyjabber.network import CertGenerator
@@ -61,6 +62,7 @@ class Server:
         # Singletons
         self._connection_manager = ConnectionManager(self.task_s2s)
         self._queue_message = QueueMessage(self._connection_manager)
+        self._validator = Validator()
 
         # Metadata
         Metadata(

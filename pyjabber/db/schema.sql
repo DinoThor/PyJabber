@@ -21,16 +21,20 @@ CREATE TABLE `pubsub`(
     `owner` VARCHAR(255) NOT NULL,
     `name` VARCHAR(255),
     `type` VARCHAR(255),
+    `maxitems` INTEGER,
     PRIMARY KEY(`node`)
 );
 CREATE TABLE `pubsubSubscribers`(
-    `node` VARCHAR(255) NOT NULL,
+    `node` VARCHAR(255),
     `jid` VARCHAR(255),
-    `subscription` VARCHAR(255),
-    PRIMARY KEY(`jid`)
+    `subid` VARCHAR (255),
+    `subscription` VARCHAR(255) NOT NULL,
+    `affiliation` VARCHAR(255) NOT NULL,
+    PRIMARY KEY(`node`, `jid`, `subid`)
 );
 CREATE TABLE `pubsubItems`(
     `node` VARCHAR(255),
-    `name` VARCHAR(255),
-    PRIMARY KEY(`node`, `name`)
+    `itemid` VARCHAR(255),
+    `payload` VARCHAR (255),
+    PRIMARY KEY(`node`, `itemid`)
 );

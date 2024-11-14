@@ -1,19 +1,12 @@
 import os
-import pickle
 import re
-import socket
 import xml.etree.ElementTree as ET
-
-import xmlschema
 
 from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.stream.JID import JID
 from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.plugins.PluginManager import PluginManager
-from pyjabber.stanzas.error import StanzaError as SE
-from pyjabber.utils import ClarkNotation as CN
-
-FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
 class StanzaHandler:
@@ -35,19 +28,16 @@ class StanzaHandler:
             "{jabber:client}presence": self.handle_pre
         }
 
-        with open(FILE_PATH + "/schemas/schemas.pkl", "rb") as schemasDump:
-            self._schemas = pickle.load(schemasDump)
-
     def feed(self, element: ET.Element):
-        ns, _ = CN.deglose(element.tag)
-        try:
-            schema: xmlschema.XMLSchema = self._schemas[ns]
-            if schema.is_valid(ET.tostring(element)) is False:
-                self._buffer.write(SE.bad_request())
-                return
-        except KeyError:
-            self._buffer.write(SE.feature_not_implemented(ns))
-            return
+        #ns, _ = CN.deglose(element.tag)
+        #try:
+        #    schema: xmlschema.XMLSchema = self._schemas[ns]
+        #    if schema.is_valid(ET.tostring(element)) is False:
+        #        self._buffer.write(SE.bad_request())
+        #        return
+        #except KeyError:
+        #    self._buffer.write(SE.feature_not_implemented(ns))
+        #    return
 
         try:
             self._functions[element.tag](element)
@@ -78,20 +68,19 @@ class StanzaHandler:
 
             :param element: the message in the ElementTree format
         """
-        bare_jid = element.attrib["to"].split("/")[0]
+        jid = JID(element.attrib["to"])
 
-        if re.match(fr'^[a-zA-Z0-9._%+-]+@{re.escape(self._host)}$', bare_jid):
-            for buffer in self._connections.get_buffer(bare_jid):
+        if re.match(fr'^[a-zA-Z0-9._%+-]+@{re.escape(self._host)}$', jid.bare()):
+            for buffer in self._connections.get_buffer(jid.bare()):
                 buffer[-1].write(ET.tostring(element))
 
         else:
-            server_buffer = self._connections.get_server_buffer(bare_jid)
+            server_buffer = self._connections.get_server_buffer(jid.bare())
             if server_buffer:
                 server_buffer[-1].write(ET.tostring(element))
 
             else:
-                server_host = element.attrib["to"].split("@")[-1]
-                self._queue_message.enqueue(server_host, ET.tostring(element))
+                self._queue_message.enqueue(jid.domain, ET.tostring(element))
 
     def handle_pre(self, element: ET.Element):
         res = self._presenceManager.feed(element, self._jid)

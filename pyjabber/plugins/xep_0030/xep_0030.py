@@ -7,6 +7,7 @@ from pyjabber.metadata import Metadata
 from pyjabber.plugins.xep_0060.xep_0060 import PubSub, NodeAttrib
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
+from pyjabber.stream.JID import JID
 from pyjabber.utils import Singleton
 
 
@@ -35,7 +36,7 @@ class Disco(metaclass=Singleton):
         # A none result means the pubsub feature is disable
         self._pubsub_jid = next((s for s in list(self._items) if 'pubsub' in s), None)
         if self._pubsub_jid:
-            self._pubsub_jid = self._pubsub_jid.replace('$', self._host)
+            self._pubsub_jid = domain=self._pubsub_jid.replace('$', self._host)
             self._pubsub = PubSub()
 
     def feed(self, jid: str, element: ET.Element):
@@ -51,9 +52,12 @@ class Disco(metaclass=Singleton):
 
     def handle_info(self, jid: str, element: ET.Element):
         to = element.attrib.get('to')
+        if to is not None:
+            to = JID(to)
+        else:
+            return self.server_info(element)
 
-        # Server info
-        if to == self._host or to is None:
+        if to.domain == self._host:
             return self.server_info(element)
 
         # Pubsub info
@@ -89,7 +93,7 @@ class Disco(metaclass=Singleton):
             nodes = self._pubsub.discover_items(element)
             iq_res, query = iq_skeleton(element, 'items')
             for node in nodes:
-                ET.SubElement(query, 'item', attrib={'jid': self._pubsub_jid, 'node': node[NodeAttrib.NODE], 'name': node[NodeAttrib.NAME]})
+                ET.SubElement(query, 'item', attrib={'jid': self._pubsub_jid, 'node': node[NodeAttrib.NODE.value], 'name': node[NodeAttrib.NAME.value]})
             return ET.tostring(iq_res)
 
     def server_info(self, element: ET.Element):

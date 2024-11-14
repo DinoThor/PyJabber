@@ -1,11 +1,11 @@
 class JID:
     def __init__(self, jid: str = None, user: str = None, domain: str = None, resource: str = None):
         if jid:
-            self._user = jid.split('/')[0]
+            self._user = jid.split('@')[0]
             self._domain = jid.split('@')[-1].split('/')[0]
-            self._resource = jid.split('@')[0]
+            self._resource = jid.split('/')[0]
 
-        elif user and domain and resource:
+        elif user and domain:
             self._user = user
             self._domain = domain
             self._resource = resource

@@ -5,6 +5,7 @@ import re
 def deglose(tag: str):
     """
     Return the namespace and tag separated in a 2-tuple
+    :return: (namespace, tag)
     """
     namespace = tag.split("}")[0].replace("{", "")
     tag = tag.split("}")[1]

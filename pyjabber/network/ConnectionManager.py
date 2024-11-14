@@ -37,7 +37,7 @@ class ConnectionManager(metaclass=Singleton):
         """
         return self._peerList
 
-    def get_buffer(self, jid: Union[JIDClass, str]) -> List[Tuple[str, Transport]]:
+    def get_buffer(self, jid: Union[JIDClass]) -> List[Tuple[JIDClass, Transport]]:
         """
             Get all the available buffers associated with a jid.
 
@@ -53,7 +53,7 @@ class ConnectionManager(metaclass=Singleton):
 
         return [(self._peerList[key][self.JID], self._peerList[key][self.TRANSPORT])
                 for key, values in self._peerList.items()
-                if values[self.JID] is not None and re.match(f"{str(jid)}/*", values[self.JID])
+                if values[self.JID] is not None and re.match(f"{str(jid)}/*", str(values[self.JID]))
                 ]
 
     def get_jid(self, peer) -> Union[JIDClass, None]:
