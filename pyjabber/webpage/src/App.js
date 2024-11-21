@@ -5,10 +5,7 @@ import { Outlet } from 'react-router-dom';
 
 function App() {
   return (
-    <div
-    style={{
-      height: "100vh"
-    }}>
+    <div style={{height: "100vh"}}>
       <div style={{
         display: "flex",
         flex: 1,

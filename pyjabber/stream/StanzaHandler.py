@@ -1,12 +1,20 @@
 import os
 import re
 import xml.etree.ElementTree as ET
+from uuid import uuid4
+
+import loguru
 
 from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
 from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.plugins.PluginManager import PluginManager
+
+
+class InternalServerError(Exception):
+    pass
 
 
 class StanzaHandler:
@@ -29,23 +37,11 @@ class StanzaHandler:
         }
 
     def feed(self, element: ET.Element):
-        #ns, _ = CN.deglose(element.tag)
-        #try:
-        #    schema: xmlschema.XMLSchema = self._schemas[ns]
-        #    if schema.is_valid(ET.tostring(element)) is False:
-        #        self._buffer.write(SE.bad_request())
-        #        return
-        #except KeyError:
-        #    self._buffer.write(SE.feature_not_implemented(ns))
-        #    return
-
         try:
             self._functions[element.tag](element)
-        except KeyError:
-            raise Exception()
-
-    ############################################################
-    ############################################################
+        except (KeyError, InternalServerError) as e:
+            loguru.logger.error(e)
+            loguru.logger.error(f"INTERNAL SERVER ERROR WITH {self._peername}. CLOSING CONNECTION FOR SERVER STABILITY")
 
     def handle_iq(self, element: ET.Element):
         """

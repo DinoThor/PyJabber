@@ -29,8 +29,10 @@ class Server:
         :param server_port: Port for server-to-server connections (5269 by default)
         :param family: Type of AddressFamily (IPv4 or IPv6)
         :param connection_timeout: Max time without any response from a client. After that, the server will terminate the connection
+        :param database_path: Path to the sqlite3 database file. If it does not exist, a new file/database will be created (site-packages/pyjabber/db by default)
+        :param purge_database: Flag to indicate the reset process of the database. CAUTION! ALL THE INFORMATION WILL BE LOST
         :param enable_tls1_3: Boolean. Enables the use of TLSv1.3 in the STARTTLS process
-        :parm cert_path: Path to custom domain certs. By default, the server generates its own certificates for hostname
+        :param cert_path: Path to custom domain certs. By default, the server generates its own certificates for hostname
     """
     def __init__(
         self,
@@ -40,6 +42,8 @@ class Server:
         server_out_port=5269,
         family=socket.AF_INET,
         connection_timeout=60,
+        database_path=os.path.join(SERVER_FILE_PATH, 'db', 'server.db'),
+        purge_database=False,
         enable_tls1_3=False,
         cert_path=None
     ):
@@ -54,6 +58,9 @@ class Server:
         self._adminServer = None
         self._public_ip = None
         self._connection_timeout = connection_timeout
+        self._database_path = database_path
+        self._sql_init_script = os.path.join(SERVER_FILE_PATH, 'db', 'schema.sql')
+        self._purge_database = purge_database
         self._cert_path = cert_path
 
         # Client handler
@@ -67,16 +74,20 @@ class Server:
         # Metadata
         Metadata(
             host=self._host,
-            config_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/config.yaml')
+            config_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/config.yaml'),
+            root_path=SERVER_FILE_PATH,
+            database_path=self._database_path
         )
 
     async def run_server(self):
         logger.info("Starting server...")
 
-        if os.path.isfile(os.path.join(SERVER_FILE_PATH, "db", "server.db")) is False:
-            logger.debug("No database found. Initializing one...")
+        if os.path.isfile(self._database_path) is False:
+            logger.info("No database found. Initializing one...")
+            if self._purge_database:
+                logger.info("Ignoring purge database flag. No DB to purge")
             with closing(connection()) as con:
-                with open(SERVER_FILE_PATH + "/db/schema.sql", "r") as schema:
+                with open(self._sql_init_script, "r") as schema:
                     con.cursor().executescript(schema.read())
                 con.commit()
 

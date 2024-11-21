@@ -1,6 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
-import './index.css';
+import {createRoot} from 'react-dom/client';
 import App from './App';
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import ErrorPage from './routes/error-pages';
@@ -8,7 +7,7 @@ import Contact from './routes/userList/userList';
 import Settings from './routes/settings/settings';
 import Dashboard from './routes/dashboard/dashboard';
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
+const root = createRoot(document.getElementById('root'));
 
 const router = createBrowserRouter([
   {

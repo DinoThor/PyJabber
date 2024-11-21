@@ -30,12 +30,13 @@ class PluginManager:
             if element.attrib["type"] == "result":
                 return
             else:
-                return SE.service_unavaliable()
+                pass
+                # raise InternalServerError("Malformed IQ stanza")
 
-        tag, _ = CN.deglose(child.tag)
+        tag, ns = CN.deglose(child.tag)
 
         try:
             tag = list(filter(lambda regex: re.search(regex, tag), list(self._plugins.keys())))[-1]
             return self._plugins[tag].feed(self._jid, element)
         except KeyError:
-            return SE.service_unavaliable()  # Plugin unavailable
+            return SE.feature_not_implemented(tag, ns)

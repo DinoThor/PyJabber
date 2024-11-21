@@ -7,7 +7,7 @@ export default function RosterModal({ rosterVisible, rosterSelected, setRosterSe
 
   const [roster, setRoster] = useState([])
 
-  function retriveRoster() {
+  function retrieveRoster() {
     if (rosterSelected > -1) {
       fetch(`http://localhost:9090/api/roster/${rosterSelected}`, { method: 'GET' })
         .then((res) => {
@@ -24,7 +24,7 @@ export default function RosterModal({ rosterVisible, rosterSelected, setRosterSe
   }
 
   useEffect(() => {
-    retriveRoster()
+    retrieveRoster()
   }, [rosterSelected]);
 
   return (

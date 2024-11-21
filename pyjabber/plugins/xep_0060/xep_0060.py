@@ -1,20 +1,12 @@
-import asyncio
 from asyncio import Transport
 from contextlib import closing
 from enum import Enum
 from itertools import chain
-from tkinter.messagebox import RETRY, ERROR
 from typing import List, Tuple
-from uuid import uuid4, uuid1
-from wsgiref.util import request_uri
+from uuid import uuid4
 from xml.etree import ElementTree as ET
 
-from docutils.utils.math.latex2mathml import mfrac
-from pyasn1_modules.rfc7906 import KeyPkgType
-from pycares.errno import value
-from slixmpp.plugins.xep_0045.muc import AFFILIATIONS
-from tox.session.cmd.run.common import logger
-from xmlschema import iter_errors
+from loguru import logger
 from yaml import load, Loader
 
 from pyjabber.metadata import Metadata
@@ -60,10 +52,6 @@ class NodeAccess(Enum):
 
 
 class Affiliation:
-    """
-    Privileges for each affiliation identity
-    https://xmpp.org/extensions/xep-0060.html#affiliations
-    """
     OWNER = 'owner'
     PUBLISHER = 'publisher'
     MEMBER = 'member'
