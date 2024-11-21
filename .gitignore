@@ -112,8 +112,8 @@ ENV/
 *.db
 *.plk
 
-# my testing
+# My testing
 mytesting/
 
-# Node modules
-node_modules/
+# Include builded admin webapp
+!webpage/build
