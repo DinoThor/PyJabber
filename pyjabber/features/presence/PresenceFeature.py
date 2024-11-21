@@ -30,7 +30,7 @@ class Presence(FeatureInterface):
 
     def feed(self, element: Element, extra: Dict[str, Any] = None):
         if "type" in element.attrib:
-            return self._handlers[element.attrib["type"]](element)
+            return self._handlers[element.get("type")](element)
 
         if "to" not in element.attrib:
             return self.handle_initial_presence(element)

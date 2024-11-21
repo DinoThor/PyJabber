@@ -24,10 +24,3 @@ items:
         Category: 'pubsub'
         type: 'service'
         var: 'http://jabber.org/protocol/pubsub'
-
-    test.$:
-        Category: 'pubsub'
-        type: 'service'
-        var: 'http://jabber.org/protocol/pubsub'
-
-

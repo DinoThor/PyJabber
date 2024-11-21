@@ -7,7 +7,6 @@ from xml.etree import ElementTree as ET
 
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.db.database import connection
-from pyjabber.features.FeatureInterface import FeatureInterface
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.utils import ClarkNotation as CN
@@ -24,7 +23,7 @@ class Signal(Enum):
     DONE = 1
 
 
-class SASL(FeatureInterface):
+class SASL:
     def __init__(self, db_connection_factory=connection):
         self._handlers = {
             "iq": self.handleIQ,

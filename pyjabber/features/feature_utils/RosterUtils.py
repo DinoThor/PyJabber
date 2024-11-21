@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 from contextlib import closing
 from typing import List
+from uuid import uuid4
 
 from pyjabber.db.database import connection
 
@@ -41,9 +42,27 @@ def check_pending_sub(jid: str) -> List[str]:
         con.commit()
     return pending
 
+
 def check_pending_sub_to(jid: str, to: str) -> ET.Element:
     with closing(connection()) as con:
         res = con.execute("SELECT * FROM pendingsub WHERE jid_from = ? AND jid_to = ?", (jid, to))
         res = res.fetchone()
     if res:
         return res
+
+
+def create_roster_entry(jid, to, roster_manager):
+    iq = ET.Element(
+        "iq", attrib={"from": jid, "id": str(uuid4()), "type": "set"}
+    )
+    query = ET.Element("{jabber:iq:roster}query")
+    item = ET.Element(
+        "{jabber:iq:roster}item",
+        attrib={
+            "jid": to,
+            "subscription": "none"})
+    query.append(item)
+    iq.append(query)
+
+    return roster_manager.feed(iq)
+
