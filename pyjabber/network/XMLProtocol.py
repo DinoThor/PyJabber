@@ -2,6 +2,7 @@ import asyncio
 import os
 import ssl
 
+from distlib.util import Transport
 from loguru import logger
 from xml import sax
 
@@ -39,6 +40,7 @@ class XMLProtocol(asyncio.Protocol):
         self._enable_tls1_3 = enable_tls1_3
 
         self._transport = None
+        self._peer = None
         self._xml_parser = None
         self._timeout_monitor = None
 
@@ -51,6 +53,7 @@ class XMLProtocol(asyncio.Protocol):
         """
         if transport:
             self._transport = transport
+            self._peer = self._transport.get_extra_info('peername')
 
             self._xml_parser = sax.make_parser()
             self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
@@ -69,9 +72,9 @@ class XMLProtocol(asyncio.Protocol):
                     callback=self.connection_timeout
                 )
 
-            self._connection_manager.connection(self._transport.get_extra_info('peername'))
+            self._connection_manager.connection(self._peer, self._transport)
 
-            logger.info(f"Connection from {self._transport.get_extra_info('peername')}")
+            logger.info(f"Connection from {self._peer}")
         else:
             logger.error("Invalid transport")
 
@@ -83,7 +86,7 @@ class XMLProtocol(asyncio.Protocol):
         :type exc: Exception
         """
         if self._transport:
-            logger.info(f"Connection lost from {self._transport.get_extra_info('peername')}: Reason {exc}")
+            logger.info(f"Connection lost from {self._peer}: Reason {exc}")
 
             self._transport = None
             self._xml_parser = None
@@ -96,7 +99,7 @@ class XMLProtocol(asyncio.Protocol):
         :type data: Byte array
         """
         try:
-            logger.debug(f"Data received from <{hex(id(self._transport))}>: {data.decode()}")
+            logger.debug(f"Data received from <{self._peer}>: {data.decode()}")
         except:
             logger.debug(f"Binary data recived")
 
@@ -123,21 +126,19 @@ class XMLProtocol(asyncio.Protocol):
         Called when the client or another server sends an EOF
         """
         if self._transport:
-            peer = self._transport.get_extra_info('peername')
-            logger.debug(f"EOF received from {peer}")
-            self._connection_manager.disconnection(peer)
+            logger.debug(f"EOF received from {self._peer}")
+            self._connection_manager.disconnection(self._peer)
 
     def connection_timeout(self):
         """
         Called when the stream is not responding for a long tikem
         """
-        peer = self._transport.get_extra_info('peername')
-        logger.debug(f"Connection timeout from {peer}")
+        logger.debug(f"Connection timeout from {self._peer}")
 
         self._transport.write("<connection-timeout/>".encode())
         self._transport.close()
 
-        self._connection_manager.disconnection(peer)
+        self._connection_manager.disconnection(self._peer)
 
         self._transport = None
         self._xml_parser = None
@@ -177,11 +178,18 @@ class XMLProtocol(asyncio.Protocol):
                 keyfile=os.path.join(FILE_AUTH, "certs", f"{self._host}_key.pem"),
             )
 
-        self._transport = await loop.start_tls(
-            transport=self._transport,
-            protocol=self,
-            sslcontext=ssl_context,
-            server_side=True)
+        try:
+            new_transport = await loop.start_tls(
+                transport=self._transport,
+                protocol=self,
+                sslcontext=ssl_context,
+                server_side=True)
 
-        parser.buffer = self._transport
-        logger.debug(f"Done TLS for <{hex(id(self))}>")
+            self._transport = new_transport
+            parser.buffer = self._transport
+            logger.debug(f"Done TLS for <{self._peer}>")
+
+        except ConnectionResetError:
+            logger.error(f"ERROR DURING TLS UPGRADE WITH <{self._peer}>")
+            if not self._transport.is_closing():
+                self._connection_manager.close(self._peer)

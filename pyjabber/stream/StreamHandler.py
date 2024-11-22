@@ -5,14 +5,13 @@ from uuid import uuid4
 from xml.etree import ElementTree as ET
 
 from pyjabber.features import InBandRegistration as IBR
-from pyjabber.features.StartTLSFeature import StartTLSFeature
+from pyjabber.features.StartTLSFeature import StartTLSFeature, proceed_response
 from pyjabber.features.StreamFeature import StreamFeature
 from pyjabber.features.SASLFeature import SASLFeature, SASL
 from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
-from pyjabber.utils import ClarkNotation as CN
 
 
 class Stage(Enum):
@@ -72,7 +71,7 @@ class StreamHandler:
         # TLS feature offered
         elif self._stage == Stage.OPENED:
             if "starttls" in elem.tag:
-                self._buffer.write(StartTLSFeature().proceed_response())
+                self._buffer.write(proceed_response())
                 self._starttls()
                 self._stage = Stage.SSL
                 return Signal.RESET
