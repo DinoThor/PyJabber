@@ -13,6 +13,7 @@ plugins:
     - 'http://jabber.org/protocol/pubsub#create-nodes'
     - 'http://jabber.org/protocol/pubsub#delete-nodes'
     - 'jabber:iq:register'
+    - 'jabber:x:data'
     - 'urn:xmpp:ping'
 
 # List of items and his associated JID, available via disco#items query

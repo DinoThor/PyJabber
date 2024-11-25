@@ -1,8 +1,18 @@
 from enum import Enum
-from loguru import logger
+from typing import List
+
 from xml.etree import ElementTree as ET
 
-from pyjabber.stanzas.Validator import Validator, NotSchemaFoundException
+from pyjabber.plugins.xep_0004.field import FieldRequest, FieldResponse, FieldTypes
+from pyjabber.utils import ClarkNotation as CN
+from pyjabber.stanzas.error import StanzaError as SE
+
+
+class MissingDataForms(Exception):
+    """
+    No dataforms founded in a stanza, when it was expected
+    """
+    pass
 
 
 class FormType(Enum):
@@ -12,32 +22,88 @@ class FormType(Enum):
     RESULT = 'result'
 
 
-class FieldTypes(Enum):
-    BOOLEAN = 'boolean'
-    FIXED = 'fixed'
-    HIDDEN = 'hidden'
-    JID_MULTI = 'jid-multi'
-    JID_SINGLE = 'jid-single'
-    LIST_MULTI = 'list-multi'
-    LIST_SINGLE = 'list-single'
-    TEXT_MULTI = 'text-multi'
-    TEXT_PRIVATE = 'text-private'
-    TEXT_SINGLE = 'text-single'
-
-
-class DataForms:
-    def __init__(self):
-        self._xmlns = 'jabber:x:data'
-        self._validator = Validator()
-
-    def validate_form(self, element: ET.Element):
+def parse_form(element: ET.Element):
+    """
+    If a proper dataforms is passes, it returns a list of field
+    submitted by the client
+    @param element:
+    @return: List of dicts in format {type, var, values[]}
+    """
+    data = None
+    try:
+        """
+        Supposing element is an IQ stanza, it should be in a second-level child
+        """
+        forms = element[0][0]
+        ns, tag = CN.deglose(forms.tag)
+        if tag != 'x' or ns != 'jabber:x:data':
+            raise MissingDataForms
+        data = forms
+    except (KeyError, MissingDataForms):
+        """
+        Supposing element is an Message stanza, it should be in a first-level child
+        """
         try:
-            self._validator.validate(element)
-        except NotSchemaFoundException:
-            logger.error('INTERNAL ERROR: Not schema found for form validation')
+            forms = element[0]
+            ns, tag = CN.deglose(forms.tag)
+            if tag != 'x' or ns != 'jabber:x:data':
+                raise MissingDataForms
+            data = forms
+        except (KeyError, MissingDataForms):
+            return SE.bad_request()
 
-    def parse_form(self, element: ET.Element):
-        pass
+    field_list = data.findall('{jabber:x:data}field')
+    try:
+        field_list = [
+            FieldResponse(
+                field_type=FieldTypes.from_value(f.attrib.get('type')),
+                var=f.attrib.get('var'),
+                values=[value.text for value in f.find('{jabber:x:data}value')]
+            ) for f in field_list]
+    except KeyError:
+        return SE.bad_request()
 
-    def generate_form(self):
-        pass
+    return field_list
+
+
+def generate_form(form_type: FormType, title: str = None, instructions: str = None, fields: List[FieldRequest] = None):
+    form_res = ET.Element('x', attrib={'xmlns': 'jabber:x:data', 'type': form_type.value})
+
+    if form_type == FormType.CANCEL.value:
+        return form_res
+
+    if title:
+        ET.SubElement(form_res, 'title').text = title
+
+    if instructions:
+        ET.SubElement(form_res, 'instructions').text = instructions
+
+    for f in fields:
+        field = ET.Element('field', attrib={
+            'type': f.type,
+            'var': f.var,
+            'label': f.label
+        })
+
+        for v in f.values:
+            value = ET.Element('value')
+            value.text = v
+            field.append(value)
+
+        for o in f.options:
+            option = ET.Element('option')
+            option.text = o
+            field.append(option)
+
+        if f.desc:
+            desc = ET.Element('desc')
+            desc.text = f.desc
+            field.append(desc)
+
+        form_res.append(field)
+
+    return form_res
+
+
+def generate_form_multi_res():
+    pass

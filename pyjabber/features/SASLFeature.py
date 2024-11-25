@@ -36,10 +36,7 @@ class SASL:
 
     def feed(self,
              element: ET,
-             extra: Dict[str,
-                         any] = None) -> Union[Tuple[Signal,
-                                                     bytes],
-                                               bytes]:
+             extra: Dict = None) -> Union[Tuple[Signal, bytes], bytes]:
         if extra and "peername" in extra.keys():
             self._peername = extra["peername"]
 

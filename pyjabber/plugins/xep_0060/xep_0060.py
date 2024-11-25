@@ -16,6 +16,7 @@ from pyjabber.plugins.xep_0060.error import ErrorType
 from pyjabber.plugins.xep_0060.error import error_response
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stanzas.Message import Message
+from pyjabber.stanzas.error import StanzaError
 from pyjabber.stream.JID import JID
 from pyjabber.utils import Singleton, ClarkNotation as CN
 
@@ -93,7 +94,7 @@ class PubSub(metaclass=Singleton):
         self._operations = {
             'create': self.create_node,
             'delete': self.delete_node,
-            'subscribe' : self.subscribe,
+            'subscribe': self.subscribe,
             'unsubscribe': self.unsubscribe,
             'subscriptions': self.retrieve_subscriptions,
             'publish': self.publish
@@ -111,7 +112,7 @@ class PubSub(metaclass=Singleton):
             _, tag = CN.deglose(element[0].tag)
 
             if tag != 'pubsub':
-                return  # TODO: malformed request
+                return StanzaError.invalid_xml()
 
             _, operation = CN.deglose(element[0][0].tag)
             return self._operations[operation](element, jid)
@@ -338,8 +339,8 @@ class PubSub(metaclass=Singleton):
         return ET.tostring(res)
 
     def retrieve_subscriptions(self, element: ET.Element, jid: JID):
-        pubsub = element.find('{http://jabber.org/protocol/pubsub}pubsub')
-        subscriptions = pubsub.find('{http://jabber.org/protocol/pubsub}subscriptions')
+        pubsub = element.find('{http://jabber.org/protocol/pubsub}pubsub') or element.find('{http://jabber.org/protocol/pubsub#owner}pubsub')
+        subscriptions = pubsub.find('{http://jabber.org/protocol/pubsub}subscriptions') or element.find('{http://jabber.org/protocol/pubsub#owner}subscriptions')
         target_node = subscriptions.attrib.get('node')
         from_stanza = element.attrib.get('from')
 
