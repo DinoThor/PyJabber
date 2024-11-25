@@ -12,7 +12,6 @@ from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
-from pyjabber.utils import ClarkNotation as CN
 
 
 class Stage(Enum):

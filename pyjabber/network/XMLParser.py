@@ -19,8 +19,6 @@ class XMLParser(ContentHandler):
         :param host: Host of the running server
         :param buffer: Transport instance of the connected client. Used to send replays
         :param starttls: Coroutine launched when server and client start the connection upgrade process to TLS
-        :param connection_manager: Global instance of the Connection Manager class (Singleton)
-        :param queue_message: Global instance of Queue Message class (Singleton)
     """
 
     def __init__(self, host, buffer, starttls):
