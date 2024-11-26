@@ -1,8 +1,8 @@
-import pytest
 from unittest.mock import MagicMock, patch
 import xml.etree.ElementTree as ET
 
-from pyjabber.features.presence.utils import create_roster_entry
+from pyjabber.features.feature_utils.RosterUtils import create_roster_entry
+
 
 @patch('pyjabber.features.presence.utils.uuid4')
 def test_create_roster_entry(mock_uuid):

@@ -1,9 +1,18 @@
 class JID:
     def __init__(self, jid: str = None, user: str = None, domain: str = None, resource: str = None):
+        if jid and (user or domain or resource):
+            raise ValueError('You cannot pass user/domain/resource if a full jid is specified')
+
         if jid:
-            self._user = jid.split('@')[0]
-            self._domain = jid.split('@')[-1].split('/')[0]
-            self._resource = jid.split('/')[0]
+            try:
+                self._user, domain = jid.split('@')
+                try:
+                    self._domain, self._resource = domain.split('#')
+                except ValueError:
+                    self._domain = domain
+                    self._resource = None
+            except ValueError:
+                raise ValueError('Malformed JID')
 
         elif user and domain:
             self._user = user
@@ -14,7 +23,7 @@ class JID:
             """
             https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ4Rjd2fP4k__PEhyVfyEKDaoBDN_i03yGvJw&s
             """
-            raise Exception
+            raise ValueError('Missing user and/or domain')
 
     @property
     def resource(self) -> str:

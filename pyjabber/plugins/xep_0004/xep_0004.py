@@ -58,7 +58,7 @@ def parse_form(element: ET.Element):
             FieldResponse(
                 field_type=FieldTypes.from_value(f.attrib.get('type')),
                 var=f.attrib.get('var'),
-                values=[value.text for value in f.find('{jabber:x:data}value')]
+                values=[v.text for v in f.findall('{jabber:x:data}value')]
             ) for f in field_list]
     except KeyError:
         return SE.bad_request()
@@ -66,7 +66,7 @@ def parse_form(element: ET.Element):
     return field_list
 
 
-def generate_form(form_type: FormType, title: str = None, instructions: str = None, fields: List[FieldRequest] = None):
+def generate_form(form_type: FormType, title: str = None, instructions: str = None, fields: List[FieldRequest] = None) -> ET.Element:
     form_res = ET.Element('x', attrib={'xmlns': 'jabber:x:data', 'type': form_type.value})
 
     if form_type == FormType.CANCEL.value:
@@ -80,20 +80,23 @@ def generate_form(form_type: FormType, title: str = None, instructions: str = No
 
     for f in fields:
         field = ET.Element('field', attrib={
-            'type': f.type,
-            'var': f.var,
-            'label': f.label
+            'type': f.type.value,
+            'var': f.var
         })
+
+        if f.label:
+            field.attrib['label'] = f.label
 
         for v in f.values:
             value = ET.Element('value')
             value.text = v
             field.append(value)
 
-        for o in f.options:
-            option = ET.Element('option')
-            option.text = o
-            field.append(option)
+        if f.options:
+            for o in f.options:
+                option = ET.Element('option')
+                option.text = o
+                field.append(option)
 
         if f.desc:
             desc = ET.Element('desc')

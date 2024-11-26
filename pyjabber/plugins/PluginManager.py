@@ -4,7 +4,6 @@ from typing import Dict
 
 # Plugins
 from pyjabber.plugins.roster.Roster import Roster
-from pyjabber.plugins.xep_0004.xep_0004 import DataForms
 from pyjabber.plugins.xep_0199.xep_0199 import Ping
 from pyjabber.plugins.xep_0030.xep_0030 import Disco
 from pyjabber.plugins.xep_0060.xep_0060 import PubSub
@@ -19,7 +18,6 @@ class PluginManager:
 
         self._plugins: Dict[str, object] = {
             'jabber:iq:roster': Roster(),
-            'jabber:x:data': DataForms(),
             'urn:xmpp:ping': Ping(),
             'http://jabber.org/protocol/disco*': Disco(),
             'http://jabber.org/protocol/pubsub*': PubSub()

@@ -2,7 +2,6 @@ import asyncio
 import os
 import ssl
 
-from distlib.util import Transport
 from loguru import logger
 from xml import sax
 
