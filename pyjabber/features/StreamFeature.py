@@ -15,13 +15,12 @@ class StreamFeature(ET.Element):
     """
     def __init__(
         self,
-        tag: str = "{http://etherx.jabber.org/streams}stream:features",
+        tag: str = "stream:features",
             **extra: str) -> None:
 
-        # attrib: Dict[str, str] = {
-        #     "xmlns": "http://etherx.jabber.org/streams"
-        # }
-        attrib = {}
+        attrib: Dict[str, str] = {
+            "xmlns": "http://etherx.jabber.org/streams"
+        }
 
         super().__init__(tag, attrib, **extra)
         self._features: Dict[str, ET.Element] = {}

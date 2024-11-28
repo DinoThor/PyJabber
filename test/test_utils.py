@@ -2,22 +2,21 @@ from unittest.mock import MagicMock, patch
 import xml.etree.ElementTree as ET
 
 from pyjabber.features.feature_utils.RosterUtils import create_roster_entry
+from pyjabber.stream.JID import JID
 
 
-@patch('pyjabber.features.presence.utils.uuid4')
-def test_create_roster_entry(mock_uuid):
+def test_create_roster_entry():
     # Configuramos el mock para uuid4
-    mock_uuid.return_value = "1234-5678-uuid"
 
     mock_roster_manager = MagicMock()
 
-    jid = "user1@localhost"
-    to = "user2@localhost"
+    jid = JID("user1@localhost")
+    to = JID("user2@localhost")
 
     create_roster_entry(jid, to, mock_roster_manager)
 
     expected_iq = ET.Element(
-        "iq", attrib={"from": jid, "id": "1234-5678-uuid", "type": "set"}
+        "iq", attrib={"from": str(jid), "id": "1234-5678-uuid", "type": "set"}
     )
     query = ET.Element("{jabber:iq:roster}query")
     item = ET.Element("{jabber:iq:roster}item", attrib={"jid": to, "subscription": "none"})

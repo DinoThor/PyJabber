@@ -30,7 +30,7 @@ class Server:
         :param family: Type of AddressFamily (IPv4 or IPv6)
         :param connection_timeout: Max time without any response from a client. After that, the server will terminate the connection
         :param database_path: Path to the sqlite3 database file. If it does not exist, a new file/database will be created (site-packages/pyjabber/db by default)
-        :param purge_database: Flag to indicate the reset process of the database. CAUTION! ALL THE INFORMATION WILL BE LOST
+        :param database_purge: Flag to indicate the reset process of the database. CAUTION! ALL THE INFORMATION WILL BE LOST
         :param enable_tls1_3: Boolean. Enables the use of TLSv1.3 in the STARTTLS process
         :param cert_path: Path to custom domain certs. By default, the server generates its own certificates for hostname
     """
@@ -43,7 +43,7 @@ class Server:
         family=socket.AF_INET,
         connection_timeout=60,
         database_path=os.path.join(SERVER_FILE_PATH, 'db', 'server.db'),
-        purge_database=False,
+        database_purge=False,
         enable_tls1_3=False,
         cert_path=None
     ):
@@ -60,7 +60,7 @@ class Server:
         self._connection_timeout = connection_timeout
         self._database_path = database_path
         self._sql_init_script = os.path.join(SERVER_FILE_PATH, 'db', 'schema.sql')
-        self._purge_database = purge_database
+        self._database_purge = database_purge
         self._cert_path = cert_path
 
         # Client handler
@@ -84,7 +84,7 @@ class Server:
 
         if os.path.isfile(self._database_path) is False:
             logger.info("No database found. Initializing one...")
-            if self._purge_database:
+            if self._database_purge:
                 logger.info("Ignoring purge database flag. No DB to purge")
             with closing(connection()) as con:
                 with open(self._sql_init_script, "r") as schema:
@@ -106,7 +106,7 @@ class Server:
                 cert_path=self._cert_path,
                 enable_tls1_3=self._enable_tls1_3,
             ),
-            host=[self._host, lan_ip],
+            host=[self._host, lan_ip] if lan_ip else [self._host],
             port=self._client_port,
             family=self._family
         )
@@ -178,9 +178,8 @@ class Server:
             mock_connection.connect(("8.8.8.8", 80))
             local_ip_address = mock_connection.getsockname()[0]
             return local_ip_address
-        except Exception as e:
-            logger.error("Unable to retrieve LAN IP")
-            raise self.raise_exit()
+        except OSError as e:
+            logger.error(f"Unable to retrieve LAN IP: {e}")
         finally:
             mock_connection.close()
 

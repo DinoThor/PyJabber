@@ -4,6 +4,8 @@ from typing import List
 from uuid import uuid4
 
 from pyjabber.db.database import connection
+from pyjabber.plugins.roster.Roster import Roster
+from pyjabber.stream.JID import JID
 
 
 def retrieve_roster(jid: str) -> List[str]:  # pragma: no cover
@@ -51,18 +53,18 @@ def check_pending_sub_to(jid: str, to: str) -> ET.Element:
         return res
 
 
-def create_roster_entry(jid, to, roster_manager):
+def create_roster_entry(jid: JID, to: JID, roster_manager: Roster):
     iq = ET.Element(
-        "iq", attrib={"from": jid, "id": str(uuid4()), "type": "set"}
+        "iq", attrib={"from": str(jid), "id": str(uuid4()), "type": "set"}
     )
     query = ET.Element("{jabber:iq:roster}query")
     item = ET.Element(
         "{jabber:iq:roster}item",
         attrib={
-            "jid": to,
+            "jid": str(to),
             "subscription": "none"})
     query.append(item)
     iq.append(query)
 
-    return roster_manager.feed(iq)
+    return roster_manager.feed(jid, iq)
 

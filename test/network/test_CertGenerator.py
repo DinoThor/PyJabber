@@ -1,5 +1,4 @@
 import os
-import socket
 import pytest
 from unittest.mock import patch, MagicMock, mock_open
 from cryptography import x509
