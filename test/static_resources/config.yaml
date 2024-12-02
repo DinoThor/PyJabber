@@ -1,0 +1,27 @@
+# ===== PYJABBER CONFIGURATION FILE =====
+
+# List of plugins available and shown in the XEP-0030 Discovery protocol
+# To disable a plugin, just comment the line with '#'
+
+plugins:
+    - 'http://jabber.org/protocol/disco#info'
+    - 'http://jabber.org/protocol/disco#items'
+    - 'http://jabber.org/protocol/pubsub'
+    - 'http://jabber.org/protocol/pubsub#publish'
+    - 'http://jabber.org/protocol/pubsub#subscribe'
+    - 'http://jabber.org/protocol/pubsub#config-node'
+    - 'http://jabber.org/protocol/pubsub#create-nodes'
+    - 'http://jabber.org/protocol/pubsub#delete-nodes'
+    - 'jabber:iq:register'
+    - 'jabber:x:data'
+    - 'urn:xmpp:ping'
+
+# List of items and his associated JID, available via disco#items query
+# to the server domain/host
+# a dollar symbol ($) indicates a placeholder. Usually the server host
+# To disable an item, just comment the block with '#'
+items:
+    pubsub.$:
+        Category: 'pubsub'
+        type: 'service'
+        var: 'http://jabber.org/protocol/pubsub'

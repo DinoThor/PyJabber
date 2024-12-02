@@ -4,7 +4,7 @@ from typing import Union
 from xml.etree import ElementTree as ET
 
 from pyjabber.features.StartTLSFeature import StartTLSFeature
-from pyjabber.features.SASLFeature import SASLFeature, mechanismEnum
+from pyjabber.features.SASLFeature import SASLFeature, MECHANISM
 from pyjabber.stream.StreamHandler import StreamHandler, Signal, Stage
 
 
@@ -26,7 +26,7 @@ class StreamServerIncomingHandler(StreamHandler):
 
             elif self._stage == Stage.SSL:
                 self._streamFeature.reset()
-                self._streamFeature.register(SASLFeature(mechanismList=[mechanismEnum.EXTERNAL]))
+                self._streamFeature.register(SASLFeature(mechanismList=[MECHANISM.EXTERNAL]))
                 self._buffer.write(self._streamFeature.to_bytes())
                 self._stage = Stage.SASL
                 return

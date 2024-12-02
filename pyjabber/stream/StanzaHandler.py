@@ -67,7 +67,7 @@ class StanzaHandler:
         jid = JID(element.attrib["to"])
 
         if re.match(fr'^[a-zA-Z0-9._%+-]+@{re.escape(self._host)}$', jid.bare()):
-            for buffer in self._connections.get_buffer(jid.bare()):
+            for buffer in self._connections.get_buffer(JID(jid.bare())):
                 buffer[-1].write(ET.tostring(element))
 
         else:

@@ -9,7 +9,7 @@ from xml.etree import ElementTree as ET
 from loguru import logger
 from yaml import load, Loader
 
-from pyjabber.metadata import Metadata
+from pyjabber.metadata import host, config_path#Metadata
 from pyjabber.db.database import connection
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.plugins.xep_0060.error import ErrorType
@@ -63,7 +63,7 @@ class Affiliation:
 def success_response(element: ET.Element):
     return IQ(
         type=IQ.TYPE.RESULT.value,
-        from_=Metadata().host,
+        from_=host.get(),
         to=element.attrib.get('from'),
         id=element.attrib.get('id') or str(uuid4())
     )
@@ -75,7 +75,7 @@ class PubSub(metaclass=Singleton):
 
         self._connections = ConnectionManager()
 
-        items = load(open(Metadata().config_path), Loader=Loader)['items']
+        items = load(open(config_path.get()), Loader=Loader)['items']
         service_jid = next((s for s in list(items) if 'pubsub' in s), None)
         if service_jid is None:
             raise Exception  # TODO: Define missing config exception
@@ -84,7 +84,7 @@ class PubSub(metaclass=Singleton):
         self._category = items.get('type')
         self._ver = items.get('var')
 
-        self._host = Metadata().host
+        self._host = host.get()
         self._db_connection_factory = db_connection_factory or connection
 
         self._nodes = None

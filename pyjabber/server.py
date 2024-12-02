@@ -2,6 +2,7 @@ import asyncio
 import os
 import signal
 import socket
+import contextvars
 
 from contextlib import closing
 from loguru import logger
@@ -15,7 +16,8 @@ from pyjabber.stanzas.Validator import Validator
 from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.webpage.adminPage import admin_instance
 from pyjabber.network import CertGenerator
-from pyjabber.metadata import Metadata
+from pyjabber.metadata import host as metadata_host, config_path as metadata_config_path
+from pyjabber.metadata import database_path as metadata_database_path, root_path as metadata_root_path
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -72,12 +74,18 @@ class Server:
         self._validator = Validator()
 
         # Metadata
-        Metadata(
-            host=self._host,
-            config_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/config.yaml'),
-            root_path=SERVER_FILE_PATH,
-            database_path=self._database_path
-        )
+        # Metadata(
+        #     host=self._host,
+        #     config_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/config.yaml'),
+        #     root_path=SERVER_FILE_PATH,
+        #     database_path=self._database_path
+        # )
+
+        metadata_host.set(host)
+        metadata_database_path.set(self._database_path)
+        metadata_config_path.set(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/config.yaml'))
+        metadata_root_path.set(SERVER_FILE_PATH)
+
 
     async def run_server(self):
         logger.info("Starting server...")

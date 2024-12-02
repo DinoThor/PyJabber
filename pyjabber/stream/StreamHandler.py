@@ -115,20 +115,22 @@ class StreamHandler:
         elif self._stage == Stage.BIND:
             if "iq" in elem.tag:
                 if elem.attrib["type"] == "set":
-                    bind_elem = elem.find("{urn:ietf:params:xml:ns:xmpp-bind}bind")
-                    resource_elem = bind_elem.find("{urn:ietf:params:xml:ns:xmpp-bind}resource")
+                    #bind_elem = elem.find("{urn:ietf:params:xml:ns:xmpp-bind}bind")
+                    #resource_elem = bind_elem.find("{urn:ietf:params:xml:ns:xmpp-bind}resource")
 
-                    if resource_elem is not None and resource_elem.text:
-                        resource_id = resource_elem.text
-                    else:
-                        resource_id = uuid4()
+                    #if resource_elem is not None and resource_elem.text:
+                    #    resource_id = resource_elem.text
+                    #else:
+                        #resource_id = uuid4()
 
-                    iq_res = IQ(type=IQ.TYPE.RESULT.value, id=elem.get('id'))
+                    resource_id = str(uuid4())
+
+                    iq_res = IQ(type=IQ.TYPE.RESULT.value, id=elem.get('id') or str(uuid4()))
                     bind_res = ET.SubElement(iq_res, "bind", attrib={"xmlns": "urn:ietf:params:xml:ns:xmpp-bind"})
 
                     peername = self._buffer.get_extra_info('peername')
-                    username = self._connection_manager.get_jid(peername)
-                    new_jid = JID(user=username, domain=self._host, resource=resource_id)
+                    new_jid = self._connection_manager.get_jid(peername)
+                    new_jid.resource = resource_id
 
                     ET.SubElement(bind_res, 'jid').text = str(new_jid)
 

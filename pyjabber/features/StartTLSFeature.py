@@ -19,13 +19,15 @@ class StartTLSFeature(ET.Element):
     def __init__(
         self,
         tag: str = "starttls",
+        attrib = None,
         required: bool = True,
             **extra: str) -> None:
 
-        attrib: Dict[str, str] = {
+        default_atrrib = {
             "xmlns": "urn:ietf:params:xml:ns:xmpp-tls"
         }
-        super().__init__(tag, attrib, **extra)
+
+        super().__init__(tag, attrib or default_atrrib, **extra)
 
         if required:
             self.append(ET.Element("required"))

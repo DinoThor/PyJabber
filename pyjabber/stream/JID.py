@@ -29,6 +29,10 @@ class JID:
     def resource(self) -> str:
         return self._resource
 
+    @resource.setter
+    def resource(self, resource: str) -> None:
+        self._resource = resource
+
     @property
     def domain(self) -> str:
         return self._domain

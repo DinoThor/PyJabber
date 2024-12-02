@@ -1,6 +1,8 @@
 import pytest
 from unittest.mock import Mock, MagicMock, patch
 from xml.etree import ElementTree as ET
+
+from pyjabber.metadata import Metadata
 from pyjabber.utils import ClarkNotation as CN
 from pyjabber.stream.StreamHandler import Signal
 from pyjabber.network.XMLParser import XMLParser
@@ -9,8 +11,6 @@ from pyjabber.network.XMLParser import XMLParser
 def test_initialization():
     buffer = Mock()
     starttls = Mock()
-    connection_manager = Mock()
-    queue_message = Mock()
     host = Mock()
 
     handler = XMLParser(host, buffer, starttls)
@@ -21,12 +21,9 @@ def test_initialization():
     assert handler._streamHandler is not None
     assert handler._stack == []
 
-
 def test_buffer_property():
     buffer = Mock()
     starttls = Mock()
-    connection_manager = Mock()
-    queue_message = Mock()
     host  = Mock()
 
     handler = XMLParser(host, buffer, starttls)
@@ -137,12 +134,17 @@ def test_end_element_ns_mismatched_tag():
 
 @patch('pyjabber.stream.StanzaHandler.StanzaHandler')
 @patch('pyjabber.stream.StreamHandler.StreamHandler')
-def test_end_element_ns_stream_handling(mock_handle_open_stream, mock_stream_handler):
+@patch('pyjabber.stream.StanzaHandler.PluginManager')
+@patch('pyjabber.stream.StanzaHandler.Presence')
+def test_end_element_ns_stream_handling(mock_plugin_manager, mock_presence, mock_handle_open_stream, mock_stream_handler):
     buffer = MagicMock()
     starttls = Mock()
     host = Mock()
     handler = XMLParser(host, buffer, starttls)
     handler._stack.append(ET.Element("{http://etherx.jabber.org/streams}stream"))
+
+    mock_plugin_manager.return_value = MagicMock()
+    mock_presence.return_value = MagicMock()
 
     elem = ET.Element(CN.clarkFromTuple(("namespace", "dummy")))
     handler._stack.append(elem)
@@ -159,10 +161,8 @@ def test_end_element_ns_stream_handling(mock_handle_open_stream, mock_stream_han
 def test_characters():
     buffer = MagicMock()
     starttls = Mock()
-    connection_manager = Mock()
-    queue_message = Mock()
     host = Mock()
-    handler = XMLParser(host, buffer, starttls, connection_manager, queue_message)
+    handler = XMLParser(host, buffer, starttls)
     parent = ET.Element("parent")
     child = ET.SubElement(parent, "child")
     handler._stack.append(parent)

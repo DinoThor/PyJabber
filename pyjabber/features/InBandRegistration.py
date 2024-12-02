@@ -11,8 +11,5 @@ class InBandRegistration(ET.Element):
         default_atrrib = {
             "xmlns": "http://jabber.org/features/iq-register"
         }
+
         super().__init__(tag, attrib or default_atrrib, **extra)
-        if attrib is None:
-            attrib = {
-                "xmlns": "http://jabber.org/features/iq-register"
-            }

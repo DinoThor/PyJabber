@@ -1,4 +1,4 @@
-from pyjabber.features.StartTLSFeature import StartTLSFeature
+from pyjabber.features.StartTLSFeature import StartTLSFeature, proceed_response
 import pytest
 from xml.etree import ElementTree as ET
 from enum import Enum
@@ -33,10 +33,9 @@ def test_initialization_not_required():
     assert len(starttls_feature) == 0
 
 def test_proceed_response():
-    starttls_feature = StartTLSFeature()
-    proceed_response = starttls_feature.proceed_response()
+    response = proceed_response()
     expected_response = b'<proceed xmlns="urn:ietf:params:xml:ns:xmpp-tls" />'
-    assert proceed_response == expected_response
+    assert response == expected_response
 
 if __name__ == "__main__":
     pytest.main()

@@ -2,7 +2,8 @@ from typing import Literal
 from yaml import load, Loader
 from xml.etree import ElementTree as ET
 
-from pyjabber.metadata import Metadata
+# from pyjabber.metadata import Metadata
+from pyjabber.metadata import host, config_path
 
 from pyjabber.plugins.xep_0060.xep_0060 import PubSub, NodeAttrib
 from pyjabber.stanzas.error import StanzaError as SE
@@ -27,8 +28,8 @@ class Disco(metaclass=Singleton):
             "info": self.handle_info,
             "items": self.handle_items
         }
-        self._host = Metadata().host
-        self._config_path = Metadata().config_path
+        self._host = host.get()
+        self._config_path = config_path.get()
         self._items = list(load(open(self._config_path), Loader=Loader).get('items'))
 
         # Search if any item has the substring pubsub, and replace the placeholder
@@ -120,7 +121,7 @@ class Disco(metaclass=Singleton):
         for i in items:
             [*keys], [*values] = zip(*i.items())
             if '$' in values[0][0]:
-                jid = values[0][0].replace('$', Metadata().host)
+                jid = values[0][0].replace('$', host.get())
             else:
                 jid = values[0][0]
 

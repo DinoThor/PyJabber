@@ -57,7 +57,7 @@ class Presence:
                     if ET.fromstring(item[2]).attrib["jid"] == to.bare()]
 
             if not item:
-                create_roster_entry(self._jid.bare(), to.bare(), roster_manager)
+                create_roster_entry(self._jid, to, roster_manager)
 
                 roster = RU.retrieve_roster(self._jid.bare())
                 buffer = self._connections.get_buffer(to)
@@ -109,7 +109,7 @@ class Presence:
         if "from" not in element.attrib:
             element.attrib["from"] = str(self._jid)
 
-        if to.split("@")[1] == "localhost":
+        if to.domain == "localhost":
             bufferBob = self._connections.get_buffer(to)
             bufferAlice = self._connections.get_buffer(bare_jid)
 
@@ -224,7 +224,7 @@ class Presence:
 
         for r in roster:
             item = ET.fromstring(r[-1])
-            jid = item.attrib["jid"]
+            jid = JID(item.get("jid"))
             buffer = self._connections.get_buffer(jid)
             for b in buffer:
                 presence = ET.Element(

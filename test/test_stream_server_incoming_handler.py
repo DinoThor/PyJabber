@@ -6,7 +6,6 @@ import base64
 # Ensure this path is correct
 from pyjabber.stream.server.incoming.StreamServerIncomingHandler import StreamServerIncomingHandler, Signal, Stage
 from pyjabber.features.StartTLSFeature import StartTLSFeature
-from pyjabber.features.SASLFeature import SASLFeature, mechanismEnum
 
 @pytest.fixture
 def mock_buffer():
