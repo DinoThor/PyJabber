@@ -1,17 +1,17 @@
 import asyncio
 from loguru import logger
 
-from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.utils import Singleton
 
 
 class QueueMessage(metaclass=Singleton):
-    def __init__(self, connection_manager):
+    def __init__(self, connection_manager=None):
         self._queue = []
         self._loop = asyncio.get_event_loop()
         self._chrono_task = asyncio.Event()
 
-        self._connection_manager: ConnectionManager = connection_manager
+        if connection_manager:
+            self._connection_manager = connection_manager
 
     def enqueue(self, host, element):
         self._queue.append((host, element))

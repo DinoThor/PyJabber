@@ -1,17 +1,21 @@
+import contextvars
+
 import pytest
 import sqlite3
 import base64
 import hashlib
 from xml.etree import ElementTree as ET
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch, MagicMock
 
-from pyjabber.features.SASLFeature import SASL, SASLFeature, Signal, mechanismEnum
+import pyjabber.metadata
+from pyjabber.features.SASLFeature import SASL, SASLFeature, Signal, MECHANISM, iq_register_result
 from pyjabber.stanzas.error import StanzaError as SE
-from pyjabber.utils import ClarkNotation as CN
 
+host = contextvars.ContextVar('host')
 
 @pytest.fixture
 def setup_database():
+    con = sqlite3.connect(':memory:')
     con = sqlite3.connect(':memory:')
     cur = con.cursor()
     cur.execute('''
@@ -36,11 +40,9 @@ def db_connection_factory(setup_database):
 
     return factory
 
-
-@patch('pyjabber.network.ConnectionManager.ConnectionManager')
-def test_handle_auth_success(MockConnectionsManager, db_connection_factory):
-    sasl = SASL(MockConnectionsManager())
-    # sasl._connections = MockConnectionsManager()
+@patch.object(host, 'get', return_value='localhost')
+def test_handle_auth_success(db_connection_factory):
+    sasl = SASL()
     sasl._db_connection_factory = db_connection_factory
     element = ET.Element("{urn:ietf:params:xml:ns:xmpp-sasl}auth")
     auth_text = base64.b64encode(b'\x00username\x00password').decode('ascii')
@@ -54,7 +56,6 @@ def test_handle_auth_success(MockConnectionsManager, db_connection_factory):
 @patch('pyjabber.network.ConnectionManager.ConnectionManager')
 def test_handle_auth_failure(MockConnectionsManager, db_connection_factory):
     sasl = SASL(MockConnectionsManager())
-    # sasl._connections = MockConnectionsManager()
     sasl._db_connection_factory = db_connection_factory
     element = ET.Element("{urn:ietf:params:xml:ns:xmpp-sasl}auth")
     auth_text = base64.b64encode(b'\x00username\x00wrongpassword').decode('ascii')
@@ -64,10 +65,9 @@ def test_handle_auth_failure(MockConnectionsManager, db_connection_factory):
 
     assert result == SE.not_authorized()
 
-
-@patch('pyjabber.network.ConnectionManager.ConnectionManager')
-def test_handle_iq_register_conflict(MockConnectionsManager, db_connection_factory):
-    sasl = SASL(MockConnectionsManager(), db_connection_factory)
+# @patch.object(Metadata, 'host', new_callable=lambda: 'localhost')
+def test_handle_iq_register_conflict(db_connection_factory):
+    sasl = SASL(db_connection_factory)
     element = ET.Element("iq", attrib={"type": "set", "id": "123"})
     query = ET.SubElement(element, "{jabber:iq:register}query")
     username = ET.SubElement(query, "{jabber:iq:register}username")
@@ -79,9 +79,9 @@ def test_handle_iq_register_conflict(MockConnectionsManager, db_connection_facto
 
     assert result == SE.conflict_error("123")
 
-@patch('pyjabber.network.ConnectionManager.ConnectionManager')
+# @patch.object(Metadata, 'host', new_callable=lambda: 'localhost')
 def test_get_fields(MockConnectionsManager, db_connection_factory):
-    sasl = SASL(MockConnectionsManager(), db_connection_factory)
+    sasl = SASL(db_connection_factory)
 
     element = ET.Element("{jabber:iq:register}iq", attrib={"type": "get"})
     ET.SubElement(element, "{jabber:iq:register}query")
@@ -91,10 +91,9 @@ def test_get_fields(MockConnectionsManager, db_connection_factory):
     assert response is not None
     assert response == b'<iq xmlns:ns0="jabber:iq:register" type="result"><ns0:query><username /><password /></ns0:query></iq>'
 
-
-@patch('pyjabber.network.ConnectionManager.ConnectionManager')
-def test_handle_iq_register_success(MockConnectionsManager, db_connection_factory):
-    sasl = SASL(MockConnectionsManager(), db_connection_factory)
+# @patch.object(Metadata, 'host', new_callable=lambda: 'localhost')
+def test_handle_iq_register_success(_, db_connection_factory):
+    sasl = SASL(db_connection_factory)
     element = ET.Element("iq", attrib={"type": "set", "id": "123"})
     query = ET.SubElement(element, "{jabber:iq:register}query")
     username = ET.SubElement(query, "{jabber:iq:register}username")
@@ -104,18 +103,18 @@ def test_handle_iq_register_success(MockConnectionsManager, db_connection_factor
 
     result = sasl.handleIQ(element)
 
-    assert result == sasl.iq_register_result("123")
+    assert result == iq_register_result("123")
 
 
 def test_sasl_feature():
-    mechanisms = [mechanismEnum.PLAIN, mechanismEnum.SCRAM_SHA_1]
+    mechanisms = [MECHANISM.PLAIN, MECHANISM.SCRAM_SHA_1]
     feature_element = SASLFeature(mechanisms)
 
     assert feature_element.tag == "mechanisms"
     assert feature_element.attrib == {"xmlns": "urn:ietf:params:xml:ns:xmpp-sasl"}
     assert len(feature_element) == 2
-    assert feature_element[0].text == mechanismEnum.PLAIN.value
-    assert feature_element[1].text == mechanismEnum.SCRAM_SHA_1.value
+    assert feature_element[0].text == MECHANISM.PLAIN.value
+    assert feature_element[1].text == MECHANISM.SCRAM_SHA_1.value
 
 
 if __name__ == "__main__":

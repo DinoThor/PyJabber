@@ -7,14 +7,13 @@ export default function ErrorPage() {
   return (
     <div style={{
       display: "flex",
+      height: '100vh',
       flexDirection: "column",
       justifyContent: "center",
-      alignItems: "center",
     }}>
       <div style={{
         display: "flex",
         flexDirection: "column",
-        justifyContent: "center",
         alignItems: "center",
       }}>
         <h1>Oops!</h1>

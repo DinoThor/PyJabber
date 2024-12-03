@@ -3,8 +3,8 @@ import base64
 from typing import Union
 from xml.etree import ElementTree as ET
 
-from pyjabber.features.StartTLSFeature import StartTLSFeature
-from pyjabber.features.SASLFeature import SASLFeature, mechanismEnum
+from pyjabber.features.StartTLSFeature import StartTLSFeature, proceed_response
+from pyjabber.features.SASLFeature import SASLFeature, MECHANISM
 from pyjabber.stream.StreamHandler import StreamHandler, Signal, Stage
 
 
@@ -12,8 +12,8 @@ class StreamServerIncomingHandler(StreamHandler):
     STARTTLS = "{urn:ietf:params:xml:ns:xmpp-tls}starttls"
     AUTH = "{urn:ietf:params:xml:ns:xmpp-sasl}auth"
 
-    def __init__(self, host, buffer, starttls, connection_manager) -> None:
-        super().__init__(host, buffer, starttls, connection_manager)
+    def __init__(self, host, buffer, starttls) -> None:
+        super().__init__(host, buffer, starttls)
 
     def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
         if elem is None:
@@ -26,7 +26,7 @@ class StreamServerIncomingHandler(StreamHandler):
 
             elif self._stage == Stage.SSL:
                 self._streamFeature.reset()
-                self._streamFeature.register(SASLFeature(mechanismList=[mechanismEnum.EXTERNAL]))
+                self._streamFeature.register(SASLFeature(mechanismList=[MECHANISM.EXTERNAL]))
                 self._buffer.write(self._streamFeature.to_bytes())
                 self._stage = Stage.SASL
                 return
@@ -40,7 +40,7 @@ class StreamServerIncomingHandler(StreamHandler):
                 raise Exception()
 
         elif self._stage == Stage.OPENED and elem.tag == self.STARTTLS:
-            self._buffer.write(StartTLSFeature().proceed_response())
+            self._buffer.write(proceed_response())
             self._starttls()
             self._stage = Stage.SSL
             return Signal.RESET

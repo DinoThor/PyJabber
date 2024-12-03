@@ -19,9 +19,7 @@ class XMLProtocol(asyncio.Protocol):
     :param namespace: namespace of the XML tags (jabber:client or jabber:server)
     :param host: Host for connections
     :param connection_timeout: Max time without any response from a client. After that, the server will terminate the connection
-    :param connection_manager: Global instance of Connection Manager (Singleton)
     :param cert_path: Path to custom domain certs. By default, the server generates its own certificates for hostname
-    :param queue_message: Global instance of Queue Message class (Singleton)
     :param enable_tls1_3: Boolean. Enables the use of TLSv1.3 in the STARTTLS process
     """
 
@@ -30,23 +28,20 @@ class XMLProtocol(asyncio.Protocol):
             namespace,
             host,
             connection_timeout,
-            connection_manager,
             cert_path,
-            queue_message,
             enable_tls1_3=False):
 
         self._xmlns = namespace
         self._host = host
         self._connection_timeout = connection_timeout
-        self._connection_manager: ConnectionManager = connection_manager
+        self._connection_manager = ConnectionManager()
         self._cert_path = cert_path
-        self._queue_message = queue_message
         self._enable_tls1_3 = enable_tls1_3
 
         self._transport = None
+        self._peer = None
         self._xml_parser = None
         self._timeout_monitor = None
-
 
     def connection_made(self, transport):
         """
@@ -57,6 +52,7 @@ class XMLProtocol(asyncio.Protocol):
         """
         if transport:
             self._transport = transport
+            self._peer = self._transport.get_extra_info('peername')
 
             self._xml_parser = sax.make_parser()
             self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
@@ -66,8 +62,6 @@ class XMLProtocol(asyncio.Protocol):
                     self._host,
                     self._transport,
                     self.task_tls,
-                    self._connection_manager,
-                    self._queue_message
                 )
             )
 
@@ -77,9 +71,9 @@ class XMLProtocol(asyncio.Protocol):
                     callback=self.connection_timeout
                 )
 
-            self._connection_manager.connection(self._transport.get_extra_info('peername'))
+            self._connection_manager.connection(self._peer, self._transport)
 
-            logger.info(f"Connection from {self._transport.get_extra_info('peername')}")
+            logger.info(f"Connection from {self._peer}")
         else:
             logger.error("Invalid transport")
 
@@ -90,10 +84,11 @@ class XMLProtocol(asyncio.Protocol):
         :param exc: Exception that caused the connection to close
         :type exc: Exception
         """
-        logger.info(f"Connection lost from {self._transport.get_extra_info('peername')}: Reason {exc}")
+        if self._transport:
+            logger.info(f"Connection lost from {self._peer}: Reason {exc}")
 
-        self._transport = None
-        self._xml_parser = None
+            self._transport = None
+            self._xml_parser = None
 
     def data_received(self, data):
         """
@@ -103,7 +98,7 @@ class XMLProtocol(asyncio.Protocol):
         :type data: Byte array
         """
         try:
-            logger.debug(f"Data received from <{hex(id(self._transport))}>: {data.decode()}")
+            logger.debug(f"Data received from <{self._peer}>: {data.decode()}")
         except:
             logger.debug(f"Binary data recived")
 
@@ -129,23 +124,20 @@ class XMLProtocol(asyncio.Protocol):
         """
         Called when the client or another server sends an EOF
         """
-        peer = self._transport.get_extra_info('peername')
-
-        logger.debug(f"EOF received from {peer}")
-
-        self._connection_manager.disconnection(peer)
+        if self._transport:
+            logger.debug(f"EOF received from {self._peer}")
+            self._connection_manager.disconnection(self._peer)
 
     def connection_timeout(self):
         """
         Called when the stream is not responding for a long tikem
         """
-        peer = self._transport.get_extra_info('peername')
-        logger.debug(f"Connection timeout from {peer}")
+        logger.debug(f"Connection timeout from {self._peer}")
 
         self._transport.write("<connection-timeout/>".encode())
-        self._transport.close(peer)
+        self._transport.close()
 
-        self._connection_manager.disconnection(peer)
+        self._connection_manager.disconnection(self._peer)
 
         self._transport = None
         self._xml_parser = None
@@ -185,11 +177,18 @@ class XMLProtocol(asyncio.Protocol):
                 keyfile=os.path.join(FILE_AUTH, "certs", f"{self._host}_key.pem"),
             )
 
-        self._transport = await loop.start_tls(
-            transport=self._transport,
-            protocol=self,
-            sslcontext=ssl_context,
-            server_side=True)
+        try:
+            new_transport = await loop.start_tls(
+                transport=self._transport,
+                protocol=self,
+                sslcontext=ssl_context,
+                server_side=True)
 
-        parser.buffer = self._transport
-        logger.debug(f"Done TLS for <{hex(id(self))}>")
+            self._transport = new_transport
+            parser.buffer = self._transport
+            logger.debug(f"Done TLS for <{self._peer}>")
+
+        except ConnectionResetError:
+            logger.error(f"ERROR DURING TLS UPGRADE WITH <{self._peer}>")
+            if not self._transport.is_closing():
+                self._connection_manager.close(self._peer)

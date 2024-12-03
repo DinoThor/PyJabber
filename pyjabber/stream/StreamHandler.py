@@ -1,16 +1,15 @@
-import socket
 from enum import Enum
 from typing import Union
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
 from pyjabber.features import InBandRegistration as IBR
-from pyjabber.features.StartTLSFeature import StartTLSFeature
+from pyjabber.features.StartTLSFeature import StartTLSFeature, proceed_response
 from pyjabber.features.StreamFeature import StreamFeature
 from pyjabber.features.SASLFeature import SASLFeature, SASL
 from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber.utils import ClarkNotation as CN
+from pyjabber.stanzas.IQ import IQ
 
 
 class Stage(Enum):
@@ -37,13 +36,13 @@ class Signal(Enum):
 
 
 class StreamHandler:
-    def __init__(self, host, buffer, starttls, connection_manager) -> None:
+    def __init__(self, host, buffer, starttls) -> None: # connection_manager
         self._host = host
         self._buffer = buffer
         self._starttls = starttls
 
         self._streamFeature = StreamFeature()
-        self._connection_manager: ConnectionManager = connection_manager
+        self._connection_manager: ConnectionManager = ConnectionManager()
         self._stage = Stage.CONNECTED
 
         self._elem = None
@@ -70,7 +69,7 @@ class StreamHandler:
         # TLS feature offered
         elif self._stage == Stage.OPENED:
             if "starttls" in elem.tag:
-                self._buffer.write(StartTLSFeature().proceed_response())
+                self._buffer.write(proceed_response())
                 self._starttls()
                 self._stage = Stage.SSL
                 return Signal.RESET
@@ -90,7 +89,7 @@ class StreamHandler:
 
         # SASL
         elif self._stage == Stage.SASL:
-            res = SASL(self._connection_manager).feed(elem, {"peername": self._buffer.get_extra_info('peername')})
+            res = SASL().feed(elem, {"peername": self._buffer.get_extra_info('peername')})
             if type(res) is tuple:
                 if res[0].value == Signal.RESET.value:
                     self._buffer.write(res[1])
@@ -114,43 +113,23 @@ class StreamHandler:
         elif self._stage == Stage.BIND:
             if "iq" in elem.tag:
                 if elem.attrib["type"] == "set":
-                    bindElem = elem.find(CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "bind")))
-                    resouce = bindElem.find(CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "resource")))
+                    resource_id = str(uuid4())
 
-                    if resouce is not None:
-                        resource_id = resouce.text
-                    else:
-                        resource_id = uuid4()
+                    iq_res = IQ(type=IQ.TYPE.RESULT.value, id=elem.get('id') or str(uuid4()))
+                    bind_res = ET.SubElement(iq_res, "bind", attrib={"xmlns": "urn:ietf:params:xml:ns:xmpp-bind"})
 
-                    iqRes = ET.Element(
-                        "iq",
-                        attrib={
-                            "id": elem.attrib["id"],
-                            "type": "result"
-                        }
-                    )
+                    peername = self._buffer.get_extra_info('peername')
+                    new_jid = self._connection_manager.get_jid(peername)
+                    new_jid.resource = resource_id
 
-                    bindRes = ET.SubElement(
-                        iqRes,
-                        "bind",
-                        attrib={
-                            "xmlns": "urn:ietf:params:xml:ns:xmpp-bind"
-                        }
-                    )
+                    ET.SubElement(bind_res, 'jid').text = str(new_jid)
 
-                    jidRes = ET.SubElement(bindRes, "jid")
+                    self._buffer.write(ET.tostring(iq_res))
 
-                    currentJid = self._connection_manager.get_jid(self._buffer.get_extra_info('peername'))
-                    jidRes.text = f"{currentJid}@{self._host}/{resource_id}"
-
-                    self._buffer.write(ET.tostring(iqRes))
-
-                    # Stream is negotiated.
-                    # Update the connection register
-                    # with the jid and transport
-                    self._connection_manager.set_jid(
-                        self._buffer.get_extra_info('peername'),
-                        jidRes.text, self._buffer
-                    )
+                    """
+                    Stream is negotiated.
+                    Update the connection register with the jid and transport
+                    """
+                    self._connection_manager.set_jid(peername, new_jid, self._buffer)
 
             return Signal.DONE

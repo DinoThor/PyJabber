@@ -1,5 +1,5 @@
 from xml.etree import ElementTree as ET
-
+from pyjabber.metadata import host
 """
 <stanza-kind from='intended-recipient' to='sender' type='error'>
     [OPTIONAL to include sender XML here]
@@ -33,7 +33,7 @@ def conflict_error(id: str) -> bytes:
         attrib={
             "id": id,
             "type": "error",
-            "from": "localhost"})
+            "from": host.get()})
     error = ET.SubElement(iq, "error", attrib={"type": "cancel"})
     ET.SubElement(
         error, "conflict", attrib={
@@ -45,15 +45,17 @@ def conflict_error(id: str) -> bytes:
     return ET.tostring(iq)
 
 
-def feature_not_implemented(xmlns) -> bytes:
+def feature_not_implemented(feature: str, namespace: str) -> bytes:
     """
     <error type='cancel'>
         <feature-not-implemented
             xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
+        <unsupported "
+            f"xmlns='<<namespace>>' feature='<<feature>>'/>
     </error>
     """
-    return f"<error type='cancel'><feature-not-implemented xmlns='{XMLNS}'/></error>".encode(
-    )
+    return (f"<error type='cancel'><feature-not-implemented xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/><unsupported "
+            f"xmlns='{namespace}' feature='{feature}'/></error>").encode()
 
 
 def invalid_xml() -> bytes:

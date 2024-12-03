@@ -4,9 +4,9 @@ from uuid import uuid4
 
 
 class Namespaces(enum.Enum):
-    '''
+    """
     Defines the available namespaces in the protocol.
-    '''
+    """
     XMLSTREAM = "http://etherx.jabber.org/streams"
     CLIENT = "jabber:client"
     SERVER = "jabber:server"

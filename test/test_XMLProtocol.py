@@ -8,29 +8,26 @@ import os
 
 
 @patch('pyjabber.network.XMLProtocol.sax.make_parser')
-@patch('pyjabber.network.XMLProtocol.ConnectionManager')
-def test_connection_made(mock_connections_manager, mock_make_parser):
+def test_connection_made(mock_make_parser):
     mock_transport = MagicMock()
     mock_parser = MagicMock()
     mock_make_parser.return_value = mock_parser
+    mock_connections_manager = MagicMock()
     mock_handler = MagicMock()
 
     namespace = "jabber:client"
     host = "domain.com"
     cert_path = None
     connection_timeout = 30
-    connection_manager = mock_connections_manager.return_value
-    queue_message = MagicMock()
 
     with patch('pyjabber.network.XMLProtocol.XMLParser', return_value=mock_handler):
         protocol = XMLProtocol(
             host=host,
             namespace=namespace,
             connection_timeout=connection_timeout,
-            connection_manager=connection_manager,
             cert_path=cert_path,
-            queue_message=queue_message
         )
+        protocol._connection_manager = mock_connections_manager
         protocol.connection_made(mock_transport)
 
     mock_transport.get_extra_info.assert_called_with('peername')
@@ -38,7 +35,7 @@ def test_connection_made(mock_connections_manager, mock_make_parser):
     mock_parser.setFeature.assert_any_call(sax.handler.feature_namespaces, True)
     mock_parser.setFeature.assert_any_call(sax.handler.feature_external_ges, False)
     mock_parser.setContentHandler.assert_called_once_with(mock_handler)
-    mock_connections_manager.return_value.connection.assert_called_once_with(mock_transport.get_extra_info.return_value)
+    mock_connections_manager.connection.assert_called_once_with(mock_transport.get_extra_info(), mock_transport)
 
 
 @patch('pyjabber.network.XMLProtocol.StreamAlivenessMonitor')
@@ -50,8 +47,6 @@ def test_connection_made_with_timeout(mock_monitor):
     host = MagicMock()
     cert_path = None
     connection_timeout = 30
-    connection_manager = MagicMock()
-    queue_message = MagicMock()
 
     with patch('pyjabber.network.XMLProtocol.sax.make_parser', return_value=mock_parser):
         protocol = XMLProtocol(
@@ -59,8 +54,6 @@ def test_connection_made_with_timeout(mock_monitor):
             namespace=namespace,
             cert_path=cert_path,
             connection_timeout=connection_timeout,
-            connection_manager=connection_manager,
-            queue_message=queue_message
         )
         protocol.connection_made(mock_transport)
 
@@ -73,22 +66,17 @@ def test_connection_lost():
     host = MagicMock()
     cert_path = None
     connection_timeout = 30
-    connection_manager = MagicMock()
-    queue_message = MagicMock()
 
     protocol = XMLProtocol(
         host=host,
         namespace=namespace,
         connection_timeout=connection_timeout,
-        connection_manager=connection_manager,
         cert_path=cert_path,
-        queue_message=queue_message
     )
     mock_transport = MagicMock()
     protocol._transport = mock_transport
 
     protocol.connection_lost(None)
-    mock_transport.get_extra_info.assert_called_with('peername')
     assert protocol._transport is None
     assert protocol._xml_parser is None
 
@@ -98,16 +86,12 @@ def test_data_received():
     host = MagicMock()
     cert_path = None
     connection_timeout = 30
-    connection_manager = MagicMock()
-    queue_message = MagicMock()
 
     protocol = XMLProtocol(
         host=host,
         namespace=namespace,
         connection_timeout=connection_timeout,
-        connection_manager=connection_manager,
         cert_path=cert_path,
-        queue_message=queue_message
     )
     mock_transport = MagicMock()
     protocol._transport = mock_transport
@@ -127,16 +111,12 @@ def test_eof_received():
     host = MagicMock()
     cert_path = None
     connection_timeout = 30
-    connection_manager = MagicMock()
-    queue_message = MagicMock()
 
     protocol = XMLProtocol(
         host=host,
         namespace=namespace,
         connection_timeout=connection_timeout,
-        connection_manager=connection_manager,
         cert_path=cert_path,
-        queue_message=queue_message
     )
     mock_transport = MagicMock()
     protocol.connection_made(mock_transport)
@@ -158,22 +138,17 @@ def test_connection_timeout():
     host = MagicMock()
     cert_path = None
     connection_timeout = 30
-    connection_manager = MagicMock()
-    queue_message = MagicMock()
 
     protocol = XMLProtocol(
         host=host,
         namespace=namespace,
         connection_timeout=connection_timeout,
-        connection_manager=connection_manager,
         cert_path=cert_path,
-        queue_message=queue_message
     )
     mock_transport = MagicMock()
     protocol._transport = mock_transport
 
     protocol.connection_timeout()
-    mock_transport.get_extra_info.assert_called_with('peername')
     mock_transport.write.assert_called_once_with(b"<connection-timeout/>")
     mock_transport.close.assert_called_once()
     assert protocol._transport is None
@@ -187,16 +162,12 @@ def test_enable_tls(mock_create_default_context, mock_get_running_loop):
     host = MagicMock()
     cert_path = None
     connection_timeout = 30
-    connection_manager = MagicMock()
-    queue_message = MagicMock()
 
     protocol = XMLProtocol(
         host=host,
         namespace=namespace,
         connection_timeout=connection_timeout,
-        connection_manager=connection_manager,
         cert_path=cert_path,
-        queue_message=queue_message
     )
     mock_transport = MagicMock()
     protocol._transport = mock_transport

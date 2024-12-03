@@ -7,15 +7,13 @@ import RosterModal from '../../components/rosterModal/rosterModal';
 
 const { Column, HeaderCell, Cell } = Table;
 
-const mockData = [{ "id": 1, "jid": "cram" }, { "id": 2, "jid": "marc" }]
-
 export default function Contact() {
   const [users, setUsers] = useState([]);
   const [rosterSelected, setRosterSelected] = useState(-1);
   const [rosterVisible, setRosterVisible] = useState(false);
   const [formVisible, setFormVisible] = useState(false);
 
-  function retriveUserList() {
+  function retrieveUserList() {
     fetch('http://localhost:9090/api/users')
       .then((res) => {
         return res.json();
@@ -36,19 +34,19 @@ export default function Contact() {
       return response.json();
     })
       .then(() => {
-        retriveUserList()
+        retrieveUserList()
       })
       .catch(error => {
-        console.error('Error:', error); 
+        console.error('Error:', error);
       });
   }
 
   useEffect(() => {
-    retriveUserList()
+    retrieveUserList()
   }, []);
 
   useEffect(() => {
-    retriveUserList()
+    retrieveUserList()
   }, [formVisible]);
 
   return (

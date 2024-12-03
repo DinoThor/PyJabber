@@ -1,5 +1,10 @@
+from symbol import lambdef
+from unittest.mock import patch
+
 import pytest
 import xml.etree.ElementTree as ET
+
+from pyjabber.metadata import Metadata
 from pyjabber.stanzas.error.StanzaError import (
     bad_request,
     conflict_error,
@@ -17,8 +22,8 @@ def test_bad_request():
     expected = b"<error type='modify'><bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>"
     assert bad_request() == expected
 
-
-def test_conflict_error():
+@patch.object(Metadata, 'host', new_callable=lambda: 'localhost')
+def test_conflict_error(_):
     id = "123"
     result = conflict_error(id)
     root = ET.fromstring(result)
@@ -43,10 +48,10 @@ def test_conflict_error():
     assert text.tag == f"{{{XMLNS}}}text"
     assert text.text == "The requested username already exists"
 def test_feature_not_implemented():
-    xmlns = "custom:namespace"
+    ns = "custom:namespace"
     feature = "some_feature"
-    expected = f"<error type='cancel'><feature-not-implemented xmlns='{XMLNS}'/></error>".encode()
-    assert feature_not_implemented(xmlns) == expected
+    expected = f"<error type='cancel'><feature-not-implemented xmlns='{XMLNS}'/><unsupported "f"xmlns='{ns}' feature='{feature}'/></error>".encode()
+    assert feature_not_implemented(feature, ns) == expected
 
 
 def test_invalid_xml():

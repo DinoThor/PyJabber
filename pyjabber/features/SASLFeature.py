@@ -3,16 +3,19 @@ import hashlib
 from contextlib import closing
 from enum import Enum
 from typing import Dict, List, Tuple, Union
+from uuid import uuid4
 from xml.etree import ElementTree as ET
 
+from pyjabber.metadata import host#Metadata
+from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.db.database import connection
-from pyjabber.features.FeatureInterface import FeatureInterface
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
+from pyjabber.stream.JID import JID
 from pyjabber.utils import ClarkNotation as CN
 
 
-class mechanismEnum(Enum):
+class MECHANISM(Enum):
     PLAIN = "PLAIN"
     SCRAM_SHA_1 = "SCRAM-SHA-1"
     EXTERNAL = "EXTERNAL"
@@ -23,23 +26,30 @@ class Signal(Enum):
     DONE = 1
 
 
-class SASL(FeatureInterface):
-    def __init__(self, connection_manager, db_connection_factory=connection):
+def iq_register_result(iq_id: str) -> bytes:
+    iq = ET.Element(
+        "iq",
+        attrib={
+            "type": "result",
+            "id": iq_id or str(uuid4()),
+            "from": host.get()})
+    return ET.tostring(iq)
+
+
+class SASL:
+    def __init__(self, db_connection_factory=connection):
         self._handlers = {
             "iq": self.handleIQ,
             "auth": self.handleAuth
         }
         self._ns = "jabber:iq:register"
-        self._connection_manager = connection_manager
+        self._connection_manager = ConnectionManager()
         self._db_connection_factory = db_connection_factory
         self._peername = None
 
     def feed(self,
              element: ET,
-             extra: Dict[str,
-                         any] = None) -> Union[Tuple[Signal,
-                                                     bytes],
-                                               bytes]:
+             extra: Dict = None) -> Union[Tuple[Signal, bytes], bytes]:
         if extra and "peername" in extra.keys():
             self._peername = extra["peername"]
 
@@ -48,15 +58,18 @@ class SASL(FeatureInterface):
 
     def handleIQ(
             self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
-        query = element.find(CN.clarkFromTuple((self._ns, "query")))
+        query = element.find("{jabber:iq:register}query")
 
         if query is None:
-            raise Exception()
+            return SE.bad_request()
 
-        if element.attrib["type"] == "set":
-            new_jid = query.find(
-                CN.clarkFromTuple(
-                    (self._ns, "username"))).text
+        if element.attrib["type"] == IQ.TYPE.SET.value:
+            new_jid = query.find("{jabber:iq:register}username")
+
+            if new_jid is None:
+                return SE.bad_request()
+
+            new_jid = new_jid.text
 
             with closing(self._db_connection_factory()) as con:
                 res = con.execute(
@@ -75,7 +88,7 @@ class SASL(FeatureInterface):
                     con.execute(
                         "INSERT INTO credentials(jid, hash_pwd) VALUES (?, ?)", (new_jid, hash_pwd))
                     con.commit()
-                    return self.iq_register_result(
+                    return iq_register_result(
                         element.attrib["id"])
 
         elif element.attrib["type"] == "get":
@@ -94,33 +107,23 @@ class SASL(FeatureInterface):
             self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
         data = base64.b64decode(element.text).split("\x00".encode())
         jid = data[1].decode()
-        keyhash = hashlib.sha256(data[2]).hexdigest()
+        key_hash = hashlib.sha256(data[2]).hexdigest()
 
         with closing(self._db_connection_factory()) as con:
             res = con.execute(
                 "SELECT hash_pwd FROM credentials WHERE jid = ?", (jid,))
             hash_pwd = res.fetchone()
 
-        if hash_pwd and hash_pwd[0] == keyhash:
-            self._connection_manager.set_jid(self._peername, jid)
+        if hash_pwd and hash_pwd[0] == key_hash:
+            self._connection_manager.set_jid(self._peername, JID(user=jid, domain=host.get()))
             return Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>"
 
         return SE.not_authorized()
 
-    def iq_register_result(self, id: str) -> bytes:
-        iq = ET.Element(
-            "iq",
-            attrib={
-                "type": "result",
-                "id": id,
-                "from": "localhost"})
-        return ET.tostring(iq)
 
+def SASLFeature(mechanismList: List[MECHANISM]=None):
+    mechanismList = mechanismList or [MECHANISM.PLAIN]
 
-def SASLFeature(
-        mechanismList: List[mechanismEnum] = [
-            mechanismEnum.PLAIN
-        ]):
     element = ET.Element(
         "mechanisms",
         attrib={

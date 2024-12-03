@@ -1,7 +1,7 @@
-import os
 import sqlite3
 
+# from pyjabber.metadata import Metadata
+from pyjabber.metadata import database_path
 
 def connection() -> sqlite3.Connection:
-    dname = os.path.dirname(os.path.abspath(__file__))
-    return sqlite3.connect(dname + '/server.db')
+    return sqlite3.connect(database_path.get())

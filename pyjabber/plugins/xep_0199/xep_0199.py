@@ -1,24 +1,20 @@
+from uuid import uuid4
 from xml.etree import ElementTree as ET
 
-from pyjabber.plugins.PluginInterface import Plugin
+from pyjabber.utils import Singleton
+from pyjabber.metadata import host
 
 
-class Ping(Plugin):
-    def __init__(self, jid: str) -> None:
-        self._jid = jid
-
-    def feed(self, element: ET.Element):
-        if "to" in element.attrib and element.attrib["to"] == "localhost":
-            res = ET.tostring(
-                ET.Element(
-                    "iq",
-                    attrib={
-                        "from": "localhost",
-                        "id": element.attrib["id"],
-                        "to": element.attrib["to"],
-                        "type": "result",
-                    },
-                )
+class Ping(metaclass=Singleton):
+    def feed(self, jid: str, element: ET.Element):
+        return ET.tostring(
+            ET.Element(
+                "iq",
+                attrib={
+                    "from": host.get(),
+                    "id": element.attrib.get('id') or str(uuid4()),
+                    "to": element.attrib.get('to'),
+                    "type": "result",
+                },
             )
-
-            return [res]
+        )

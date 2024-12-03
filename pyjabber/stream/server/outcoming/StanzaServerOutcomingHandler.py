@@ -2,14 +2,15 @@ import os
 import xml.etree.ElementTree as ET
 
 from pyjabber.stanzas.error import StanzaError as SE
+from pyjabber.network.ConnectionManager import ConnectionManager
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
 class StanzaServerOutcomingHandler:
-    def __init__(self, buffer, connection_manager) -> None:
+    def __init__(self, buffer) -> None:
         self._buffer = buffer
-        self._connection_manager = connection_manager
+        self._connection_manager = ConnectionManager()
         self._peername = buffer.get_extra_info('peername')
         self._host = self._connection_manager.get_server_host(self._peername)
 
