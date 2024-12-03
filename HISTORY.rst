@@ -1,6 +1,17 @@
 =======
 History
 =======
+0.1.7 (2024-12-03)
+------------------
+
+* Added Pubsub XEP (Service discovery, create node, delete node, publish, subscribe and retrieve subs)
+* Added Service Discovery XEP
+* Added Dataforms XEP
+* Added --database_purge flag to reset database (erase any register)
+* Refact singleton scheme
+* Refact XEP scheme (migration to singleton)
+* Create shared variables via contextvars
+* Different refacts to the code
 
 0.1.6 (2024-07-15)
 ------------------
