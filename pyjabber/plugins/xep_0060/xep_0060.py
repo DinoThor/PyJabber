@@ -9,7 +9,7 @@ from xml.etree import ElementTree as ET
 from loguru import logger
 from yaml import load, Loader
 
-from pyjabber.metadata import host, config_path#Metadata
+from pyjabber.metadata import host, config_path
 from pyjabber.db.database import connection
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.plugins.xep_0060.error import ErrorType
@@ -139,8 +139,8 @@ class PubSub(metaclass=Singleton):
 
     def discover_info(self, element: ET.Element):
         """
-            Return the info for a given node
-            :return: A 2-tuple in the format of (name, type)
+        Return the info for a given node
+        :return: A 2-tuple in the format of (name, type)
         """
         query = element.find('{http://jabber.org/protocol/disco#info}query')
         query_node = query.attrib.get('node')
@@ -340,7 +340,7 @@ class PubSub(metaclass=Singleton):
 
     def retrieve_subscriptions(self, element: ET.Element, jid: JID):
         pubsub = element.find('{http://jabber.org/protocol/pubsub}pubsub') or element.find('{http://jabber.org/protocol/pubsub#owner}pubsub')
-        subscriptions = pubsub.find('{http://jabber.org/protocol/pubsub}subscriptions') or element.find('{http://jabber.org/protocol/pubsub#owner}subscriptions')
+        subscriptions = pubsub.find('{http://jabber.org/protocol/pubsub}subscriptions') or pubsub.find('{http://jabber.org/protocol/pubsub#owner}subscriptions')
         target_node = subscriptions.attrib.get('node')
         from_stanza = element.attrib.get('from')
 
@@ -351,12 +351,12 @@ class PubSub(metaclass=Singleton):
         pubsub_res = ET.SubElement(iq_res, 'pubsub' ,attrib={'xmlns': 'http://jabber.org/protocol/pubsub'})
         subscriptions_res = ET.SubElement(pubsub_res, 'subscriptions')
 
-        if target_node or target_node != '':
+        if target_node is not None and target_node != '':
             query = "SELECT node, subscription, subid FROM pubsubSubscribers WHERE jid = ? AND node = ?"
-            item = (jid.bare(), target_node)
+            item = (str(jid.user), target_node)
         else:
             query = "SELECT node, subscription, subid FROM pubsubSubscribers WHERE jid = ?"
-            item = (jid.bare(),)
+            item = (str(jid.user),)
 
         with closing(self._db_connection_factory()) as con:
             res = con.execute(query, item)
@@ -378,7 +378,7 @@ class PubSub(metaclass=Singleton):
     def publish(self, element: ET.Element, jid: JID):
         pubsub = element.find('{http://jabber.org/protocol/pubsub}pubsub')
         publish = pubsub.find('{http://jabber.org/protocol/pubsub}publish')
-        item = publish.find('t{htp://jabber.org/protocol/pubsub}item')
+        item = publish.find('{http://jabber.org/protocol/pubsub}item')
         payload = item[0]
         node = publish.attrib.get('node')
 
@@ -440,6 +440,6 @@ class PubSub(metaclass=Singleton):
                 mtype=None,
                 body=event
             )
-            buffer.write(ET.tostring(payload))
+            buffer.write(ET.tostring(message))
 
 

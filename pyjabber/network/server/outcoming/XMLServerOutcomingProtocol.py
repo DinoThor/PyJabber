@@ -25,7 +25,6 @@ class XMLServerOutcomingProtocol(XMLProtocol):
             host,
             public_host,
             connection_timeout,
-            queue_message,
             enable_tls1_3=False):
 
         super().__init__(
@@ -33,7 +32,6 @@ class XMLServerOutcomingProtocol(XMLProtocol):
             host,
             connection_timeout,
             None,
-            queue_message,
             enable_tls1_3)
 
         self._public_host = public_host
@@ -56,7 +54,6 @@ class XMLServerOutcomingProtocol(XMLProtocol):
                 XMLServerOutcomingParser(
                     self._transport,
                     self.task_tls,
-                    self._queue_message,
                     self._host,
                     self._public_host,
                 )

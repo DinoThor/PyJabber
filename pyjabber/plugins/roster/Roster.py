@@ -1,5 +1,4 @@
 import xml.etree.ElementTree as ET
-from abc import ABC
 from contextlib import closing
 
 from pyjabber.db.database import connection

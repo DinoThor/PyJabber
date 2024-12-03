@@ -8,9 +8,9 @@ from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.stream.JID import JID
 
 
-def retrieve_roster(jid: str) -> List[str]:  # pragma: no cover
+def retrieve_roster(jid: JID) -> List[str]:  # pragma: no cover
     with closing(connection()) as con:
-        res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
+        res = con.execute("SELECT * FROM roster WHERE jid = ?", (str(jid),))
         roster = res.fetchall()
     return roster
 

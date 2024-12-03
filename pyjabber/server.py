@@ -2,7 +2,6 @@ import asyncio
 import os
 import signal
 import socket
-import contextvars
 
 from contextlib import closing
 from loguru import logger
@@ -12,7 +11,6 @@ from pyjabber.network.XMLProtocol import XMLProtocol
 from pyjabber.network.server.incoming.XMLServerIncomingProtocol import XMLServerIncomingProtocol
 from pyjabber.network.server.outcoming.XMLServerOutcomingProtocol import XMLServerOutcomingProtocol
 from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber.stanzas.Validator import Validator
 from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.webpage.adminPage import admin_instance
 from pyjabber.network import CertGenerator
@@ -36,6 +34,7 @@ class Server:
         :param enable_tls1_3: Boolean. Enables the use of TLSv1.3 in the STARTTLS process
         :param cert_path: Path to custom domain certs. By default, the server generates its own certificates for hostname
     """
+
     def __init__(
         self,
         host='localhost',
@@ -71,21 +70,11 @@ class Server:
         # Singletons
         self._connection_manager = ConnectionManager(self.task_s2s)
         self._queue_message = QueueMessage(self._connection_manager)
-        self._validator = Validator()
-
-        # Metadata
-        # Metadata(
-        #     host=self._host,
-        #     config_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/config.yaml'),
-        #     root_path=SERVER_FILE_PATH,
-        #     database_path=self._database_path
-        # )
 
         metadata_host.set(host)
         metadata_database_path.set(self._database_path)
         metadata_config_path.set(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/config.yaml'))
         metadata_root_path.set(SERVER_FILE_PATH)
-
 
     async def run_server(self):
         logger.info("Starting server...")
@@ -128,7 +117,6 @@ class Server:
                 host=self._host,
                 connection_timeout=self._connection_timeout,
                 cert_path=self._cert_path,
-                queue_message=self._queue_message,
                 enable_tls1_3=self._enable_tls1_3,
             ),
             host=["0.0.0.0"],
@@ -170,7 +158,6 @@ class Server:
                 host=remote_host,
                 public_host=self._public_ip,
                 connection_timeout=self._connection_timeout,
-                queue_message=self._queue_message,
                 enable_tls1_3=self._enable_tls1_3,
             ),
             host=remote_host,

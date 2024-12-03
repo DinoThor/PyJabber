@@ -3,7 +3,7 @@ import base64
 from typing import Union
 from xml.etree import ElementTree as ET
 
-from pyjabber.features.StartTLSFeature import StartTLSFeature
+from pyjabber.features.StartTLSFeature import StartTLSFeature, proceed_response
 from pyjabber.features.SASLFeature import SASLFeature, MECHANISM
 from pyjabber.stream.StreamHandler import StreamHandler, Signal, Stage
 
@@ -40,7 +40,7 @@ class StreamServerIncomingHandler(StreamHandler):
                 raise Exception()
 
         elif self._stage == Stage.OPENED and elem.tag == self.STARTTLS:
-            self._buffer.write(StartTLSFeature().proceed_response())
+            self._buffer.write(proceed_response())
             self._starttls()
             self._stage = Stage.SSL
             return Signal.RESET

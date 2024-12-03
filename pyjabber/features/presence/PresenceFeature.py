@@ -104,7 +104,7 @@ class Presence:
 
     def handle_subscribed(self, element: ET.Element):
         to = JID(element.attrib.get("to"))
-        bare_jid = self._jid.bare()
+        bare_jid = JID(self._jid.bare())
 
         if "from" not in element.attrib:
             element.attrib["from"] = str(self._jid)
@@ -113,7 +113,7 @@ class Presence:
             bufferBob = self._connections.get_buffer(to)
             bufferAlice = self._connections.get_buffer(bare_jid)
 
-            rosterBob = RU.retrieve_roster(str(to))
+            rosterBob = RU.retrieve_roster(to)
             rosterAlice = RU.retrieve_roster(bare_jid)
 
             if not rosterAlice:
@@ -169,9 +169,9 @@ class Presence:
                 res = ET.Element(
                     "presence",
                     attrib={
-                        "from": bare_jid,
-                        "to": to,
-                        "id": element.attrib["id"],
+                        "from": str(bare_jid),
+                        "to": str(to),
+                        "id": element.attrib.get('id') or str(uuid4()),
                         "type": "subscribed",
                     },
                 )
@@ -230,8 +230,8 @@ class Presence:
                 presence = ET.Element(
                     "presence",
                     attrib={
-                        "from": self._jid,
-                        "to": b[0].split("/")[0]})
+                        "from": str(self._jid),
+                        "to": b[0].bare()})
                 b[-1].write(ET.tostring(presence))
 
     def handle_unsubscribed(self, element: ET.Element):

@@ -1,4 +1,3 @@
-import socket
 from enum import Enum
 from typing import Union
 from uuid import uuid4
@@ -11,7 +10,6 @@ from pyjabber.features.SASLFeature import SASLFeature, SASL
 from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stanzas.IQ import IQ
-from pyjabber.stream.JID import JID
 
 
 class Stage(Enum):
@@ -115,14 +113,6 @@ class StreamHandler:
         elif self._stage == Stage.BIND:
             if "iq" in elem.tag:
                 if elem.attrib["type"] == "set":
-                    #bind_elem = elem.find("{urn:ietf:params:xml:ns:xmpp-bind}bind")
-                    #resource_elem = bind_elem.find("{urn:ietf:params:xml:ns:xmpp-bind}resource")
-
-                    #if resource_elem is not None and resource_elem.text:
-                    #    resource_id = resource_elem.text
-                    #else:
-                        #resource_id = uuid4()
-
                     resource_id = str(uuid4())
 
                     iq_res = IQ(type=IQ.TYPE.RESULT.value, id=elem.get('id') or str(uuid4()))

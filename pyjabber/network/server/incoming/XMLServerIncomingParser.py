@@ -23,8 +23,8 @@ class XMLServerIncomingParser(XMLParser):
     Manages the stream data and process the XML objects.
     Inheriting from sax.ContentHandler
     """
-    def __init__(self, host, buffer, starttls, queue_message):
-        super().__init__(host, buffer, starttls, queue_message)
+    def __init__(self, host, buffer, starttls):
+        super().__init__(host, buffer, starttls)
         self._streamHandler = StreamServerIncomingHandler(host, buffer, starttls)
 
     def startElementNS(self, name, qname, attrs):

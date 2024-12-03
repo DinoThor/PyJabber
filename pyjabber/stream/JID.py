@@ -20,9 +20,6 @@ class JID:
             self._resource = resource
 
         else:
-            """
-            https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ4Rjd2fP4k__PEhyVfyEKDaoBDN_i03yGvJw&s
-            """
             raise ValueError('Missing user and/or domain')
 
     @property
@@ -48,4 +45,3 @@ class JID:
         if self._resource:
             return f'{self._user}@{self._domain}/{self._resource}'
         return f'{self._user}@{self._domain}'
-

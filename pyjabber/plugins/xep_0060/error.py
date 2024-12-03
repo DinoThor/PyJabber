@@ -1,7 +1,7 @@
 from enum import Enum
 from xml.etree import ElementTree as ET
 
-from pyjabber.metadata import host#Metadata
+from pyjabber.metadata import host
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
 

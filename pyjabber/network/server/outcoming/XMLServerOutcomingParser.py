@@ -19,11 +19,10 @@ class XMLServerOutcomingParser(XMLParser):
             self,
             buffer,
             starttls,
-            queue_message,
             host,
             public_host):
 
-        super().__init__(host, buffer, starttls, queue_message)
+        super().__init__(host, buffer, starttls)
 
         self._host = host
         self._public_host = public_host

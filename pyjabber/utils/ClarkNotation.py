@@ -1,5 +1,6 @@
 # https://sabre.io/xml/clark-notation/
 import re
+from typing import Tuple
 
 
 def deglose(tag: str):
@@ -12,7 +13,7 @@ def deglose(tag: str):
     return namespace, tag
 
 
-def clarkFromTuple(tuple):
+def clarkFromTuple(tuple: Tuple[str, str]):
     """
     Generate a clark notaion from a tuple in the format (namespace, tag).
     It's also possible to pass a tuple form of only a tag element (tag)

@@ -30,8 +30,7 @@ class PluginManager:
             if element.attrib["type"] == "result":
                 return  # Safe return. Nothing to process
             else:
-                return
-                # raise InternalServerError("Malformed IQ stanza")
+                return SE.bad_request()
 
         tag, ns = CN.deglose(child.tag)
 

@@ -1,13 +1,9 @@
-import os
 import re
 import xml.etree.ElementTree as ET
-from uuid import uuid4
-
 import loguru
 
 from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
 from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.plugins.PluginManager import PluginManager

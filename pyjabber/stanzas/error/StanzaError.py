@@ -1,6 +1,4 @@
 from xml.etree import ElementTree as ET
-
-# from pyjabber.metadata import Metadata
 from pyjabber.metadata import host
 """
 <stanza-kind from='intended-recipient' to='sender' type='error'>

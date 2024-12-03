@@ -7,4 +7,3 @@ class Singleton(type):
             instance = super().__call__(*args, **kwargs)
             cls._instances[cls] = instance
         return cls._instances[cls]
-

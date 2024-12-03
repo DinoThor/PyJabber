@@ -23,7 +23,6 @@ class XMLServerIncomingProtocol(XMLProtocol):
             host,
             connection_timeout,
             cert_path,
-            queue_message,
             enable_tls1_3=False):
 
         super().__init__(
@@ -31,7 +30,6 @@ class XMLServerIncomingProtocol(XMLProtocol):
             host,
             connection_timeout,
             cert_path,
-            queue_message,
             enable_tls1_3)
 
     def connection_made(self, transport):
@@ -52,8 +50,8 @@ class XMLServerIncomingProtocol(XMLProtocol):
                 XMLServerIncomingParser(
                     self._host,
                     self._transport,
-                    self.task_tls,
-                    self._queue_message)
+                    self.task_tls
+                )
             )
 
             if self._connection_timeout:
