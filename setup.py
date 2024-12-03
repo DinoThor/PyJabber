@@ -16,8 +16,7 @@ setup(
         "click==8.1.7",
         "cryptography==43.0.1",
         "loguru==0.7.2",
-        "slixmpp==1.8.5",
-        "xmlschema==3.3.2"
+        "pyyaml~=6.0.2",
     ],
     include_package_data=True,
     classifiers=[
