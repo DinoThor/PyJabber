@@ -30,8 +30,7 @@ FILE_PATH = os.path.dirname(os.path.abspath(__file__))
               show_default=True, help='Timeout for connection')
 @click.option('--database_path', type=str, default=os.path.join(FILE_PATH, 'db', 'server.db'),
               show_default=True, help='Path for database file')
-@click.option('--database_purge', type=bool, default=False,
-              show_default=True, help='Restore database file to default state (empty)')
+@click.option('--database_purge', is_flag=True, help='Restore database file to default state (empty)')
 @click.option('--log_level',
               type=click.Choice(['INFO',
                                  'DEBUG'],

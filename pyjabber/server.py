@@ -61,6 +61,7 @@ class Server:
         self._connection_timeout = connection_timeout
         self._database_path = database_path
         self._sql_init_script = os.path.join(SERVER_FILE_PATH, 'db', 'schema.sql')
+        self._sql_delete_script = os.path.join(SERVER_FILE_PATH, 'db', 'delete.sql')
         self._database_purge = database_purge
         self._cert_path = cert_path
 
@@ -84,9 +85,16 @@ class Server:
             if self._database_purge:
                 logger.info("Ignoring purge database flag. No DB to purge")
             with closing(connection()) as con:
-                with open(self._sql_init_script, "r") as schema:
-                    con.cursor().executescript(schema.read())
+                with open(self._sql_init_script, "r") as script:
+                    con.cursor().executescript(script.read())
                 con.commit()
+        else:
+            if self._database_purge:
+                logger.info("Resetting the database to default state...")
+                with closing(connection()) as con:
+                    with open(self._sql_delete_script, "r") as script:
+                        con.cursor().executescript(script.read())
+                    con.commit()
 
         if CertGenerator.check_hostname_cert_exists(self._host) is False and self._cert_path is None:
             CertGenerator.generate_hostname_cert(self._host)

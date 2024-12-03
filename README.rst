@@ -55,6 +55,7 @@ Quick start
         my_server = Server()
         my_server.start()
 
+
 or
 
 .. code-block:: python
@@ -67,16 +68,22 @@ or
         Usage: pyjabber [OPTIONS]
 
         Options:
-          --host TEXT               Host name  [default: localhost]
-          --client_port INTEGER     Server-to-client port  [default: 5222]
-          --server_port INTEGER     Server-to-server port  [default: 5269]
-          --family [ipv4|ipv6]      (ipv4 / ipv6)  [default: ipv4]
-          --tls1_3                  Enables TLSv1_3
-          --timeout INTEGER         Timeout for connection  [default: 60]
-          --log_level [INFO|DEBUG]  Log level alert  [default: INFO]
-          --log_path TEXT           Path to log dumpfile
-          -D, --debug               Enables debug mode in Asyncio
-          --help                    Show this message and exit.
+          --host TEXT                Host name  [default: localhost]
+          --client_port INTEGER      Server-to-client port  [default: 5222]
+          --server_port INTEGER      Server-to-server port  [default: 5269]
+          --server_out_port INTEGER  Server-to-server port (Out coming connection)
+                                     [default: 5269]
+          --family [ipv4|ipv6]       (ipv4 / ipv6)  [default: ipv4]
+          --tls1_3                   Enables TLSv1_3
+          --timeout INTEGER          Timeout for connection  [default: 60]
+          --database_path TEXT       Path for database file  [default:
+                                     /home/aaron/pyjabber/pyjabber/db/server.db]
+          --database_purge BOOLEAN   Restore database file to default state (empty)
+                                     [default: False]
+          --log_level [INFO|DEBUG]   Log level alert  [default: INFO]
+          --log_path TEXT            Path to log dumpfile
+          -D, --debug                Enables debug mode in Asyncio
+          --help                     Show this message and exit.
 
 
 
@@ -112,6 +119,15 @@ Plugins
    * -
      - Status
      - Description
+   * - `XEP-0004 <https://xmpp.org/extensions/xep-0004.html>`_
+     - IMPLEMENTED
+     - Dataforms
+   * - `XEP-0030 <https://xmpp.org/extensions/xep-0030.html>`_
+     - IMPLEMENTED
+     - Service Discovery
+   * - `XEP-0060 <https://xmpp.org/extensions/xep-0077.html>`_
+     - IMPLEMENTED
+     - Pubsub
    * - `XEP-0077 <https://xmpp.org/extensions/xep-0077.html>`_
      - IMPLEMENTED
      - In Band Registration
