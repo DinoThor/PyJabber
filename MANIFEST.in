@@ -4,7 +4,8 @@ include HISTORY.rst
 include LICENSE
 include README.rst
 include pyjabber/db/schema.sql
-include pyjabber/stream/schemas/schemas.pkl
+include pyjabber/db/delete.sql
+include pyjabber/config/config.yaml
 recursive-include pyjabber/webpage/build *
 recursive-include pyjabber/network/certs *
 
