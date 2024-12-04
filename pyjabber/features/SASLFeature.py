@@ -6,7 +6,7 @@ from typing import Dict, List, Tuple, Union
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
-from pyjabber.metadata import host#Metadata
+from pyjabber.metadata import host#
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.db.database import connection
 from pyjabber.stanzas.error import StanzaError as SE

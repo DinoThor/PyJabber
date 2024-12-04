@@ -32,10 +32,10 @@ class PluginManager:
             else:
                 return SE.bad_request()
 
-        tag, ns = CN.deglose(child.tag)
+        ns, tag = CN.deglose(child.tag)
 
         try:
-            tag = list(filter(lambda regex: re.search(regex, tag), list(self._plugins.keys())))[-1]
-            return self._plugins[tag].feed(self._jid, element)
-        except KeyError:
+            ns = list(filter(lambda regex: re.search(regex, ns), list(self._plugins.keys())))[-1]
+            return self._plugins[ns].feed(self._jid, element)
+        except (KeyError, IndexError):
             return SE.feature_not_implemented(tag, ns)

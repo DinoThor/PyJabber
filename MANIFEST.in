@@ -7,7 +7,6 @@ include pyjabber/db/schema.sql
 include pyjabber/db/delete.sql
 include pyjabber/config/config.yaml
 recursive-include pyjabber/webpage/build *
-recursive-include pyjabber/network/certs *
 
 recursive-include tests *
 recursive-exclude * __pycache__

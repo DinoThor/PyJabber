@@ -2,6 +2,7 @@ import asyncio
 import os
 import signal
 import socket
+import sys
 
 from contextlib import closing
 from loguru import logger
@@ -16,6 +17,11 @@ from pyjabber.webpage.adminPage import admin_instance
 from pyjabber.network import CertGenerator
 from pyjabber.metadata import host as metadata_host, config_path as metadata_config_path
 from pyjabber.metadata import database_path as metadata_database_path, root_path as metadata_root_path
+
+if sys.platform == 'win32':
+    from winloop import run
+else:
+    import uvloop
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -63,7 +69,7 @@ class Server:
         self._sql_init_script = os.path.join(SERVER_FILE_PATH, 'db', 'schema.sql')
         self._sql_delete_script = os.path.join(SERVER_FILE_PATH, 'db', 'delete.sql')
         self._database_purge = database_purge
-        self._cert_path = cert_path
+        self._cert_path = cert_path or os.path.join(SERVER_FILE_PATH, 'network', 'certs')
 
         # Client handler
         self._enable_tls1_3 = enable_tls1_3
@@ -96,8 +102,14 @@ class Server:
                         con.cursor().executescript(script.read())
                     con.commit()
 
-        if CertGenerator.check_hostname_cert_exists(self._host) is False and self._cert_path is None:
-            CertGenerator.generate_hostname_cert(self._host)
+        try:
+            if CertGenerator.check_hostname_cert_exists(self._host, self._cert_path) is False:
+                CertGenerator.generate_hostname_cert(self._host, self._cert_path)
+        except FileNotFoundError as e:
+            logger.error(e)
+            logger.error("Pass an existing directory in your system to load the certs")
+            logger.error("Closing server")
+            raise SystemExit
 
         loop = asyncio.get_running_loop()
 
@@ -117,7 +129,7 @@ class Server:
         )
 
         logger.info(f"Client domain => {self._host}")
-        logger.info(f"Server is listening clients on {[s.getsockname() for s in self._client_listener.sockets]}")
+        logger.info(f"Server is listening clients on {[s.getsockname() for s in self._client_listener.sockets if s]}")
 
         self._server_listener = await loop.create_server(
             lambda: XMLServerIncomingProtocol(
@@ -132,7 +144,7 @@ class Server:
             family=self._family
         )
 
-        logger.info(f"Server is listening servers on {[s.getsockname() for s in self._server_listener.sockets]}")
+        logger.info(f"Server is listening servers on {[s.getsockname() for s in self._server_listener.sockets if s]}")
         logger.info("Server started...")
 
     async def stop(self):
@@ -194,6 +206,7 @@ class Server:
             Start the already created and configuration server
             :param debug: Boolean. Enables debug mode in asyncio
         """
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_event_loop()
         loop.set_debug(debug)
 

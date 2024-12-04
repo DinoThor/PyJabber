@@ -24,7 +24,7 @@ def test_check_hostname_cert_exists_missing_file(hostname):
     with patch('os.path.isfile', side_effect=mock_isfile), \
         patch('os.chdir') as mock_chdir, \
         patch('loguru.logger.debug') as mock_logger_debug:
-        result = check_hostname_cert_exists(hostname)
+        result = check_hostname_cert_exists(hostname, CERTS_PATH)
 
         mock_chdir.assert_any_call(CERTS_PATH)
         mock_chdir.assert_any_call(os.getcwd())
@@ -35,7 +35,7 @@ def test_check_hostname_cert_exists_missing_file(hostname):
 def test_check_hostname_cert_exists_all_files_present(hostname):
     with patch('os.path.isfile', return_value=True), \
         patch('os.chdir') as mock_chdir:
-        result = check_hostname_cert_exists(hostname)
+        result = check_hostname_cert_exists(hostname, CERTS_PATH)
 
         mock_chdir.assert_any_call(CERTS_PATH)
         mock_chdir.assert_any_call(os.getcwd())
@@ -81,7 +81,7 @@ def test_generate_hostname_cert(hostname, file_exists):
         patch('cryptography.x509.CertificateBuilder.sign', return_value=mock_domain_cert), \
         patch('loguru.logger.debug') as mock_logger_debug, \
         patch('socket.gethostname', return_value=hostname):
-        generate_hostname_cert(hostname)
+        generate_hostname_cert(hostname, CERTS_PATH)
 
         mock_chdir.assert_any_call(CERTS_PATH)
         mock_chdir.assert_any_call(os.getcwd())

@@ -1,5 +1,19 @@
+import sys
+
 from setuptools import setup, find_packages
 import pyjabber
+
+requires=[
+    "aiohttp==3.10.4",
+    "click==8.1.7",
+    "cryptography==43.0.1",
+    "loguru==0.7.2",
+    "pyyaml~=6.0.2",
+]
+if sys.platform in ("win32", "cygwin"):
+    requires.append("winloop^=0.1.7")
+else:
+    requires.append("uvloop^=0.21.0")
 
 setup(
     name="pyjabber",
@@ -11,13 +25,7 @@ setup(
     long_description_content_type="text/x-rst",
     url="https://github.com/DinoThor/PyJabber",
     packages=find_packages(),
-    install_requires=[
-        "aiohttp==3.10.5",
-        "click==8.1.7",
-        "cryptography==43.0.1",
-        "loguru==0.7.2",
-        "pyyaml~=6.0.2",
-    ],
+    install_requires=requires,
     include_package_data=True,
     classifiers=[
         "Programming Language :: Python :: 3",

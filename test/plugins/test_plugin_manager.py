@@ -1,66 +1,62 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from xml.etree.ElementTree import Element
 from pyjabber.plugins.PluginManager import PluginManager
 from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.plugins.xep_0199.xep_0199 import Ping
 from pyjabber.stanzas.error import StanzaError as SE
+from pyjabber.stream.JID import JID
+
 
 def test_plugin_manager_initialization():
-    manager = PluginManager("example@domain.com")
-    assert 'jabber:iq:roster' in manager._plugins
-    assert 'urn:xmpp:ping' in manager._plugins
-    assert isinstance(manager._plugins['jabber:iq:roster'], type)
-    assert isinstance(manager._plugins['urn:xmpp:ping'], type)
+    with patch('pyjabber.plugins.PluginManager.Disco'):
+        with patch('pyjabber.plugins.PluginManager.PubSub'):
+            manager = PluginManager(JID("example@domain.com"))
+            assert 'jabber:iq:roster' in manager._plugins
+            assert 'urn:xmpp:ping' in manager._plugins
+            assert isinstance(manager._plugins['jabber:iq:roster'], object)
+            assert isinstance(manager._plugins['urn:xmpp:ping'], object)
 
 
 def test_feed_with_known_plugin():
-    manager = PluginManager("example@domain.com")
-    manager._activePlugins = {
-        'jabber:iq:roster': MagicMock(spec=Roster),
-        'urn:xmpp:ping': MagicMock(spec=Ping)
-    }
+    with patch('pyjabber.plugins.PluginManager.Disco'):
+        with patch('pyjabber.plugins.PluginManager.PubSub'):
+            with patch('pyjabber.plugins.PluginManager.Ping') as mock_ping:
+                manager = PluginManager(JID("example@domain.com"))
 
-    # Crear un elemento de prueba para el plugin Roster
-    element = Element('iq', {'type': 'get'})
-    subelement = Element('{jabber:iq:roster}query')
-    element.append(subelement)
+                # Crear un elemento de prueba para el plugin Roster
+                element = Element('iq', {'type': 'set'})
+                subelement = Element('{urn:xmpp:ping}ping')
+                element.append(subelement)
 
-    manager.feed(element)
-    assert manager._activePlugins['jabber:iq:roster'].feed.called
+                manager.feed(element)
+                assert manager._plugins['urn:xmpp:ping'].feed.called
 
 
 def test_feed_with_unknown_plugin():
-    manager = PluginManager("example@domain.com")
-    # Crear un elemento de prueba para un plugin no registrado
-    element = Element('iq', {'type': 'get'})
-    subelement = Element('{jabber:iq:unknown}query')
-    element.append(subelement)
+    with patch('pyjabber.plugins.PluginManager.Disco'):
+        with patch('pyjabber.plugins.PluginManager.PubSub'):
+            with patch('pyjabber.plugins.PluginManager.Ping') as mock_ping:
+                manager = PluginManager(JID("example@domain.com"))
 
-    result = manager.feed(element)
-    assert result == SE.service_unavaliable()
+                # Crear un elemento de prueba para el plugin Roster
+                element = Element('iq', {'type': 'get'})
+                subelement = Element('{jabber:iq:unknown}query')
+                element.append(subelement)
+
+                result = manager.feed(element)
+                assert result == SE.feature_not_implemented('query', 'jabber:iq:unknown')
 
 
 def test_feed_with_no_child():
-    manager = PluginManager("example@domain.com")
-    element = Element('iq', {'type': 'result'})
+    with patch('pyjabber.plugins.PluginManager.Disco'):
+        with patch('pyjabber.plugins.PluginManager.PubSub'):
+            with patch('pyjabber.plugins.PluginManager.Ping') as mock_ping:
+                manager = PluginManager(JID("example@domain.com"))
 
-    # No debería llamar a ningún plugin ni lanzar excepciones
-    result = manager.feed(element)
-    assert result is None
+                # Crear un elemento de prueba para el plugin Roster
+                element = Element('iq', {'type': 'result'})
 
-
-def test_feed_with_error_handling():
-    manager = PluginManager("example@domain.com")
-    manager._plugins = {
-        'jabber:iq:roster': MagicMock(Roster)
-    }
-    # Simular que el plugin necesario no está activo ni disponible
-    element = Element('iq', {'type': 'get'})
-    subelement = Element('{urn:xmpp:ping}ping')
-    element.append(subelement)
-
-    result = manager.feed(element)
-    assert result == SE.service_unavaliable()
-    assert 'urn:xmpp:ping' not in manager._activePlugins
-
+                # No debería llamar a ningún plugin ni lanzar excepciones
+                result = manager.feed(element)
+                assert result is None

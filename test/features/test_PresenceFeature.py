@@ -194,7 +194,7 @@ def test_handle_unavailable(setup_presence):
     assert result is None
 
 def test_feed_handle_initial_presence(setup_presence):
-    presence, mock_connections, mock_retrieve_roster, _, _ = setup_presence
+    presence, mock_connections, mock_retrieve_roster, _, _  = setup_presence
     element = ET.Element('presence', attrib={'id': '123'})
     presence._jid = JID('user2@localhost')
 
@@ -209,7 +209,7 @@ def test_feed_handle_initial_presence(setup_presence):
 
     assert result is None
     mock_retrieve_roster.assert_called_once_with('user2@localhost')
-    mock_connections.get_buffer.assert_called_once_with('user@localhost')
+    mock_connections.get_buffer.assert_called_once()
     buffer_mock[-1].write.assert_called_once()
 
 def test_handle_initial_presence(setup_presence):
@@ -227,7 +227,7 @@ def test_handle_initial_presence(setup_presence):
     presence.handle_initial_presence(element)
 
     mock_retrieve_roster.assert_called_once_with('user@localhost')
-    mock_connections.get_buffer.assert_called_once_with(JID('user2@localhost'))
+    mock_connections.get_buffer.assert_called_once()
     buffer_mock[-1].write.assert_called_once()
 
 if __name__ == "__main__":

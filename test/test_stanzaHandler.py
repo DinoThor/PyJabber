@@ -89,10 +89,10 @@ def test_handleIQ():
 
     expected_response = SE.service_unavaliable()
 
-    with patch('pyjabber.plugins.PluginManager.PluginManager') as MockPluginManager:
-        mock_plugin_manager = MockPluginManager.return_value
-        mock_plugin_manager.feed.return_value = expected_response # Simulamos la respuesta esperada
-        MockPluginManager.return_value = mock_plugin_manager
+    with patch('pyjabber.stream.StanzaHandler.PluginManager') as MockPluginManager:
+        # mock_plugin_manager = MockPluginManager.return_value
+        MockPluginManager.feed.return_value = expected_response # Simulamos la respuesta esperada
+        # MockPluginManager.return_value = mock_plugin_manager
         handler.handle_iq(element)
         mock_buffer.write.assert_called_once_with(expected_response)
 

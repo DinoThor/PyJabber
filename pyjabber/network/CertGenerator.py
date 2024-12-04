@@ -10,28 +10,25 @@ from cryptography.hazmat.primitives import serialization
 import datetime
 
 
-def check_hostname_cert_exists(host: str):
+def check_hostname_cert_exists(host: str, cert_path: os.path):
     previous_path = os.getcwd()
-    file_path = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(cert_path)
 
-    os.chdir(os.path.join(file_path, "certs"))
-
+    res = True
     for file in [f"{host}_key.pem", f"{host}_csr.pem", f"{host}_cert.pem"]:
         if os.path.isfile(file) is False:
-            os.chdir(os.path.join(previous_path))
             logger.debug("Missing hostname certificate")
-            return False
+            res = False
 
     os.chdir(os.path.join(previous_path))
-    return True
+    return res
 
 
-def generate_hostname_cert(host):
+def generate_hostname_cert(host: str, cert_path: os.path):
     logger.debug("Generating hostname certificate")
     previous_path = os.getcwd()
-    file_path = os.path.dirname(os.path.abspath(__file__))
 
-    os.chdir(os.path.join(file_path, "certs"))
+    os.chdir(cert_path)
 
     for file in [f"{host}_key.pem", f"{host}_csr.pem", f"{host}_cert.pem"]:
         if os.path.isfile(file):
