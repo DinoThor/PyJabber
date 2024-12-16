@@ -8,26 +8,31 @@ from pyjabber.webpage.api import api
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
+class AdminPage:
+    def __init__(self):
+        self._app = web.Application()
+        self._app.router.add_get('/', self.getIndex)
+        self._app.router.add_get('/api/users', api.handleUser)
+        self._app.router.add_get('/api/roster/{id}', api.handleRoster)
+        self._app.router.add_post('/api/createuser', api.handleRegister)
+        self._app.router.add_delete('/api/users/{id}', api.handleDelete)
+        self._app.router.add_static('/static', FILE_PATH + '/build/static')
+        self._app.router.add_static('/', FILE_PATH + '/build/')
 
-async def admin_instance():
-    app = web.Application()
-    app.router.add_get('/', getIndex)
-    app.router.add_get('/api/users', api.handleUser)
-    app.router.add_get('/api/roster/{id}', api.handleRoster)
-    app.router.add_post('/api/createuser', api.handleRegister)
-    app.router.add_delete('/api/users/{id}', api.handleDelete)
-    app.router.add_static('/static', FILE_PATH + '/build/static')
-    app.router.add_static('/', FILE_PATH + '/build/')
+    @property
+    def app(self):
+        return self._app
 
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, 'localhost', 9090)
-    await site.start()
+    async def getIndex(self, request):
+        return web.FileResponse(FILE_PATH + '/build/index.html')
 
-    logger.info("Serving admin webpage on http://localhost:9090")
-    while True:
-        await asyncio.sleep(3600)  # Keep alive the server
+    async def start(self):
+        runner = web.AppRunner(self._app)
+        await runner.setup()
+        site = web.TCPSite(runner, 'localhost', 9090)
+        await site.start()
 
+        logger.info("Serving admin webpage on http://localhost:9090")
+        while True:
+            await asyncio.sleep(3600)  # Keep alive the server
 
-async def getIndex(request):
-    return web.FileResponse(FILE_PATH + '/build/index.html')

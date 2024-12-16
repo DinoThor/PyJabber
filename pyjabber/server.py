@@ -12,7 +12,7 @@ from pyjabber.network.server.incoming.XMLServerIncomingProtocol import XMLServer
 from pyjabber.network.server.outcoming.XMLServerOutcomingProtocol import XMLServerOutcomingProtocol
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stream.QueueMessage import QueueMessage
-from pyjabber.webpage.adminPage import admin_instance
+from pyjabber.webpage.adminPage import AdminPage
 from pyjabber.network import CertGenerator
 from pyjabber.metadata import host as metadata_host, config_path as metadata_config_path
 from pyjabber.metadata import database_path as metadata_database_path, root_path as metadata_root_path
@@ -56,7 +56,7 @@ class Server:
         self._family = family
         self._client_listener = None
         self._server_listener = None
-        self._adminServer = None
+        self._adminServer = AdminPage()
         self._public_ip = None
         self._connection_timeout = connection_timeout
         self._database_path = database_path
@@ -186,45 +186,29 @@ class Server:
         finally:
             mock_connection.close()
 
-    def raise_exit(self):
+    def raise_exit(self, *args):
         raise SystemExit(1)
 
-    def start(self, debug: bool = False):
+    async def start(self, debug: bool = False):
         """
             Start the already created and configuration server
             :param debug: Boolean. Enables debug mode in asyncio
         """
-        loop = asyncio.get_event_loop()
-        loop.set_debug(debug)
 
-        try:
-            loop.add_signal_handler(signal.SIGINT, self.raise_exit)
-            loop.add_signal_handler(signal.SIGABRT, self.raise_exit)
-            loop.add_signal_handler(signal.SIGTERM, self.raise_exit)
-        except NotImplementedError:  # pragma: no cover
-            pass
+        signal.signal(signal.SIGINT, self.raise_exit)
+        signal.signal(signal.SIGABRT, self.raise_exit)
+        signal.signal(signal.SIGTERM, self.raise_exit)
 
         try:
             # XMPP Server
-            main_server = loop.create_task(self.run_server())
-            loop.run_until_complete(main_server)
-
-            # Control Panel Webpage | localhost:9090
-            admin_server = admin_instance()
-            loop.run_until_complete(admin_server)
+            main_server = asyncio.create_task(self.run_server())
+            admin_coro = self._adminServer.start()
+            await asyncio.gather(main_server, admin_coro)
 
         except (SystemExit, KeyboardInterrupt):  # pragma: no cover
             pass
 
         finally:
             # Cancel pending tasks
-            tasks = asyncio.all_tasks(loop)
-            for task in tasks:
-                task.cancel()
-            loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
-
-            # Close the server
-            close_task = loop.create_task(self.stop())
-            loop.run_until_complete(close_task)
-            loop.close()
-            asyncio.set_event_loop(None)
+            await self.stop()
+            await self._adminServer.app.cleanup()
