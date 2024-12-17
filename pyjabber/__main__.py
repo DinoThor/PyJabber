@@ -1,3 +1,4 @@
+import asyncio
 import os
 import socket
 import sys
@@ -76,7 +77,7 @@ def main(
         enable_tls1_3=tls1_3,
     )
 
-    server.start(debug)
+    asyncio.run(server.start())
 
     return 0
 
