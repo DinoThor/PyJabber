@@ -2,6 +2,7 @@ import asyncio
 import os
 import signal
 import socket
+import sys
 
 from contextlib import closing
 from loguru import logger
@@ -18,7 +19,8 @@ from pyjabber.metadata import host as metadata_host, config_path as metadata_con
 from pyjabber.metadata import database_path as metadata_database_path, root_path as metadata_root_path
 
 if sys.platform == 'win32':
-    from winloop import run
+    #from winloop import run
+    pass
 else:
     import uvloop
 
@@ -69,6 +71,7 @@ class Server:
         self._sql_delete_script = os.path.join(SERVER_FILE_PATH, 'db', 'delete.sql')
         self._database_purge = database_purge
         self._cert_path = cert_path or os.path.join(SERVER_FILE_PATH, 'network', 'certs')
+        self._custom_loop = True
 
         # Client handler
         self._enable_tls1_3 = enable_tls1_3
@@ -200,7 +203,7 @@ class Server:
     def raise_exit(self, *args):
         raise SystemExit(1)
 
-    async def start(self, debug: bool = False):
+    async def start(self):
         """
             Start the already created and configuration server
             :param debug: Boolean. Enables debug mode in asyncio
@@ -211,7 +214,6 @@ class Server:
         signal.signal(signal.SIGTERM, self.raise_exit)
 
         try:
-            # XMPP Server
             main_server = asyncio.create_task(self.run_server())
             admin_coro = self._adminServer.start()
             await asyncio.gather(main_server, admin_coro)
@@ -220,6 +222,4 @@ class Server:
             pass
 
         finally:
-            # Cancel pending tasks
-            await self.stop()
-            await self._adminServer.app.cleanup()
+            await asyncio.gather(self.stop(), self._adminServer.app.cleanup())

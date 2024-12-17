@@ -1,19 +1,13 @@
-import sys
-
 from setuptools import setup, find_packages
 import pyjabber
 
-requires=[
-    "aiohttp==3.10.4",
-    "click==8.1.7",
-    "cryptography==43.0.1",
-    "loguru==0.7.2",
-    "pyyaml~=6.0.2",
-]
-if sys.platform in ("win32", "cygwin"):
-    requires.append("winloop^=0.1.7")
-else:
-    requires.append("uvloop^=0.21.0")
+
+def parse_requirements(filename):
+    """ load requirements from a pip requirements file """
+    with open(filename) as f:
+        lineiter = [line.strip() for line in f]
+    return [line for line in lineiter if line and not line.startswith("#")]
+
 
 setup(
     name="pyjabber",
@@ -25,7 +19,7 @@ setup(
     long_description_content_type="text/x-rst",
     url="https://github.com/DinoThor/PyJabber",
     packages=find_packages(),
-    install_requires=requires,
+    install_requires=parse_requirements('requirements.txt'),
     include_package_data=True,
     classifiers=[
         "Programming Language :: Python :: 3",

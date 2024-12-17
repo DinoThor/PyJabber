@@ -3,9 +3,12 @@ include CONTRIBUTING.rst
 include HISTORY.rst
 include LICENSE
 include README.rst
+include requirements.txt
 include pyjabber/db/schema.sql
 include pyjabber/db/delete.sql
 include pyjabber/config/config.yaml
+include pyjabber/network/certs/ca_cert.pem
+include pyjabber/network/certs/ca_key.pem
 recursive-include pyjabber/webpage/build *
 
 recursive-include tests *

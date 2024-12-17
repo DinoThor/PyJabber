@@ -220,7 +220,7 @@ class Presence:
 
     def handle_initial_presence(self, element: ET.Element):
         bare_jid = self._jid.bare()
-        roster = RU.retrieve_roster(bare_jid)
+        roster = RU.retrieve_roster(JID(bare_jid))
 
         for r in roster:
             item = ET.fromstring(r[-1])
@@ -243,8 +243,8 @@ class Presence:
 
         # Handle locally
         if to.split("@")[1] == "localhost":
-            roster = RU.retrieve_roster(bare_jid)
-            buffer = self._connections.get_buffer(to)
+            roster = RU.retrieve_roster(JID(bare_jid))
+            buffer = self._connections.get_buffer(JID(to))
 
             item = [item for item in roster
                     if ET.fromstring(item[2]).attrib["jid"] == to]

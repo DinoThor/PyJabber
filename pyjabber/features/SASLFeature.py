@@ -93,8 +93,8 @@ class SASL:
 
         elif element.attrib["type"] == "get":
             iq = IQ(
-                type=IQ.TYPE.RESULT.value,
-                id=element.attrib["id"] if "id" in element.attrib.keys() else None,
+                type_=IQ.TYPE.RESULT,
+                id_=element.attrib["id"] if "id" in element.attrib.keys() else None,
             )
             query = ET.Element('{jabber:iq:register}query')
             ET.SubElement(query, "username")

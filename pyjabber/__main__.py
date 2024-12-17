@@ -1,10 +1,14 @@
-import asyncio
 import os
 import socket
 import sys
 import click
-from loguru import logger
 
+if sys.platform != 'win32':
+    from uvloop import run
+else:
+    from asyncio import run
+
+from loguru import logger
 from pyjabber.server import Server
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -32,16 +36,15 @@ FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 @click.option('--database_path', type=str, default=os.path.join(FILE_PATH, 'db', 'server.db'),
               show_default=True, help='Path for database file')
 @click.option('--database_purge', is_flag=True, help='Restore database file to default state (empty)')
-@click.option('--log_level',
-              type=click.Choice(['INFO',
-                                 'DEBUG'],
-                                case_sensitive=False),
-              default='INFO',
-              show_default=True,
-              help='Log level alert')
+@click.option(
+              "-v",
+              "--verbose",
+              count=True,
+              help="Show verbose debug level: -v level 1, -vv level 2, -vvv level 3, -vvvv level 4")
 @click.option('--log_path', type=str, help='Path to log dumpfile')
 @click.option('--debug', '-D', is_flag=True,
               help='Enables debug mode in Asyncio')
+
 def main(
         host,
         client_port,
@@ -52,9 +55,11 @@ def main(
         timeout,
         database_path,
         database_purge,
-        log_level,
+        verbose,
         log_path,
         debug):
+
+    logger.remove()
 
     if log_path:
         log_file = open(os.path.join(log_path, "pyjabber.log"), 'w')
@@ -62,8 +67,15 @@ def main(
             log_file,
             enqueue=True,
             format="<green>{time}</green> - <level>{level}: {message}</level>",
-            level=log_level,
+            level=set_verbosity(verbose),
         )
+
+    logger.add(
+        sys.stderr,
+        enqueue=True,
+        format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> - <level>{level}: {message}</level>",
+        level=set_verbosity(verbose),
+    )
 
     server = Server(
         host=host,
@@ -75,11 +87,24 @@ def main(
         database_path=database_path,
         database_purge=database_purge,
         enable_tls1_3=tls1_3,
+
     )
 
-    asyncio.run(server.start())
+
+    run(server.start(), debug=debug)
 
     return 0
+
+
+def set_verbosity(verbose):
+    if verbose == 0:
+        return 'INFO'
+    elif verbose == 1:
+        return 'WARNING'
+    elif verbose == 2:
+        return 'DEBUG'
+    else:
+        return 'TRACE'
 
 
 """Allow cookiecutter to be executable through `python -m pyjabber`."""
