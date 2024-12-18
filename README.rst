@@ -77,12 +77,11 @@ This allows PyJabber to be treated as a regular task and integrated seamlessly i
         async def counter():
           while True:
             await asyncio.sleep(1)
-            print(f"Hello World {counter}")
+            print(f"Hello World")
 
         async def launch():
+          my_server = Server()
           await asyncio.gather(my_server.start(), counter())
-
-        my_server = Server()
 
         asyncio.run(launch())
 
