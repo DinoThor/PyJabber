@@ -166,16 +166,16 @@ class XMLProtocol(asyncio.Protocol):
         if not self._enable_tls1_3:
             ssl_context.options |= ssl.OP_NO_TLSv1_3
 
-        if self._cert_path:
-            ssl_context.load_cert_chain(
-                certfile=os.path.join(self._cert_path, f"{self._host}_cert.pem"),
-                keyfile=os.path.join(self._cert_path, "certs", f"{self._host}_key.pem"),
-            )
-        else:
-            ssl_context.load_cert_chain(
-                certfile=os.path.join(FILE_AUTH, "certs", f"{self._host}_cert.pem"),
-                keyfile=os.path.join(FILE_AUTH, "certs", f"{self._host}_key.pem"),
-            )
+        # if self._cert_path:
+        ssl_context.load_cert_chain(
+            certfile=os.path.join(self._cert_path, f"{self._host}_cert.pem"),
+            keyfile=os.path.join(self._cert_path, f"{self._host}_key.pem"),
+        )
+        # else:
+        #     ssl_context.load_cert_chain(
+        #         certfile=os.path.join(FILE_AUTH, "certs", f"{self._host}_cert.pem"),
+        #         keyfile=os.path.join(FILE_AUTH, "certs", f"{self._host}_key.pem"),
+        #     )
 
         try:
             new_transport = await loop.start_tls(

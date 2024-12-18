@@ -1,6 +1,14 @@
 from setuptools import setup, find_packages
 import pyjabber
 
+
+def parse_requirements(filename):
+    """ load requirements from a pip requirements file """
+    with open(filename) as f:
+        lineiter = [line.strip() for line in f]
+    return [line for line in lineiter if line and not line.startswith("#")]
+
+
 setup(
     name="pyjabber",
     version=pyjabber.__version__,
@@ -11,13 +19,7 @@ setup(
     long_description_content_type="text/x-rst",
     url="https://github.com/DinoThor/PyJabber",
     packages=find_packages(),
-    install_requires=[
-        "aiohttp==3.10.5",
-        "click==8.1.7",
-        "cryptography==43.0.1",
-        "loguru==0.7.2",
-        "pyyaml~=6.0.2",
-    ],
+    install_requires=parse_requirements('requirements.txt'),
     include_package_data=True,
     classifiers=[
         "Programming Language :: Python :: 3",

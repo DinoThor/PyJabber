@@ -115,7 +115,7 @@ class StreamHandler:
                 if elem.attrib["type"] == "set":
                     resource_id = str(uuid4())
 
-                    iq_res = IQ(type=IQ.TYPE.RESULT.value, id=elem.get('id') or str(uuid4()))
+                    iq_res = IQ(type_=IQ.TYPE.RESULT, id_=elem.get('id') or str(uuid4()))
                     bind_res = ET.SubElement(iq_res, "bind", attrib={"xmlns": "urn:ietf:params:xml:ns:xmpp-bind"})
 
                     peername = self._buffer.get_extra_info('peername')

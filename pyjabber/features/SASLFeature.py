@@ -6,7 +6,7 @@ from typing import Dict, List, Tuple, Union
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
-from pyjabber.metadata import host#Metadata
+from pyjabber.metadata import host#
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.db.database import connection
 from pyjabber.stanzas.error import StanzaError as SE
@@ -93,8 +93,8 @@ class SASL:
 
         elif element.attrib["type"] == "get":
             iq = IQ(
-                type=IQ.TYPE.RESULT.value,
-                id=element.attrib["id"] if "id" in element.attrib.keys() else None,
+                type_=IQ.TYPE.RESULT,
+                id_=element.attrib["id"] if "id" in element.attrib.keys() else None,
             )
             query = ET.Element('{jabber:iq:register}query')
             ET.SubElement(query, "username")

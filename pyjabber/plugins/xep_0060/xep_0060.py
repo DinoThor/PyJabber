@@ -240,7 +240,7 @@ class PubSub(metaclass=Singleton):
         except IndexError:
             return error_response(element, jid, ErrorType.ITEM_NOT_FOUND)
 
-        current_state = [s for s in self._subscribers if s[SubscribersAttrib.JID.value] == jid_request.user]
+        current_state = [s for s in self._subscribers if s[SubscribersAttrib.JID.value] == jid_request.user and s[SubscribersAttrib.NODE.value] == node]
         if len(current_state) >= 1:
             current_state = current_state[0]
             if current_state[SubscribersAttrib.SUBSCRIPTION.value] in [Subscription.SUBSCRIBED.value, Subscription.UNCONFIGURED.value]:

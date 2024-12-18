@@ -38,7 +38,7 @@ class Roster(metaclass=Singleton):
             res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
             roster = res.fetchall()
 
-        iq_res = IQ(type=IQ.TYPE.RESULT.value, id=element.attrib["id"])
+        iq_res = IQ(type_=IQ.TYPE.RESULT, id_=element.attrib["id"])
         query = ET.SubElement(iq_res, "query", attrib={"xmlns": self._ns["ns"]})
 
         for item in roster:

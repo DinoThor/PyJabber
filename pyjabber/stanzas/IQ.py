@@ -1,5 +1,6 @@
 import xml.etree.ElementTree as ET
 from enum import Enum
+from uuid import uuid4
 
 
 class IQ(ET.Element):
@@ -15,8 +16,8 @@ class IQ(ET.Element):
 
     def __init__(
             self,
-            type: TYPE,
-            id: str = None,
+            type_: TYPE,
+            id_: str = None,
             from_: str = None,
             to: str = None,
             **extra: str) -> None:
@@ -31,10 +32,13 @@ class IQ(ET.Element):
         """
         attrib = {
             k: v for k, v in (
-                ("id", id),
+                ("id", id_),
                 ("from", from_),
                 ("to", to),
-                ("type", type)) if v is not None
+                ("type", type_.value)) if v is not None
         }
+
+        if attrib.get('id') is None:
+            attrib['id'] = str(uuid4())
 
         super().__init__('iq', attrib, **extra)

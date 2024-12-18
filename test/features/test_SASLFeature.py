@@ -9,13 +9,13 @@ from unittest.mock import patch, MagicMock
 
 import pyjabber.metadata
 from pyjabber.features.SASLFeature import SASL, SASLFeature, Signal, MECHANISM, iq_register_result
+from pyjabber.features.feature_utils.RosterUtils import retrieve_roster
 from pyjabber.stanzas.error import StanzaError as SE
 
 host = contextvars.ContextVar('host')
 
 @pytest.fixture
 def setup_database():
-    con = sqlite3.connect(':memory:')
     con = sqlite3.connect(':memory:')
     cur = con.cursor()
     cur.execute('''
@@ -40,7 +40,7 @@ def db_connection_factory(setup_database):
 
     return factory
 
-@patch.object(host, 'get', return_value='localhost')
+# @patch.object(host, 'get', return_value='localhost')
 def test_handle_auth_success(db_connection_factory):
     sasl = SASL()
     sasl._db_connection_factory = db_connection_factory
@@ -48,7 +48,9 @@ def test_handle_auth_success(db_connection_factory):
     auth_text = base64.b64encode(b'\x00username\x00password').decode('ascii')
     element.text = auth_text
 
-    result = sasl.handleAuth(element)
+    with patch('pyjabber.features.SASLFeature.host') as mock_host:
+        mock_host.get.return_value = 'localhost'
+        result = sasl.handleAuth(element)
 
     assert result == (Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")
 
@@ -61,7 +63,9 @@ def test_handle_auth_failure(MockConnectionsManager, db_connection_factory):
     auth_text = base64.b64encode(b'\x00username\x00wrongpassword').decode('ascii')
     element.text = auth_text
 
-    result = sasl.handleAuth(element)
+    with patch('pyjabber.features.SASLFeature.host') as mock_host:
+        mock_host.get.return_value = 'localhost'
+        result = sasl.handleAuth(element)
 
     assert result == SE.not_authorized()
 
@@ -75,12 +79,13 @@ def test_handle_iq_register_conflict(db_connection_factory):
     password = ET.SubElement(query, "{jabber:iq:register}password")
     password.text = "password"
 
-    result = sasl.handleIQ(element)
+    with patch('pyjabber.stanzas.error.StanzaError.host') as mock_host:
+        mock_host.get.return_value = 'localhost'
+        result = sasl.handleIQ(element)
 
-    assert result == SE.conflict_error("123")
+        assert result == SE.conflict_error("123")
 
-# @patch.object(Metadata, 'host', new_callable=lambda: 'localhost')
-def test_get_fields(MockConnectionsManager, db_connection_factory):
+def test_get_fields(db_connection_factory):
     sasl = SASL(db_connection_factory)
 
     element = ET.Element("{jabber:iq:register}iq", attrib={"type": "get"})
@@ -91,8 +96,7 @@ def test_get_fields(MockConnectionsManager, db_connection_factory):
     assert response is not None
     assert response == b'<iq xmlns:ns0="jabber:iq:register" type="result"><ns0:query><username /><password /></ns0:query></iq>'
 
-# @patch.object(Metadata, 'host', new_callable=lambda: 'localhost')
-def test_handle_iq_register_success(_, db_connection_factory):
+def test_handle_iq_register_success(db_connection_factory):
     sasl = SASL(db_connection_factory)
     element = ET.Element("iq", attrib={"type": "set", "id": "123"})
     query = ET.SubElement(element, "{jabber:iq:register}query")
@@ -101,9 +105,11 @@ def test_handle_iq_register_success(_, db_connection_factory):
     password = ET.SubElement(query, "{jabber:iq:register}password")
     password.text = "password"
 
-    result = sasl.handleIQ(element)
+    with patch('pyjabber.features.SASLFeature.host') as mock_host:
+        mock_host.get.return_value = 'localhost'
+        result = sasl.handleIQ(element)
 
-    assert result == iq_register_result("123")
+        assert result == iq_register_result("123")
 
 
 def test_sasl_feature():
