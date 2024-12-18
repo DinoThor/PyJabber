@@ -40,30 +40,65 @@ PyJabber
 * Free software: MIT license
 * Documentation: https://pyjabber.readthedocs.io.
 
+------------
 Installation
 ------------
 .. code-block::
 
         pip install pyjabber
 
+-----------
 Quick start
 -----------
+
+Python program
+--------------
+
+
+The process of starting the server returns a coroutine, leaving it to the user to set up the required environment. The simplest approach is to use the ``asyncio.run`` function.
+
 .. code-block:: python
 
         from pyjabber import Server
 
         my_server = Server()
-        my_server.start()
+        asyncio.run(my_server.start())
 
 
-or
+
+This allows PyJabber to be treated as a regular task and integrated seamlessly into an asynchronous application.
 
 .. code-block:: python
 
-        pyjabber --help
+
+        import asyncio
+        from pyjabber.server import Server
+
+        async def counter():
+          while True:
+            await asyncio.sleep(1)
+            print(f"Hello World {counter}")
+
+        async def launch():
+          await asyncio.gather(my_server.start(), counter())
+
+        my_server = Server()
+
+        asyncio.run(launch())
+
+CLI
+---
+The CLI launcher provides access to all the configuration options available in the programmatic version (when launched from a Python script).
+
+
+.. code-block:: python
+
+
+        $ pyjabber --help
 
 
 .. code-block::
+
 
         Usage: pyjabber [OPTIONS]
 
@@ -77,15 +112,30 @@ or
           --tls1_3                   Enables TLSv1_3
           --timeout INTEGER          Timeout for connection  [default: 60]
           --database_path TEXT       Path for database file  [default:
-                                     /home/aaron/pyjabber/pyjabber/db/server.db]
-          --database_purge BOOLEAN   Restore database file to default state (empty)
-                                     [default: False]
-          --log_level [INFO|DEBUG]   Log level alert  [default: INFO]
+                                     */venv/lib/python3.*/site-packages/pyjabber/db/server.db]
+          --database_purge           Restore database file to default state (empty)
+          -v, --verbose              Show verbose debug level: -v level 1, -vv level
+                                     2, -vvv level 3, -vvvv level 4
           --log_path TEXT            Path to log dumpfile
           -D, --debug                Enables debug mode in Asyncio
           --help                     Show this message and exit.
 
+And to launch a default profile
 
+.. code-block::
+
+
+        $ pyjabber
+
+
+.. code-block::
+
+        2024-12-18 09:03:22.880 - INFO: Starting server...
+        2024-12-18 09:03:22.881 - INFO: Client domain => localhost
+        2024-12-18 09:03:22.881 - INFO: Server is listening clients on [('127.0.0.1', 5222), ('158.42.155.44', 5222)]
+        2024-12-18 09:03:22.881 - INFO: Serving admin webpage on http://localhost:9090
+        2024-12-18 09:03:22.881 - INFO: Server is listening servers on [('0.0.0.0', 5269)]
+        2024-12-18 09:03:22.881 - INFO: Server started...
 
 Features
 --------

@@ -1,6 +1,17 @@
 =======
 History
 =======
+
+0.1.9.post1 (2024-12-18)
+-----------------------
+* Update the README + HISTORY
+
+0.1.9 (2024-12-17)
+------------------
+* Added Uvloop for unix-like os (improved loop event, compared to default asyncio loop)
+* Fixed Windows bug with Ctrl+C and not being able to stop the server.
+* Changed the async treatment of the server. Now the function start() returns a coroutine, and must be launched from ``asyncio.run()`` or similar
+
 0.1.8 (2024-12-03)
 ------------------
 * Fix previous release
