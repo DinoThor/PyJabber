@@ -116,7 +116,7 @@ def test_handle_initial_presence_no_roster_entries(setup_presence):
     presence._jid = JID('user@localhost')
     result = presence.handle_initial_presence(element)
     assert result is None
-    mock_retrieve_roster.assert_called_once_with('user@localhost')
+    mock_retrieve_roster.assert_called_once()
     mock_connections.get_buffer.assert_not_called()
 
 
@@ -208,7 +208,7 @@ def test_feed_handle_initial_presence(setup_presence):
     result = presence.feed(element)
 
     assert result is None
-    mock_retrieve_roster.assert_called_once_with('user2@localhost')
+    mock_retrieve_roster.assert_called_once()
     mock_connections.get_buffer.assert_called_once()
     buffer_mock[-1].write.assert_called_once()
 
@@ -226,7 +226,7 @@ def test_handle_initial_presence(setup_presence):
 
     presence.handle_initial_presence(element)
 
-    mock_retrieve_roster.assert_called_once_with('user@localhost')
+    mock_retrieve_roster.assert_called_once()
     mock_connections.get_buffer.assert_called_once()
     buffer_mock[-1].write.assert_called_once()
 

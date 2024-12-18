@@ -1,71 +1,80 @@
+from unittest.mock import patch
 from xml.etree import ElementTree as ET
 from pyjabber.plugins.xep_0199.xep_0199 import Ping
+from pyjabber.stream.JID import JID
+
 
 def test_ping_feed_happy_path():
-    ping = Ping(jid="user@domain.com")
-    element = ET.Element("iq", attrib={"to": "localhost", "id": "1234"})
+    with patch('pyjabber.plugins.xep_0199.xep_0199.host') as mock_host:
+        mock_host.get.return_value = 'localhost'
+        ping = Ping()
+        element = ET.Element("iq", attrib={"to": "localhost", "id": "1234"})
 
-    result = feed(element)
+        result = ping.feed(element)
 
-    expected_result = ET.tostring(
-        ET.Element(
-            "iq",
-            attrib={
-                "from": "localhost",
-                "id": "1234",
-                "to": "localhost",
-                "type": "result",
-            },
-        )
+    expected_result =  ET.Element(
+        "iq",
+        attrib={
+            "from": "localhost",
+            "id": "1234",
+            "to": "localhost",
+            "type": "result",
+        },
     )
 
-    assert result == [expected_result]
+    result = ET.fromstring(result)
+    assert result.tag == 'iq'
+    assert result.attrib.get('from') == 'localhost'
+    assert result.attrib.get('type') == 'result'
+    assert result.attrib.get('id') == '1234'
+    assert result.attrib.get('to') == 'localhost'
 
 def test_ping_feed_wrong_to_value():
-    ping = Ping(jid="user@domain.com")
-    element = ET.Element("iq", attrib={"to": "remotehost", "id": "1234"})
+    with patch('pyjabber.plugins.xep_0199.xep_0199.host') as mock_host:
+        mock_host.get.return_value = 'localhost'
+        ping = Ping()
+        element = ET.Element("iq", attrib={"to": "remotehost", "id": "1234"})
 
-    result = feed(element)
+        result = ping.feed(element)
 
-    assert result is None
+        assert result is None
 
 def test_ping_feed_empty_element():
-    ping = Ping(jid="user@domain.com")
+    ping = Ping()
     element = ET.Element("iq")
 
-    result = feed(element)
+    result = ping.feed(element)
 
     assert result is None
 
 def test_ping_feed_with_invalid_xml():
-    ping = Ping(jid="user@domain.com")
+    with patch('pyjabber.plugins.xep_0199.xep_0199.host') as mock_host:
+        mock_host.get.return_value = 'localhost'
+        ping = Ping()
 
     # Simulando una cadena XML inválida
     invalid_xml_string = "<iq to='localhost' id='1234'><invalid<xml></iq>"
 
     try:
         element = ET.fromstring(invalid_xml_string)
-        result = feed(element)
+        result = ping.feed(element)
         assert result is None
     except ET.ParseError:
         pass
 
 def test_ping_feed_with_additional_attributes():
-    ping = Ping(jid="user@domain.com")
-    element = ET.Element("iq", attrib={"to": "localhost", "id": "1234", "extra": "value"})
+    with patch('pyjabber.plugins.xep_0199.xep_0199.host') as mock_host:
+        mock_host.get.return_value = 'localhost'
+        ping = Ping()
 
-    result = feed(element)
+        element = ET.Element("iq", attrib={"to": "localhost", "id": "1234", "extra": "value"})
 
-    expected_result = ET.tostring(
-        ET.Element(
-            "iq",
-            attrib={
-                "from": "localhost",
-                "id": "1234",
-                "to": "localhost",
-                "type": "result",
-            },
-        )
-    )
+        result = ping.feed(element)
+        result = ET.fromstring(result)
 
-    assert result == [expected_result]
+        assert result.tag == 'iq'
+        assert result.attrib.get('from') == 'localhost'
+        assert result.attrib.get('type') == 'result'
+        assert result.attrib.get('id') == '1234'
+        assert result.attrib.get('to') == 'localhost'
+

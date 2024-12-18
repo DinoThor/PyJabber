@@ -3,6 +3,9 @@ import sqlite3
 import xml.etree.ElementTree as ET
 from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.stanzas.error import StanzaError as SE
+from pyjabber.stream.JID import JID
+
+
 @pytest.fixture
 def setup_database():
     con = sqlite3.connect(':memory:')
@@ -23,16 +26,17 @@ def setup_database():
     yield con
     con.close()
 
+
 @pytest.fixture
 def db_connection_factory(setup_database):
     def factory():
         return setup_database
+
     return factory
 
 
-
 def test_feed_invalid_xml(db_connection_factory):
-    roster = Roster('jid1', db_connection_factory)
+    roster = Roster(db_connection_factory)
 
     # Crear un elemento XML inválido (más de un hijo)
     element = ET.Element('element')
@@ -40,15 +44,15 @@ def test_feed_invalid_xml(db_connection_factory):
     child2 = ET.SubElement(element, 'child')
 
     # Verificar que se devuelve un error de XML inválido
-    result = roster.feed(element)
+    result = roster.feed(JID('jid1@localhost'), element)
     assert result == SE.invalid_xml()
 
 
 def test_feed_handle_get(db_connection_factory):
-    roster = Roster( 'jid1', db_connection_factory)
+    roster = Roster(db_connection_factory)
 
     # Mock del manejador 'get'
-    def mock_handle_get(element):
+    def mock_handle_get(jid, element):
         return '<result />'
 
     roster._handlers['get'] = mock_handle_get
@@ -58,27 +62,27 @@ def test_feed_handle_get(db_connection_factory):
     child = ET.SubElement(element, 'query')
 
     # Verificar que el manejador 'get' se llama correctamente
-    result = roster.feed(element)
+    result = roster.feed(JID('jid1@localhost'), element)
     assert result == '<result />'
 
 
 def test_handleGet_existing_jid(db_connection_factory):
-    roster = Roster('jid1', db_connection_factory)
+    roster = Roster(db_connection_factory)
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'get'})
 
-    result = roster.handle_get(element)
+    result = roster.handle_get(JID('jid1@localhost'), element)
 
     assert b'<iq id="1234" type="result">' in result  # Verificamos que el resultado contiene la respuesta IQ correcta
 
+
 def test_handleGet_non_existing_jid(db_connection_factory):
-    roster = Roster('non_existing_jid', db_connection_factory)
+    roster = Roster(db_connection_factory)
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'get'})
 
-    result = roster.handle_get(element)
+    result = roster.handle_get(JID('non_existing_jid@localhost'), element)
 
     assert b'<iq id="1234" type="result">' in result  # Verificamos que se maneja adecuadamente aunque el jid no exista
-
 
 
 ###########
@@ -86,7 +90,7 @@ def test_handleGet_non_existing_jid(db_connection_factory):
 ###########
 
 def test_handleSet_add_new_item(db_connection_factory):
-    roster = Roster('jid3', db_connection_factory)
+    roster = Roster(db_connection_factory)
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
     # Definimos correctamente el elemento 'query' con el espacio de nombres correcto
@@ -94,15 +98,13 @@ def test_handleSet_add_new_item(db_connection_factory):
     item = ET.SubElement(query, '{jabber:iq:roster}item',
                          attrib={'jid': 'jid3', 'name': 'name3', 'subscription': 'both'})
 
-
-    result = roster.handle_set(element)
+    result = roster.handle_set(JID('jid3@localhost'), element)
 
     assert b'<iq id="1234" type="result" />' in result
 
 
-
 def test_handleSet_update_existing_item(db_connection_factory):
-    roster = Roster('jid1',db_connection_factory)
+    roster = Roster(db_connection_factory)
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
     # Definimos correctamente el elemento 'query' con el espacio de nombres correcto
@@ -110,14 +112,13 @@ def test_handleSet_update_existing_item(db_connection_factory):
     item = ET.SubElement(query, '{jabber:iq:roster}item',
                          attrib={'jid': 'jid3', 'name': 'name3', 'subscription': 'both'})
 
-
-    result = roster.handle_set(element)
+    result = roster.handle_set(JID('jid1@localhost'), element)
 
     assert b'<iq id="1234" type="result" />' in result
 
 
 def test_handleSet_remove_item(db_connection_factory):
-    roster = Roster('jid1',db_connection_factory)
+    roster = Roster(db_connection_factory)
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
     # Definimos correctamente el elemento 'query' con el espacio de nombres correcto
@@ -125,12 +126,13 @@ def test_handleSet_remove_item(db_connection_factory):
     item = ET.SubElement(query, '{jabber:iq:roster}item',
                          attrib={'jid': 'jid3', 'name': 'name3', 'subscription': 'both'})
 
-
-    result = roster.handle_set(element)
+    result = roster.handle_set(JID('jid1@localhost'), element)
 
     assert b'<iq id="1234" type="result" />' in result
+
+
 def test_handleSet_invalid_xml(db_connection_factory):
-    roster = Roster('jid1', db_connection_factory)
+    roster = Roster(db_connection_factory)
 
     # Create an element with multiple items
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
@@ -139,21 +141,23 @@ def test_handleSet_invalid_xml(db_connection_factory):
     ET.SubElement(query, '{jabber:iq:roster}item', attrib={'jid': 'jid2', 'subscription': 'none'})
 
     with pytest.raises(Exception):
-        roster.handle_set(element)
+        roster.handle_set(JID('jid1@localhost'), element)
+
 
 def test_handleSet_missing_query(db_connection_factory):
-    roster = Roster('jid1', db_connection_factory)
+    roster = Roster(db_connection_factory)
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
 
     with pytest.raises(Exception):
-        roster.handleSet(element)
+        roster.handle_set(JID('jid1@localhost'), element)
+
 
 def test_handleSet_no_items(db_connection_factory):
-    roster = Roster('jid1', db_connection_factory)
+    roster = Roster(db_connection_factory)
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
     query = ET.SubElement(element, '{jabber:iq:roster}query')
 
     with pytest.raises(Exception):
-        roster.handleSet(element)
+        roster.handle_set(JID('jid1@localhost'), element)
