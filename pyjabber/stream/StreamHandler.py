@@ -9,6 +9,7 @@ from pyjabber.features.StreamFeature import StreamFeature
 from pyjabber.features.SASLFeature import SASLFeature, SASL
 from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.metadata import host
 from pyjabber.stanzas.IQ import IQ
 
 
@@ -36,8 +37,8 @@ class Signal(Enum):
 
 
 class StreamHandler:
-    def __init__(self, host, buffer, starttls) -> None: # connection_manager
-        self._host = host
+    def __init__(self, buffer, starttls) -> None: # connection_manager
+        self._host = host.get()
         self._buffer = buffer
         self._starttls = starttls
 

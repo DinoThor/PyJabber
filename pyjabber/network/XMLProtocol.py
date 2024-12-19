@@ -58,11 +58,7 @@ class XMLProtocol(asyncio.Protocol):
             self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
             self._xml_parser.setFeature(sax.handler.feature_external_ges, False)
             self._xml_parser.setContentHandler(
-                XMLParser(
-                    self._host,
-                    self._transport,
-                    self.task_tls,
-                )
+                XMLParser(self._transport, self.task_tls)
             )
 
             if self._connection_timeout:

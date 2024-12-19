@@ -69,7 +69,7 @@ def test_handle_auth_failure(MockConnectionsManager, db_connection_factory):
 
     assert result == SE.not_authorized()
 
-# @patch.object(Metadata, 'host', new_callable=lambda: 'localhost')
+
 def test_handle_iq_register_conflict(db_connection_factory):
     sasl = SASL(db_connection_factory)
     element = ET.Element("iq", attrib={"type": "set", "id": "123"})

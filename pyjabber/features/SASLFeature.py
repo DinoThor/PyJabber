@@ -6,13 +6,13 @@ from typing import Dict, List, Tuple, Union
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
-from pyjabber.metadata import host#
 from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.metadata import host
 from pyjabber.db.database import connection
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
-from pyjabber.utils import ClarkNotation as CN
+from pyjabber.utils import ClarkNotation as CN, Singleton
 
 
 class MECHANISM(Enum):
@@ -36,7 +36,7 @@ def iq_register_result(iq_id: str) -> bytes:
     return ET.tostring(iq)
 
 
-class SASL:
+class SASL(metaclass=Singleton):
     def __init__(self, db_connection_factory=connection):
         self._handlers = {
             "iq": self.handleIQ,
