@@ -86,6 +86,12 @@ class Server:
         metadata_root_path.set(SERVER_FILE_PATH)
 
     async def run_server(self):
+        logger.add(
+            self._adminServer.send_log,
+            enqueue=True,
+            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> - <level>{level}: {message}</level>",
+            level='DEBUG'
+        )
         logger.info("Starting server...")
 
         if os.path.isfile(self._database_path) is False:

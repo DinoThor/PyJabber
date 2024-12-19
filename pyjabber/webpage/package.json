@@ -52,6 +52,7 @@
     "rsuite": "^5.60.2",
     "sass-loader": "^12.3.0",
     "semver": "^7.3.5",
+    "socket.io-client": "^4.8.1",
     "source-map-loader": "^3.0.0",
     "style-loader": "^3.3.1",
     "tailwindcss": "^3.0.2",
@@ -63,10 +64,10 @@
     "workbox-webpack-plugin": "^6.4.1"
   },
   "scripts": {
-    "start": "react-scripts start",                 
-    "build": "react-scripts build",                 
-    "test": "react-scripts test --env=jsdom",       
-    "eject": "react-scripts eject"                  
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
