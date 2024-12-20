@@ -3,6 +3,7 @@ import os
 import signal
 import socket
 import sys
+from asyncio import CancelledError
 
 from contextlib import closing
 from loguru import logger
@@ -25,6 +26,10 @@ else:
     import uvloop
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+
+
+class ServerHalt(Exception):
+    pass
 
 
 class Server:
@@ -123,41 +128,44 @@ class Server:
 
         lan_ip = self.query_local_ip()
 
-        self._client_listener = await loop.create_server(
-            lambda: XMLProtocol(
-                namespace='jabber:client',
-                host=self._host,
-                connection_timeout=self._connection_timeout,
-                cert_path=self._cert_path,
-                enable_tls1_3=self._enable_tls1_3,
-            ),
-            host=[self._host, lan_ip] if lan_ip else [self._host],
-            port=self._client_port,
-            family=self._family
-        )
+        try:
+            self._client_listener = await loop.create_server(
+                lambda: XMLProtocol(
+                    namespace='jabber:client',
+                    host=self._host,
+                    connection_timeout=self._connection_timeout,
+                    cert_path=self._cert_path,
+                    enable_tls1_3=self._enable_tls1_3,
+                ),
+                host=[self._host, lan_ip] if lan_ip else [self._host],
+                port=self._client_port,
+                family=self._family
+            )
 
-        logger.info(f"Client domain => {self._host}")
-        logger.info(f"Server is listening clients on {[s.getsockname() for s in self._client_listener.sockets if s]}")
+            logger.info(f"Client domain => {self._host}")
+            logger.info(f"Server is listening clients on {[s.getsockname() for s in self._client_listener.sockets if s]}")
 
-        self._server_listener = await loop.create_server(
-            lambda: XMLServerIncomingProtocol(
-                namespace='jabber:server',
-                host=self._host,
-                connection_timeout=self._connection_timeout,
-                cert_path=self._cert_path,
-                enable_tls1_3=self._enable_tls1_3,
-            ),
-            host=["0.0.0.0"],
-            port=self._server_port,
-            family=self._family
-        )
+            self._server_listener = await loop.create_server(
+                lambda: XMLServerIncomingProtocol(
+                    namespace='jabber:server',
+                    host=self._host,
+                    connection_timeout=self._connection_timeout,
+                    cert_path=self._cert_path,
+                    enable_tls1_3=self._enable_tls1_3,
+                ),
+                host=["0.0.0.0"],
+                port=self._server_port,
+                family=self._family
+            )
+
+        except OSError as e:
+            logger.error(f"Error starting the server: {e}")
+            self.raise_exit()
 
         logger.info(f"Server is listening servers on {[s.getsockname() for s in self._server_listener.sockets if s]}")
         logger.info("Server started...")
 
     async def stop(self):
-        logger.info("Stopping server...")
-
         if self._client_listener and self._client_listener.is_serving():
             self._client_listener.close()
             await self._client_listener.wait_closed()
@@ -212,7 +220,6 @@ class Server:
     async def start(self):
         """
             Start the already created and configuration server
-            :param debug: Boolean. Enables debug mode in asyncio
         """
 
         signal.signal(signal.SIGINT, self.raise_exit)
@@ -224,8 +231,8 @@ class Server:
             admin_coro = self._adminServer.start()
             await asyncio.gather(main_server, admin_coro)
 
-        except (SystemExit, KeyboardInterrupt):  # pragma: no cover
-            pass
+        except (ServerHalt, KeyboardInterrupt, CancelledError) as e:  # pragma: no cover
+            logger.info("Stopping server...")
 
         finally:
             await asyncio.gather(self.stop(), self._adminServer.app.cleanup())

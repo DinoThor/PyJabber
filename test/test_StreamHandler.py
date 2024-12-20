@@ -109,6 +109,7 @@ def test_handle_open_stream_sasl_continue(mock_connection, setup):
     with patch('pyjabber.features.SASLFeature.host') as mock_host:
         mock_host.get.return_value = 'localhost'
         sasl_instance = SASL(db_connection_factory=mock_db_connection_factory)
+        sasl_instance._db_connection_factory = mock_db_connection_factory
         sasl_instance._connections = MagicMock()
 
         handler.handle_open_stream(elem)

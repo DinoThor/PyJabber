@@ -161,7 +161,7 @@ class ConnectionManager(metaclass=Singleton):
         if self.check_server_present_in_list(host):
             return
 
-        self._task_s2s(host)
+        # self._task_s2s(host)
 
     def get_server_host(self, peer: Tuple[str, int]):
         """

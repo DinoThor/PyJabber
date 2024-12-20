@@ -9,7 +9,7 @@ from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.plugins.PluginManager import PluginManager
 
 
-class InternalServerError(Exception):
+class ServerHalt(Exception):
     pass
 
 
@@ -35,9 +35,10 @@ class StanzaHandler:
     def feed(self, element: ET.Element):
         try:
             self._functions[element.tag](element)
-        except (KeyError, InternalServerError) as e:
+        except (KeyError, ServerHalt) as e:
             loguru.logger.error(e)
             loguru.logger.error(f"INTERNAL SERVER ERROR WITH {self._peername}. CLOSING CONNECTION FOR SERVER STABILITY")
+            raise ServerHalt
 
     def handle_iq(self, element: ET.Element):
         """
@@ -62,8 +63,8 @@ class StanzaHandler:
         """
         jid = JID(element.attrib["to"])
 
-        if re.match(fr'^[a-zA-Z0-9._%+-]+@{re.escape(self._host)}$', jid.bare()):
-            for buffer in self._connections.get_buffer(JID(jid.bare())):
+        if jid.check_domain(self._host):
+            for buffer in self._connections.get_buffer(jid.bare_jid()):
                 buffer[-1].write(ET.tostring(element))
 
         else:

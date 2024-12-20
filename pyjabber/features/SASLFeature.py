@@ -77,8 +77,9 @@ class SASL(metaclass=Singleton):
                 credentials = res.fetchone()
 
                 if credentials:
-                    return SE.conflict_error(
+                    return_value = SE.conflict_error(
                         element.attrib["id"])
+
                 else:
                     pwd = query.find(
                         CN.clarkFromTuple(
@@ -88,8 +89,10 @@ class SASL(metaclass=Singleton):
                     con.execute(
                         "INSERT INTO credentials(jid, hash_pwd) VALUES (?, ?)", (new_jid, hash_pwd))
                     con.commit()
-                    return iq_register_result(
+                    return_value = iq_register_result(
                         element.attrib["id"])
+
+            return return_value
 
         elif element.attrib["type"] == "get":
             iq = IQ(

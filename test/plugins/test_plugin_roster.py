@@ -68,6 +68,7 @@ def test_feed_handle_get(db_connection_factory):
 
 def test_handleGet_existing_jid(db_connection_factory):
     roster = Roster(db_connection_factory)
+    roster._db_connection_factory = db_connection_factory
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'get'})
 
@@ -78,6 +79,8 @@ def test_handleGet_existing_jid(db_connection_factory):
 
 def test_handleGet_non_existing_jid(db_connection_factory):
     roster = Roster(db_connection_factory)
+    roster._db_connection_factory = db_connection_factory
+
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'get'})
 
     result = roster.handle_get(JID('non_existing_jid@localhost'), element)
@@ -91,6 +94,7 @@ def test_handleGet_non_existing_jid(db_connection_factory):
 
 def test_handleSet_add_new_item(db_connection_factory):
     roster = Roster(db_connection_factory)
+    roster._db_connection_factory = db_connection_factory
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
     # Definimos correctamente el elemento 'query' con el espacio de nombres correcto
@@ -105,6 +109,7 @@ def test_handleSet_add_new_item(db_connection_factory):
 
 def test_handleSet_update_existing_item(db_connection_factory):
     roster = Roster(db_connection_factory)
+    roster._db_connection_factory = db_connection_factory
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
     # Definimos correctamente el elemento 'query' con el espacio de nombres correcto
@@ -119,6 +124,7 @@ def test_handleSet_update_existing_item(db_connection_factory):
 
 def test_handleSet_remove_item(db_connection_factory):
     roster = Roster(db_connection_factory)
+    roster._db_connection_factory = db_connection_factory
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
     # Definimos correctamente el elemento 'query' con el espacio de nombres correcto
@@ -133,6 +139,7 @@ def test_handleSet_remove_item(db_connection_factory):
 
 def test_handleSet_invalid_xml(db_connection_factory):
     roster = Roster(db_connection_factory)
+    roster._db_connection_factory = db_connection_factory
 
     # Create an element with multiple items
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
@@ -140,24 +147,25 @@ def test_handleSet_invalid_xml(db_connection_factory):
     ET.SubElement(query, '{jabber:iq:roster}item', attrib={'jid': 'jid1', 'subscription': 'both'})
     ET.SubElement(query, '{jabber:iq:roster}item', attrib={'jid': 'jid2', 'subscription': 'none'})
 
-    with pytest.raises(Exception):
-        roster.handle_set(JID('jid1@localhost'), element)
+    assert roster.handle_set(JID('jid1@localhost'), element) == SE.invalid_xml()
+
+
 
 
 def test_handleSet_missing_query(db_connection_factory):
     roster = Roster(db_connection_factory)
+    roster._db_connection_factory = db_connection_factory
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
 
-    with pytest.raises(Exception):
-        roster.handle_set(JID('jid1@localhost'), element)
+    assert roster.handle_set(JID('jid1@localhost'), element) == SE.invalid_xml()
 
 
 def test_handleSet_no_items(db_connection_factory):
     roster = Roster(db_connection_factory)
+    roster._db_connection_factory = db_connection_factory
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
     query = ET.SubElement(element, '{jabber:iq:roster}query')
 
-    with pytest.raises(Exception):
-        roster.handle_set(JID('jid1@localhost'), element)
+    assert roster.handle_set(JID('jid1@localhost'), element) == SE.invalid_xml()

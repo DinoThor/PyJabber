@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class JID:
     def __init__(self, jid: str = None, user: str = None, domain: str = None, resource: str = None):
         if jid and (user or domain or resource):
@@ -40,6 +43,12 @@ class JID:
 
     def bare(self) -> str:
         return f'{self._user}@{self._domain}'
+
+    def bare_jid(self) -> JID:
+        return JID(user=self.user, domain=self.domain)
+
+    def check_domain(self, domain: str) -> bool:
+        return self.domain == domain
 
     def __str__(self):
         if self._resource:
