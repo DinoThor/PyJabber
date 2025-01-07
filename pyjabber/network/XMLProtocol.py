@@ -128,10 +128,13 @@ class XMLProtocol(asyncio.Protocol):
         """
         Called when the stream is not responding for a long tikem
         """
-        logger.debug(f"Connection timeout from {self._peer}")
+        logger.info(f"Connection timeout from {self._peer}")
 
-        self._transport.write("<connection-timeout/>".encode())
-        self._transport.close()
+        try:
+            self._transport.write("<connection-timeout/>".encode())
+            self._transport.close()
+        except:
+            logger.info(f"Connection with {self._peer} is already closed. Removing from online list")
 
         self._connection_manager.disconnection(self._peer)
 

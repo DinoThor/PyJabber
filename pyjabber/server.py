@@ -2,6 +2,7 @@ import asyncio
 import os
 import signal
 import socket
+import sqlite3
 import sys
 
 from contextlib import closing
@@ -17,6 +18,7 @@ from pyjabber.webpage.adminPage import AdminPage
 from pyjabber.network import CertGenerator
 from pyjabber.metadata import host as metadata_host, config_path as metadata_config_path
 from pyjabber.metadata import database_path as metadata_database_path, root_path as metadata_root_path
+from pyjabber.metadata import database_on_memory as metadata_database_on_memory
 
 if sys.platform == 'win32':
     #from winloop import run
@@ -52,6 +54,7 @@ class Server:
         connection_timeout=60,
         database_path=os.path.join(SERVER_FILE_PATH, 'db', 'server.db'),
         database_purge=False,
+        database_on_memory=False,
         enable_tls1_3=False,
         cert_path=None
     ):
@@ -70,6 +73,7 @@ class Server:
         self._sql_init_script = os.path.join(SERVER_FILE_PATH, 'db', 'schema.sql')
         self._sql_delete_script = os.path.join(SERVER_FILE_PATH, 'db', 'delete.sql')
         self._database_purge = database_purge
+        self._database_on_memory = database_on_memory
         self._cert_path = cert_path or os.path.join(SERVER_FILE_PATH, 'network', 'certs')
         self._custom_loop = True
 
@@ -88,7 +92,15 @@ class Server:
     async def run_server(self):
         logger.info("Starting server...")
 
-        if os.path.isfile(self._database_path) is False:
+        if self._database_on_memory:
+            logger.info("Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!")
+            con = sqlite3.connect(":memory:")
+            with open(self._sql_init_script, "r") as script:
+                con.cursor().executescript(script.read())
+                con.commit()
+            metadata_database_on_memory.set(con)
+
+        elif os.path.isfile(self._database_path) is False:
             logger.info("No database found. Initializing one...")
             if self._database_purge:
                 logger.info("Ignoring purge database flag. No DB to purge")

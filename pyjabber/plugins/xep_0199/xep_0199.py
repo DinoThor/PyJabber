@@ -6,7 +6,7 @@ from pyjabber.metadata import host
 
 
 class Ping(metaclass=Singleton):
-    def feed(self, element: ET.Element):
+    def feed(self, _, element: ET.Element):
         if element.attrib.get('to') and element.attrib.get('to') == host.get():
             return ET.tostring(
                 IQ(

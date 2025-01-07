@@ -111,6 +111,6 @@ class Roster(metaclass=Singleton):
 
             return ET.tostring(res)
 
-    def handle_result(self, element: ET.Element):
+    def handle_result(self, _, __):
         # It's safe to ignore this stanza
         return
