@@ -36,6 +36,8 @@ FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 @click.option('--database_path', type=str, default=os.path.join(FILE_PATH, 'db', 'server.db'),
               show_default=True, help='Path for database file')
 @click.option('--database_purge', is_flag=True, help='Restore database file to default state (empty)')
+@click.option('--database_in_memory', is_flag=True,
+              help='Database in memory. The data will be erased after server shutdown')
 @click.option(
               "-v",
               "--verbose",
@@ -55,6 +57,7 @@ def main(
         timeout,
         database_path,
         database_purge,
+        database_in_memory,
         verbose,
         log_path,
         debug):
@@ -86,10 +89,9 @@ def main(
         connection_timeout=timeout,
         database_path=database_path,
         database_purge=database_purge,
+        database_in_memory=database_in_memory,
         enable_tls1_3=tls1_3,
-
     )
-
 
     run(server.start(), debug=debug)
 

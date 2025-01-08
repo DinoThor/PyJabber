@@ -1,9 +1,9 @@
 import sqlite3
 
-from pyjabber.metadata import database_path, database_on_memory
+from pyjabber.metadata import database_path, database_in_memory
 
 
 def connection() -> sqlite3.Connection:
-    if database_on_memory is None:
-        return sqlite3.connect(database_path.get())
-    return sqlite3.connect('file::memory:?cache=shared')
+    if database_in_memory:
+        return sqlite3.connect("file::memory:?cache=shared", uri=True)
+    return sqlite3.connect(database_path.get())

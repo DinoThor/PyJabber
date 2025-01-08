@@ -18,9 +18,9 @@ from pyjabber.webpage.adminPage import AdminPage
 from pyjabber.network import CertGenerator
 from pyjabber.metadata import host as metadata_host, config_path as metadata_config_path
 from pyjabber.metadata import database_path as metadata_database_path, root_path as metadata_root_path
-from pyjabber.metadata import database_on_memory as metadata_database_on_memory
+from pyjabber.metadata import database_in_memory as metadata_database_in_memory
 
-if sys.platform == 'win32':
+if sys.platform == "win32":
     #from winloop import run
     pass
 else:
@@ -46,15 +46,15 @@ class Server:
 
     def __init__(
         self,
-        host='localhost',
+        host="localhost",
         client_port=5222,
         server_port=5269,
         server_out_port=5269,
         family=socket.AF_INET,
         connection_timeout=60,
-        database_path=os.path.join(SERVER_FILE_PATH, 'db', 'server.db'),
+        database_path=os.path.join(SERVER_FILE_PATH, "db", "server.db"),
         database_purge=False,
-        database_on_memory=False,
+        database_in_memory=False,
         enable_tls1_3=False,
         cert_path=None
     ):
@@ -70,11 +70,12 @@ class Server:
         self._public_ip = None
         self._connection_timeout = connection_timeout
         self._database_path = database_path
-        self._sql_init_script = os.path.join(SERVER_FILE_PATH, 'db', 'schema.sql')
-        self._sql_delete_script = os.path.join(SERVER_FILE_PATH, 'db', 'delete.sql')
+        self._sql_init_script = os.path.join(SERVER_FILE_PATH, "db", "schema.sql")
+        self._sql_delete_script = os.path.join(SERVER_FILE_PATH, "db", "delete.sql")
         self._database_purge = database_purge
-        self._database_on_memory = database_on_memory
-        self._cert_path = cert_path or os.path.join(SERVER_FILE_PATH, 'network', 'certs')
+        self._database_in_memory = database_in_memory
+        self._db_in_memory_con = None
+        self._cert_path = cert_path or os.path.join(SERVER_FILE_PATH, "network", "certs")
         self._custom_loop = True
 
         # Client handler
@@ -86,19 +87,19 @@ class Server:
 
         metadata_host.set(host)
         metadata_database_path.set(self._database_path)
-        metadata_config_path.set(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config/config.yaml'))
+        metadata_config_path.set(os.path.join(os.path.dirname(os.path.abspath(__file__)), "config/config.yaml"))
         metadata_root_path.set(SERVER_FILE_PATH)
 
     async def run_server(self):
         logger.info("Starting server...")
 
-        if self._database_on_memory:
+        if self._database_in_memory:
             logger.info("Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!")
-            con = sqlite3.connect(":memory:")
+            self._db_in_memory_con = sqlite3.connect("file::memory:?cache=shared", uri=True)
             with open(self._sql_init_script, "r") as script:
-                con.cursor().executescript(script.read())
-                con.commit()
-            metadata_database_on_memory.set(con)
+                self._db_in_memory_con.cursor().executescript(script.read())
+                self._db_in_memory_con.commit()
+            metadata_database_in_memory.set(self._database_in_memory)
 
         elif os.path.isfile(self._database_path) is False:
             logger.info("No database found. Initializing one...")
@@ -129,40 +130,52 @@ class Server:
 
         lan_ip = self.query_local_ip()
 
-        self._client_listener = await loop.create_server(
-            lambda: XMLProtocol(
-                namespace='jabber:client',
-                host=self._host,
-                connection_timeout=self._connection_timeout,
-                cert_path=self._cert_path,
-                enable_tls1_3=self._enable_tls1_3,
-            ),
-            host=[self._host, lan_ip] if lan_ip else [self._host],
-            port=self._client_port,
-            family=self._family
-        )
+        try:
+            self._client_listener = await loop.create_server(
+                lambda: XMLProtocol(
+                    namespace="jabber:client",
+                    host=self._host,
+                    connection_timeout=self._connection_timeout,
+                    cert_path=self._cert_path,
+                    enable_tls1_3=self._enable_tls1_3,
+                ),
+                host=[self._host, lan_ip] if lan_ip else [self._host],
+                port=self._client_port,
+                family=self._family
+            )
+        except OSError as e:
+            logger.error(e)
+            raise SystemExit
+
 
         logger.info(f"Client domain => {self._host}")
         logger.info(f"Server is listening clients on {[s.getsockname() for s in self._client_listener.sockets if s]}")
 
-        self._server_listener = await loop.create_server(
-            lambda: XMLServerIncomingProtocol(
-                namespace='jabber:server',
-                host=self._host,
-                connection_timeout=self._connection_timeout,
-                cert_path=self._cert_path,
-                enable_tls1_3=self._enable_tls1_3,
-            ),
-            host=["0.0.0.0"],
-            port=self._server_port,
-            family=self._family
-        )
+        try:
+            self._server_listener = await loop.create_server(
+                lambda: XMLServerIncomingProtocol(
+                    namespace="jabber:server",
+                    host=self._host,
+                    connection_timeout=self._connection_timeout,
+                    cert_path=self._cert_path,
+                    enable_tls1_3=self._enable_tls1_3,
+                ),
+                host=["0.0.0.0"],
+                port=self._server_port,
+                family=self._family
+            )
+        except OSError as e:
+            logger.error(e)
+            raise SystemExit
 
         logger.info(f"Server is listening servers on {[s.getsockname() for s in self._server_listener.sockets if s]}")
         logger.info("Server started...")
 
     async def stop(self):
         logger.info("Stopping server...")
+
+        if self._db_in_memory_con:
+            self._db_in_memory_con.close()
 
         if self._client_listener and self._client_listener.is_serving():
             self._client_listener.close()
