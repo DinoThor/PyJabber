@@ -15,6 +15,7 @@ plugins:
     - 'jabber:iq:register'
     - 'jabber:x:data'
     - 'urn:xmpp:ping'
+    - 'jabber:iq:rpc'
 
 # List of items and his associated JID, available via disco#items query
 # to the server domain/host
