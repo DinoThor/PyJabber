@@ -41,13 +41,8 @@ export default function Contact() {
       });
   }
 
-  useEffect(() => {
-    retrieveUserList()
-  }, []);
+  </Table.Cell>
 
-  useEffect(() => {
-    retrieveUserList()
-  }, [formVisible]);
 
   return (
     <div style={{
