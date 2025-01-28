@@ -1,6 +1,10 @@
 =======
 History
 =======
+0.1.10 (2025-12-28)
+-------------------
+* Changed default database path. Now, it will create a *Pyjabber.db* file in the working dir where the server is launched
+* Fixed, refactored and sped up the STARTTLS process. Now there's an independent worker (async task), who awaits from a queue for TLS upgrades petitions from StreamHandler objects.
 
 0.1.9.post1 (2024-12-18)
 -----------------------
