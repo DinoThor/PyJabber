@@ -24,7 +24,7 @@ class StanzaHandler:
         self._jid = self._connections.get_jid(self._peername)
 
         self._pluginManager = PluginManager(self._jid)
-        self._presenceManager = Presence(self._jid)
+        self._presenceManager = Presence()
 
         self._functions = {
             "{jabber:client}iq": self.handle_iq,
@@ -75,6 +75,6 @@ class StanzaHandler:
                 self._queue_message.enqueue(jid.domain, ET.tostring(element))
 
     def handle_pre(self, element: ET.Element):
-        res = self._presenceManager.feed(element, self._jid)
+        res = self._presenceManager.feed(self._jid, element)
         if res:
             self._buffer.write(res)

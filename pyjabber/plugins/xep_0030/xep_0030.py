@@ -12,8 +12,8 @@ from pyjabber.utils import Singleton
 
 def iq_skeleton(element: ET.Element, disco_type: Literal['info', 'items']):
     iq_res = IQ(
-        type=IQ.TYPE.RESULT.value,
-        id=element.get('id'),
+        type_=IQ.TYPE.RESULT.value,
+        id_=element.get('id'),
         from_=element.get('to'),
         to=element.get('from')
     )
@@ -40,7 +40,7 @@ class Disco(metaclass=Singleton):
             self._pubsub_jid = self._pubsub_jid.replace('$', self._host)
             self._pubsub = PubSub()
 
-    def feed(self, jid: str, element: ET.Element):
+    def feed(self, jid: JID, element: ET.Element):
         if len(element) != 1:
             return SE.invalid_xml()
 
@@ -51,7 +51,7 @@ class Disco(metaclass=Singleton):
         else:
             pass
 
-    def handle_info(self, jid: str, element: ET.Element):
+    def handle_info(self, _, element: ET.Element):
         to = element.attrib.get('to')
         if to is not None:
             to = JID(to)
@@ -82,7 +82,7 @@ class Disco(metaclass=Singleton):
             ET.SubElement(query_res, 'feature', attrib={'var': 'http://jabber.org/protocol/pubsub'})
             return ET.tostring(iq_res)
 
-    def handle_items(self, jid: str, element: ET.Element):
+    def handle_items(self, _, element: ET.Element):
         to = element.attrib.get('to')
 
         # Server items

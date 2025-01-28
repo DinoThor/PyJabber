@@ -7,25 +7,28 @@ from pyjabber.stream.StreamHandler import Signal
 from pyjabber.network.XMLParser import XMLParser
 
 
-def test_initialization():
-    buffer = Mock()
-    starttls = Mock()
-    host = Mock()
+@pytest.fixture
+def setup():
+    with patch('pyjabber.stream.StreamHandler.host') as mock_host:
+        with patch('pyjabber.network.XMLParser.host') as mock_host_parser:
+            buffer = Mock()
+            starttls = Mock()
+            mock_host.get.return_value = 'localhost'
+            mock_host_parser.get.return_value = 'localhost'
 
-    handler = XMLParser(host, buffer, starttls)
+            return XMLParser(buffer, starttls)
+
+def test_initialization(setup):
+    handler = setup
 
     assert handler._state == XMLParser.StreamState.CONNECTED
-    assert handler._buffer == buffer
+    assert handler._buffer is not None
     assert handler._stanzaHandler is None
     assert handler._streamHandler is not None
     assert handler._stack == []
 
-def test_buffer_property():
-    buffer = Mock()
-    starttls = Mock()
-    host  = Mock()
-
-    handler = XMLParser(host, buffer, starttls)
+def test_buffer_property(setup):
+    handler = setup
 
     new_buffer = Mock()
     handler.buffer = new_buffer
@@ -34,29 +37,19 @@ def test_buffer_property():
     assert handler._streamHandler.buffer == new_buffer
 
 
-def test_start_element_ns_stream():
-    buffer = MagicMock()
-    starttls = Mock()
-    host = Mock()
-
-    handler = XMLParser(host, buffer, starttls)
+def test_start_element_ns_stream(setup):
+    handler = setup
 
     attrs = {("http://etherx.jabber.org/streams", "version"): "1.0"}
     handler.startElementNS(("http://etherx.jabber.org/streams", "stream"), "stream", attrs)
 
-    assert buffer.write.call_count == 2
+    assert handler._buffer.write.call_count == 2
     assert len(handler._stack) == 1
     assert handler._stack[0].tag == CN.clarkFromTuple(("http://etherx.jabber.org/streams", "stream"))
 
 
-def test_start_element_ns_normal_element():
-    buffer = MagicMock()
-    starttls = Mock()
-    connection_manager = Mock()
-    queue_message = Mock()
-    host = Mock()
-
-    handler = XMLParser(host, buffer, starttls)
+def test_start_element_ns_normal_element(setup):
+    handler = setup
 
     attrs = {("namespace", "attr"): "value"}
     handler._stack.append(ET.Element("dummy"))
@@ -67,36 +60,25 @@ def test_start_element_ns_normal_element():
     assert handler._stack[-1].attrib == {CN.clarkFromTuple(("namespace", "attr")): "value"}
 
 
-def test_start_element_ns_invalid():
-    buffer = MagicMock()
-    starttls = Mock()
-    host = Mock()
-
-    handler = XMLParser(host, buffer, starttls)
+def test_start_element_ns_invalid(setup):
+    handler = setup
 
     with pytest.raises(Exception):
         handler.startElementNS(("invalid", "element"), "element", {})
 
 
-def test_end_element_ns_stream():
-    buffer = MagicMock()
-    starttls = Mock()
-    host = Mock()
-
-    handler = XMLParser(host, buffer, starttls)
+def test_end_element_ns_stream(setup):
+    handler = setup
     handler._stack.append(ET.Element("{http://etherx.jabber.org/streams}stream"))
 
     handler.endElementNS(("http://etherx.jabber.org/streams", "stream"), "stream")
 
-    buffer.write.assert_called_once_with(b'</stream:stream>')
+    handler._buffer.write.assert_called_once_with(b'</stream:stream>')
     assert len(handler._stack) == 0
 
 
-def test_end_element_ns_normal_element():
-    buffer = MagicMock()
-    starttls = Mock()
-    host = Mock()
-    handler = XMLParser(host, buffer, starttls)
+def test_end_element_ns_normal_element(setup):
+    handler = setup
 
     parent = ET.Element(CN.clarkFromTuple(("namespace", "parent")))
     child = ET.Element(CN.clarkFromTuple(("namespace", "child")))
@@ -110,21 +92,15 @@ def test_end_element_ns_normal_element():
     assert len(handler._stack[0]) == 1
     assert handler._stack[0][0].tag == CN.clarkFromTuple(("namespace", "child"))
 
-def test_end_element_ns_invalid_stack():
-    buffer = MagicMock()
-    starttls = Mock()
-    host = Mock()
-    handler = XMLParser(host, buffer, starttls)
+def test_end_element_ns_invalid_stack(setup):
+    handler = setup
 
     with pytest.raises(Exception):
         handler.endElementNS(("namespace", "element"), "element")
 
 
-def test_end_element_ns_mismatched_tag():
-    buffer = MagicMock()
-    starttls = Mock()
-    host = Mock()
-    handler = XMLParser(host, buffer, starttls)
+def test_end_element_ns_mismatched_tag(setup):
+    handler = setup
     handler._stack.append(ET.Element("different"))
 
     with pytest.raises(Exception):
@@ -135,11 +111,8 @@ def test_end_element_ns_mismatched_tag():
 @patch('pyjabber.stream.StreamHandler.StreamHandler')
 @patch('pyjabber.stream.StanzaHandler.PluginManager')
 @patch('pyjabber.stream.StanzaHandler.Presence')
-def test_end_element_ns_stream_handling(mock_plugin_manager, mock_presence, mock_handle_open_stream, mock_stream_handler):
-    buffer = MagicMock()
-    starttls = Mock()
-    host = Mock()
-    handler = XMLParser(host, buffer, starttls)
+def test_end_element_ns_stream_handling(mock_plugin_manager, mock_presence, mock_handle_open_stream, mock_stream_handler, setup):
+    handler = setup
     handler._stack.append(ET.Element("{http://etherx.jabber.org/streams}stream"))
 
     mock_plugin_manager.return_value = MagicMock()
@@ -157,11 +130,8 @@ def test_end_element_ns_stream_handling(mock_plugin_manager, mock_presence, mock
     assert handler._state == XMLParser.StreamState.READY
 
 
-def test_characters():
-    buffer = MagicMock()
-    starttls = Mock()
-    host = Mock()
-    handler = XMLParser(host, buffer, starttls)
+def test_characters(setup):
+    handler = setup
     parent = ET.Element("parent")
     child = ET.SubElement(parent, "child")
     handler._stack.append(parent)

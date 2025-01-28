@@ -8,9 +8,9 @@ from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.stream.JID import JID
 
 
-def retrieve_roster(jid: JID) -> List[str]:  # pragma: no cover
+def retrieve_roster(jid: str) -> List[str]:  # pragma: no cover
     with closing(connection()) as con:
-        res = con.execute("SELECT * FROM roster WHERE jid = ?", (str(jid),))
+        res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
         roster = res.fetchall()
     return roster
 
@@ -35,12 +35,12 @@ def store_pending_sub(from_: str, to_: str, item: ET.Element) -> None:
         con.commit()
 
 
-def check_pending_sub(jid: str) -> List[str]:
+def check_pending_sub() -> List[str]:
     with closing(connection()) as con:
-        res = con.execute("SELECT * FROM pendingsub WHERE jid_to = ?", (jid,))
+        res = con.execute("SELECT * FROM pendingsub")
         pending = res.fetchall()
 
-        con.execute("DELETE FROM pendingsub WHERE jid_to = ?", (jid,))
+        con.execute("DELETE FROM pendingsub")
         con.commit()
     return pending
 

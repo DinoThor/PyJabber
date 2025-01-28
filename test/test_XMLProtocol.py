@@ -20,22 +20,26 @@ def test_connection_made(mock_make_parser):
     cert_path = None
     connection_timeout = 30
 
-    with patch('pyjabber.network.XMLProtocol.XMLParser', return_value=mock_handler):
-        protocol = XMLProtocol(
-            host=host,
-            namespace=namespace,
-            connection_timeout=connection_timeout,
-            cert_path=cert_path,
-        )
-        protocol._connection_manager = mock_connections_manager
-        protocol.connection_made(mock_transport)
+    with patch('pyjabber.network.XMLProtocol.XMLParser') as mock_handler:
+        with patch('pyjabber.stream.StreamHandler.host') as mock_host_stream:
+            mock_handler.return_value = MagicMock()
+            mock_host_stream.get.return_value = 'localhost'
 
-    mock_transport.get_extra_info.assert_called_with('peername')
-    mock_make_parser.assert_called_once()
-    mock_parser.setFeature.assert_any_call(sax.handler.feature_namespaces, True)
-    mock_parser.setFeature.assert_any_call(sax.handler.feature_external_ges, False)
-    mock_parser.setContentHandler.assert_called_once_with(mock_handler)
-    mock_connections_manager.connection.assert_called_once_with(mock_transport.get_extra_info(), mock_transport)
+            protocol = XMLProtocol(
+                host=host,
+                namespace=namespace,
+                connection_timeout=connection_timeout,
+                cert_path=cert_path,
+            )
+            protocol._connection_manager = mock_connections_manager
+            protocol.connection_made(mock_transport)
+
+        mock_transport.get_extra_info.assert_called_with('peername')
+        mock_make_parser.assert_called_once()
+        mock_parser.setFeature.assert_any_call(sax.handler.feature_namespaces, True)
+        mock_parser.setFeature.assert_any_call(sax.handler.feature_external_ges, False)
+        mock_parser.setContentHandler.assert_called_once_with(mock_handler.return_value)
+        mock_connections_manager.connection.assert_called_once_with(mock_transport.get_extra_info(), mock_transport)
 
 
 @patch('pyjabber.network.XMLProtocol.StreamAlivenessMonitor')
@@ -49,13 +53,15 @@ def test_connection_made_with_timeout(mock_monitor):
     connection_timeout = 30
 
     with patch('pyjabber.network.XMLProtocol.sax.make_parser', return_value=mock_parser):
-        protocol = XMLProtocol(
-            host=host,
-            namespace=namespace,
-            cert_path=cert_path,
-            connection_timeout=connection_timeout,
-        )
-        protocol.connection_made(mock_transport)
+        with patch('pyjabber.network.XMLProtocol.XMLParser') as mock_handler:
+            mock_handler.return_value = MagicMock()
+            protocol = XMLProtocol(
+                host=host,
+                namespace=namespace,
+                cert_path=cert_path,
+                connection_timeout=connection_timeout,
+            )
+            protocol.connection_made(mock_transport)
 
     mock_monitor.assert_called_once_with(timeout=30, callback=protocol.connection_timeout)
     mock_transport.get_extra_info.assert_called_with('peername')
@@ -112,20 +118,24 @@ def test_eof_received():
     cert_path = None
     connection_timeout = 30
 
-    protocol = XMLProtocol(
-        host=host,
-        namespace=namespace,
-        connection_timeout=connection_timeout,
-        cert_path=cert_path,
-    )
-    mock_transport = MagicMock()
-    protocol.connection_made(mock_transport)
-    mock_connections = MagicMock()
-    protocol._connection_manager = mock_connections
+    with patch('pyjabber.network.XMLParser.host') as mock_host:
+        with patch('pyjabber.stream.StreamHandler.host') as mock_host_stream:
+            mock_host.get.return_value = 'localhost'
+            mock_host_stream.get.return_value = 'localhost'
+            protocol = XMLProtocol(
+                host=host,
+                namespace=namespace,
+                connection_timeout=connection_timeout,
+                cert_path=cert_path,
+            )
+            mock_transport = MagicMock()
+            protocol.connection_made(mock_transport)
+            mock_connections = MagicMock()
+            protocol._connection_manager = mock_connections
 
-    protocol.eof_received()
-    mock_transport.get_extra_info.assert_called_with('peername')
-    mock_connections.disconnection.assert_called_once_with(mock_transport.get_extra_info.return_value)
+            protocol.eof_received()
+            mock_transport.get_extra_info.assert_called_with('peername')
+            mock_connections.disconnection.assert_called_once_with(mock_transport.get_extra_info.return_value)
 
     # Verificar que el transporte y el analizador XML se mantengan en su estado actual
     assert protocol._transport == mock_transport

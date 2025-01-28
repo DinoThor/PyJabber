@@ -110,8 +110,7 @@ The CLI launcher provides access to all the configuration options available in t
           --family [ipv4|ipv6]       (ipv4 / ipv6)  [default: ipv4]
           --tls1_3                   Enables TLSv1_3
           --timeout INTEGER          Timeout for connection  [default: 60]
-          --database_path TEXT       Path for database file  [default:
-                                     */venv/lib/python3.*/site-packages/pyjabber/db/server.db]
+          --database_path TEXT       Path for database file  [default: Current workdir]
           --database_purge           Restore database file to default state (empty)
           -v, --verbose              Show verbose debug level: -v level 1, -vv level
                                      2, -vvv level 3, -vvvv level 4

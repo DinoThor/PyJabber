@@ -5,6 +5,7 @@ from xml.sax import ContentHandler
 
 from loguru import logger
 
+from pyjabber.metadata import host
 from pyjabber.stream import Stream
 from pyjabber.stream.StanzaHandler import StanzaHandler
 from pyjabber.stream.StreamHandler import Signal, StreamHandler
@@ -21,17 +22,16 @@ class XMLParser(ContentHandler):
         :param starttls: Coroutine launched when server and client start the connection upgrade process to TLS
     """
 
-    def __init__(self, host, buffer, starttls):
+    def __init__(self, buffer, starttls):
         super().__init__()
 
-        self._host = host
+        self._host = host.get()
         self._buffer = buffer
 
         self._state = self.StreamState.CONNECTED
         self._stanzaHandler = None
         self._stack = []
-        self._streamHandler = StreamHandler(
-            self._host, self._buffer, starttls)
+        self._streamHandler = StreamHandler(self._buffer, starttls)
 
     class StreamState(Enum):
         """

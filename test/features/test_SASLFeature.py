@@ -69,7 +69,7 @@ def test_handle_auth_failure(MockConnectionsManager, db_connection_factory):
 
     assert result == SE.not_authorized()
 
-# @patch.object(Metadata, 'host', new_callable=lambda: 'localhost')
+
 def test_handle_iq_register_conflict(db_connection_factory):
     sasl = SASL(db_connection_factory)
     element = ET.Element("iq", attrib={"type": "set", "id": "123"})
@@ -88,13 +88,19 @@ def test_handle_iq_register_conflict(db_connection_factory):
 def test_get_fields(db_connection_factory):
     sasl = SASL(db_connection_factory)
 
-    element = ET.Element("{jabber:iq:register}iq", attrib={"type": "get"})
+    element = ET.Element("{jabber:iq:register}iq", attrib={"type": "get", "id": "1234"})
     ET.SubElement(element, "{jabber:iq:register}query")
 
     response = sasl.feed(element)
+    res_elem = ET.fromstring(response)
 
-    assert response is not None
-    assert response == b'<iq xmlns:ns0="jabber:iq:register" type="result"><ns0:query><username /><password /></ns0:query></iq>'
+    assert res_elem is not None
+    assert res_elem.tag in element.tag
+    assert res_elem.attrib.get('type') == 'result'
+    assert res_elem.attrib.get('id') == '1234'
+    assert 'query' in res_elem[0].tag
+    assert res_elem[0][0].tag == 'username'
+    assert res_elem[0][1].tag == 'password'
 
 def test_handle_iq_register_success(db_connection_factory):
     sasl = SASL(db_connection_factory)

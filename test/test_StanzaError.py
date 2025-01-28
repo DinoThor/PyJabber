@@ -20,10 +20,12 @@ def test_bad_request():
     expected = b"<error type='modify'><bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>"
     assert bad_request() == expected
 
-@patch()
-def test_conflict_error(_):
+def test_conflict_error():
     id = "123"
-    result = conflict_error(id)
+    with patch('pyjabber.stanzas.error.StanzaError.host') as mock_host:
+        mock_host.get.return_value = 'localhost'
+        result = conflict_error(id)
+
     root = ET.fromstring(result)
 
     assert root.tag == "iq"
