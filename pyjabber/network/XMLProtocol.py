@@ -8,6 +8,7 @@ from xml import sax
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.XMLParser import XMLParser
+from pyjabber.network.tls.TLSWorker import TLSQueue
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
 
@@ -37,6 +38,7 @@ class XMLProtocol(asyncio.Protocol):
         self._connection_manager = ConnectionManager()
         self._cert_path = cert_path
         self._enable_tls1_3 = enable_tls1_3
+        self._tls_queue = TLSQueue().queue
 
         self._transport = None
         self._peer = None
@@ -149,8 +151,7 @@ class XMLProtocol(asyncio.Protocol):
         """
             Sync function to call the STARTTLS coroutine
         """
-        loop = asyncio.get_running_loop()
-        asyncio.ensure_future(self.enable_tls(loop), loop=loop)
+        self._tls_queue.put_nowait((self._transport, self, self._xml_parser.getContentHandler()))
 
     async def enable_tls(self, loop):
         """
@@ -165,16 +166,10 @@ class XMLProtocol(asyncio.Protocol):
         if not self._enable_tls1_3:
             ssl_context.options |= ssl.OP_NO_TLSv1_3
 
-        # if self._cert_path:
         ssl_context.load_cert_chain(
             certfile=os.path.join(self._cert_path, f"{self._host}_cert.pem"),
             keyfile=os.path.join(self._cert_path, f"{self._host}_key.pem"),
         )
-        # else:
-        #     ssl_context.load_cert_chain(
-        #         certfile=os.path.join(FILE_AUTH, "certs", f"{self._host}_cert.pem"),
-        #         keyfile=os.path.join(FILE_AUTH, "certs", f"{self._host}_key.pem"),
-        #     )
 
         try:
             new_transport = await loop.start_tls(

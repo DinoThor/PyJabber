@@ -73,6 +73,7 @@ class StreamHandler:
                 self._buffer.write(proceed_response())
                 self._starttls()
                 self._stage = Stage.SSL
+                self._buffer.pause_reading()
                 return Signal.RESET
 
             else:

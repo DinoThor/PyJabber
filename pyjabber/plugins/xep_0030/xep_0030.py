@@ -12,8 +12,8 @@ from pyjabber.utils import Singleton
 
 def iq_skeleton(element: ET.Element, disco_type: Literal['info', 'items']):
     iq_res = IQ(
-        type=IQ.TYPE.RESULT.value,
-        id=element.get('id'),
+        type_=IQ.TYPE.RESULT.value,
+        id_=element.get('id'),
         from_=element.get('to'),
         to=element.get('from')
     )

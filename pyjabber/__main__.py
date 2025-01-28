@@ -33,7 +33,7 @@ FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 @click.option('--tls1_3', is_flag=True, help='Enables TLSv1_3')
 @click.option('--timeout', type=int, default=60,
               show_default=True, help='Timeout for connection')
-@click.option('--database_path', type=str, default=os.path.join(FILE_PATH, 'db', 'server.db'),
+@click.option('--database_path', type=str, default=os.path.join(os.getcwd(), "pyjabber.db"),
               show_default=True, help='Path for database file')
 @click.option('--database_purge', is_flag=True, help='Restore database file to default state (empty)')
 @click.option('--database_in_memory', is_flag=True,

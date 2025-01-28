@@ -1,8 +1,10 @@
 import asyncio
 import os
+import queue
 import signal
 import socket
 import sqlite3
+import ssl
 import sys
 
 from contextlib import closing
@@ -13,6 +15,7 @@ from pyjabber.network.XMLProtocol import XMLProtocol
 from pyjabber.network.server.incoming.XMLServerIncomingProtocol import XMLServerIncomingProtocol
 from pyjabber.network.server.outcoming.XMLServerOutcomingProtocol import XMLServerOutcomingProtocol
 from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.network.tls.TLSWorker import TLSQueue
 from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.webpage.adminPage import AdminPage
 from pyjabber.network import CertGenerator
@@ -52,7 +55,7 @@ class Server:
         server_out_port=5269,
         family=socket.AF_INET,
         connection_timeout=60,
-        database_path=os.path.join(SERVER_FILE_PATH, "db", "server.db"),
+        database_path=os.path.join(os.getcwd(), "pyjabber.db"),
         database_purge=False,
         database_in_memory=False,
         enable_tls1_3=False,
@@ -89,6 +92,7 @@ class Server:
         metadata_database_path.set(self._database_path)
         metadata_config_path.set(os.path.join(os.path.dirname(os.path.abspath(__file__)), "config/config.yaml"))
         metadata_root_path.set(SERVER_FILE_PATH)
+        metadata_database_in_memory.set(False)
 
     async def run_server(self):
         logger.info("Starting server...")
@@ -193,6 +197,40 @@ class Server:
 
         asyncio.ensure_future(self.server_connection(host, loop), loop=loop)
 
+    async def tls_worker(self, tls_queue: queue.Queue):
+        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        if not self._enable_tls1_3:
+            ssl_context.options |= ssl.OP_NO_TLSv1_3
+
+        ssl_context.load_cert_chain(
+            certfile=os.path.join(self._cert_path, f"{self._host}_cert.pem"),
+            keyfile=os.path.join(self._cert_path, f"{self._host}_key.pem"),
+        )
+
+        loop = asyncio.get_running_loop()
+
+        try:
+            while True:
+                transport, protocol, parser = await tls_queue.get()
+                old_peer = transport.get_extra_info("peername")
+                try:
+                    new_transport = await loop.start_tls(
+                        transport=transport,
+                        protocol=protocol,
+                        sslcontext=ssl_context,
+                        server_side=True)
+
+                    transport = new_transport
+                    parser.buffer = new_transport
+                    logger.debug(f"Done TLS for <{old_peer}>")
+
+                except ConnectionResetError:
+                    logger.error(f"ERROR DURING TLS UPGRADE WITH <{old_peer}>")
+                    if not transport.is_closing():
+                        self._connection_manager.close(old_peer)
+        except asyncio.CancelledError:
+            pass
+
     async def server_connection(self, remote_host, loop):
         """
             Task to connect to another XMPP server
@@ -238,13 +276,16 @@ class Server:
         signal.signal(signal.SIGABRT, self.raise_exit)
         signal.signal(signal.SIGTERM, self.raise_exit)
 
+        tls_queue = TLSQueue().queue
+
         try:
             main_server = asyncio.create_task(self.run_server())
             admin_coro = self._adminServer.start()
-            await asyncio.gather(main_server, admin_coro)
+            tls_task = asyncio.create_task(self.tls_worker(tls_queue))
+            await asyncio.gather(main_server, admin_coro, tls_task)
 
         except (SystemExit, KeyboardInterrupt):  # pragma: no cover
             pass
 
         finally:
-            await asyncio.gather(self.stop(), self._adminServer.app.cleanup())
+            await asyncio.gather(self.stop(), self._adminServer.app.cleanup(), asyncio.create_task(tls_task.cancel()))

@@ -60,13 +60,20 @@ class Affiliation:
     OUTCAST = 'outcast'
 
 
-def success_response(element: ET.Element):
-    return IQ(
-        type=IQ.TYPE.RESULT.value,
+def success_response(element: ET.Element, owner: bool = False):
+    iq_res = IQ(
+        type_=IQ.TYPE.RESULT,
         from_=host.get(),
         to=element.attrib.get('from'),
-        id=element.attrib.get('id') or str(uuid4())
+        id_=element.attrib.get('id') or str(uuid4())
     )
+    if owner:
+        xmlns = 'http://jabber.org/protocol/pubsub#owner'
+    else:
+        xmlns = 'http://jabber.org/protocol/pubsub'
+
+    pubsub = ET.SubElement(iq_res, 'pubsub', attrib={'xmlns': xmlns})
+    return iq_res, pubsub
 
 
 class PubSub(metaclass=Singleton):
@@ -189,7 +196,10 @@ class PubSub(metaclass=Singleton):
             con.commit()
 
         self.update_memory_from_database()
-        return ET.tostring(success_response(element))
+        
+        iq_res, pubsub = success_response(element)
+        ET.SubElement(pubsub, 'create', attrib={'node': new_node})
+        return ET.tostring(iq_res)
 
     def delete_node(self, element: ET.Element, jid: JID):
         """
@@ -244,7 +254,19 @@ class PubSub(metaclass=Singleton):
         if len(current_state) >= 1:
             current_state = current_state[0]
             if current_state[SubscribersAttrib.SUBSCRIPTION.value] in [Subscription.SUBSCRIBED.value, Subscription.UNCONFIGURED.value]:
-                return ET.tostring(success_response(element))
+                iq_res, pubsub = success_response(element)
+                ET.SubElement(
+                    pubsub,
+                    'subscription',
+                    attrib={
+                        'node': target_node[NodeAttrib.NODE.value],
+                        'jid': jid_request.bare(),
+                        'subid': subid,
+                        'subscription': 'subscribed'
+                    }
+                )
+                return ET.tostring(iq_res)
+            
             elif current_state[SubscribersAttrib.SUBSCRIPTION.value] == Subscription.PENDING.value:
                 return error_response(element, jid, ErrorType.PENDING_SUBSCRIPTION)
 
@@ -263,9 +285,10 @@ class PubSub(metaclass=Singleton):
             con.commit()
 
         self.update_memory_from_database()
-        res = success_response(element)
+
+        iq_res, pubsub = success_response(element)
         ET.SubElement(
-            res,
+            pubsub,
             'subscription',
             attrib={
                 'node': target_node[NodeAttrib.NODE.value],
@@ -274,7 +297,7 @@ class PubSub(metaclass=Singleton):
                 'subscription': 'subscribed'
             }
         )
-        return ET.tostring(res)
+        return ET.tostring(iq_res)
 
     def unsubscribe(self, element: ET.Element, jid: JID):
         """
@@ -325,9 +348,10 @@ class PubSub(metaclass=Singleton):
             con.commit()
 
         self.update_memory_from_database()
-        res = success_response(element)
+
+        iq_res, pubsub = success_response(element)
         sub = ET.SubElement(
-            res,
+            pubsub,
             'subscription',
             attrib={
                 'node': target_node[NodeAttrib.NODE.value],
@@ -336,7 +360,7 @@ class PubSub(metaclass=Singleton):
             }
         )
         if subid: sub.attrib['subid'] = subid
-        return ET.tostring(res)
+        return ET.tostring(iq_res)
 
     def retrieve_subscriptions(self, element: ET.Element, jid: JID):
         pubsub = element.find('{http://jabber.org/protocol/pubsub}pubsub') or element.find('{http://jabber.org/protocol/pubsub#owner}pubsub')
@@ -347,9 +371,9 @@ class PubSub(metaclass=Singleton):
         if from_stanza is not None and JID(from_stanza).user != jid.user:
             return error_response(element, jid, ErrorType.FORBIDDEN)
 
-        iq_res = success_response(element)
-        pubsub_res = ET.SubElement(iq_res, 'pubsub' ,attrib={'xmlns': 'http://jabber.org/protocol/pubsub'})
-        subscriptions_res = ET.SubElement(pubsub_res, 'subscriptions')
+        iq_res, pubsub = success_response(element)
+        # pubsub_res = ET.SubElement(iq_res, 'pubsub' ,attrib={'xmlns': 'http://jabber.org/protocol/pubsub'})
+        subscriptions_res = ET.SubElement(pubsub, 'subscriptions')
 
         if target_node is not None and target_node != '':
             query = "SELECT node, subscription, subid FROM pubsubSubscribers WHERE jid = ? AND node = ?"
@@ -413,10 +437,11 @@ class PubSub(metaclass=Singleton):
 
         self.send_notification(target_node[0][NodeAttrib.NODE.value], payload)
 
-        res = success_response(element)
-        pub = ET.SubElement(res, 'pubsub', attrib={'xmlns': 'http://jabber.org/protocol/pubsub'})
-        ET.SubElement(pub, 'publish', attrib={'node': 'node'})
-        return ET.tostring(res)
+        iq_res, pubsub = success_response(element)
+        publish = ET.SubElement(pubsub, 'publish', attrib={'node': 'node'})
+        if item_id:
+            ET.SubElement(publish, 'item', attrib={'id': item_id})
+        return ET.tostring(iq_res)
 
     def send_notification(self, node: str, payload: ET.Element, item_id: str = None):
         receivers = [s for s in self._subscribers
