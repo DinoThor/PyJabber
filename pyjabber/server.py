@@ -288,4 +288,5 @@ class Server:
             pass
 
         finally:
-            await asyncio.gather(self.stop(), self._adminServer.app.cleanup(), asyncio.create_task(tls_task.cancel()))
+            tls_task.cancel()
+            await asyncio.gather(self.stop(), self._adminServer.app.cleanup())
