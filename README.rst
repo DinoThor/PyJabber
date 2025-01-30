@@ -54,36 +54,32 @@ Quick start
 Python program
 --------------
 
-
 The process of starting the server returns a coroutine, leaving it to the user to set up the required environment. The simplest approach is to use the ``asyncio.run`` function.
 
 .. code-block:: python
 
-        from pyjabber import Server
+    from pyjabber import Server
 
-        my_server = Server()
-        asyncio.run(my_server.start())
-
-
+    my_server = Server()
+    asyncio.run(my_server.start())
 
 This allows PyJabber to be treated as a regular task and integrated seamlessly into an asynchronous application.
 
 .. code-block:: python
 
+    import asyncio
+    from pyjabber.server import Server
 
-        import asyncio
-        from pyjabber.server import Server
+    async def counter():
+      while True:
+        await asyncio.sleep(1)
+        print(f"Hello World")
 
-        async def counter():
-          while True:
-            await asyncio.sleep(1)
-            print(f"Hello World")
+    async def launch():
+      my_server = Server()
+      await asyncio.gather(my_server.start(), counter())
 
-        async def launch():
-          my_server = Server()
-          await asyncio.gather(my_server.start(), counter())
-
-        asyncio.run(launch())
+    asyncio.run(launch())
 
 CLI
 ---

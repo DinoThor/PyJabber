@@ -75,6 +75,9 @@ class StanzaHandler:
                 self._queue_message.enqueue(jid.domain, ET.tostring(element))
 
     def handle_pre(self, element: ET.Element):
+        """
+            Handle the presences stanzas
+        """
         res = self._presenceManager.feed(self._jid, element)
         if res:
             self._buffer.write(res)

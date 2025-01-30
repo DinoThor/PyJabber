@@ -1,6 +1,5 @@
 import asyncio
 import os
-import ssl
 
 from loguru import logger
 from xml import sax
@@ -21,7 +20,6 @@ class XMLProtocol(asyncio.Protocol):
     :param host: Host for connections
     :param connection_timeout: Max time without any response from a client. After that, the server will terminate the connection
     :param cert_path: Path to custom domain certs. By default, the server generates its own certificates for hostname
-    :param enable_tls1_3: Boolean. Enables the use of TLSv1.3 in the STARTTLS process
     """
 
     def __init__(
@@ -29,15 +27,13 @@ class XMLProtocol(asyncio.Protocol):
             namespace,
             host,
             connection_timeout,
-            cert_path,
-            enable_tls1_3=False):
+            cert_path):
 
         self._xmlns = namespace
         self._host = host
         self._connection_timeout = connection_timeout
         self._connection_manager = ConnectionManager()
         self._cert_path = cert_path
-        self._enable_tls1_3 = enable_tls1_3
         self._tls_queue = TLSQueue().queue
 
         self._transport = None
@@ -143,46 +139,8 @@ class XMLProtocol(asyncio.Protocol):
         self._transport = None
         self._xml_parser = None
 
-    ###########################################################################
-    ###########################################################################
-    ###########################################################################
-
     def task_tls(self):
         """
             Sync function to call the STARTTLS coroutine
         """
         self._tls_queue.put_nowait((self._transport, self, self._xml_parser.getContentHandler()))
-
-    async def enable_tls(self, loop):
-        """
-            Coroutine to upgrade the connection to TLS
-            It swaps the transport for the XMLProtocol, and XMLParser
-
-            :param loop: Running asyncio loop
-        """
-        parser = self._xml_parser.getContentHandler()
-
-        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        if not self._enable_tls1_3:
-            ssl_context.options |= ssl.OP_NO_TLSv1_3
-
-        ssl_context.load_cert_chain(
-            certfile=os.path.join(self._cert_path, f"{self._host}_cert.pem"),
-            keyfile=os.path.join(self._cert_path, f"{self._host}_key.pem"),
-        )
-
-        try:
-            new_transport = await loop.start_tls(
-                transport=self._transport,
-                protocol=self,
-                sslcontext=ssl_context,
-                server_side=True)
-
-            self._transport = new_transport
-            parser.buffer = self._transport
-            logger.debug(f"Done TLS for <{self._peer}>")
-
-        except ConnectionResetError:
-            logger.error(f"ERROR DURING TLS UPGRADE WITH <{self._peer}>")
-            if not self._transport.is_closing():
-                self._connection_manager.close(self._peer)

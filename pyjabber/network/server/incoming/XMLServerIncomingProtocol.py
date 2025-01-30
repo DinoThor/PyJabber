@@ -22,15 +22,13 @@ class XMLServerIncomingProtocol(XMLProtocol):
             namespace,
             host,
             connection_timeout,
-            cert_path,
-            enable_tls1_3=False):
+            cert_path):
 
         super().__init__(
             namespace,
             host,
             connection_timeout,
-            cert_path,
-            enable_tls1_3)
+            cert_path)
 
     def connection_made(self, transport):
         """

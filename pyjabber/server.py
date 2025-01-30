@@ -8,6 +8,8 @@ import ssl
 import sys
 
 from contextlib import closing
+from typing import LiteralString
+
 from loguru import logger
 
 from pyjabber.db.database import connection
@@ -32,34 +34,44 @@ else:
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
-class Server:
-    """
-        Server class
+def setup_query_local_ip():
+    """Return the local IP of the host machine"""
+    mock_connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        mock_connection.connect(("8.8.8.8", 80))
+        local_ip_address = mock_connection.getsockname()[0]
+        return local_ip_address
+    except OSError as e:
+        logger.error(f"Unable to retrieve LAN IP: {e}")
+    finally:
+        mock_connection.close()
 
-        :param host: Host for the clients connections (localhost by default)
-        :param client_port: Port for client connections (5222 by default)
-        :param server_port: Port for server-to-server connections (5269 by default)
-        :param family: Type of AddressFamily (IPv4 or IPv6)
-        :param connection_timeout: Max time without any response from a client. After that, the server will terminate the connection
-        :param database_path: Path to the sqlite3 database file. If it does not exist, a new file/database will be created (site-packages/pyjabber/db by default)
-        :param database_purge: Flag to indicate the reset process of the database. CAUTION! ALL THE INFORMATION WILL BE LOST
-        :param enable_tls1_3: Boolean. Enables the use of TLSv1.3 in the STARTTLS process
-        :param cert_path: Path to custom domain certs. By default, the server generates its own certificates for hostname
+
+class Server:
+    """Server class
+
+    :param host: Host for the clients connections (localhost by default)
+    :param client_port: Port for client connections (5222 by default)
+    :param server_port: Port for server-to-server connections (5269 by default)
+    :param family: Type of AddressFamily (IPv4 or IPv6)
+    :param connection_timeout: Max time without any response from a client. After that, the server will terminate the connection
+    :param database_path: Path to the sqlite3 database file. If it does not exist, a new file/database will be created (site-packages/pyjabber/db by default)
+    :param database_purge: Flag to indicate the reset process of the database. CAUTION! ALL THE INFORMATION WILL BE LOST
+    :param cert_path: Path to custom domain certs. By default, the server generates its own certificates for hostname
     """
 
     def __init__(
         self,
-        host="localhost",
-        client_port=5222,
-        server_port=5269,
-        server_out_port=5269,
-        family=socket.AF_INET,
-        connection_timeout=60,
-        database_path=os.path.join(os.getcwd(), "pyjabber.db"),
-        database_purge=False,
-        database_in_memory=False,
-        enable_tls1_3=False,
-        cert_path=None
+        host: str = "localhost",
+        client_port: int = 5222,
+        server_port: int = 5269,
+        server_out_port: int = 5269,
+        family: socket.AddressFamily = socket.AF_INET,
+        connection_timeout: int = 60,
+        database_path: LiteralString = os.path.join(os.getcwd(), "pyjabber.db"),
+        database_purge: bool = False,
+        database_in_memory: bool = False,
+        cert_path: LiteralString = None
     ):
         # Server
         self._host = host
@@ -81,9 +93,6 @@ class Server:
         self._cert_path = cert_path or os.path.join(SERVER_FILE_PATH, "network", "certs")
         self._custom_loop = True
 
-        # Client handler
-        self._enable_tls1_3 = enable_tls1_3
-
         # Singletons
         self._connection_manager = ConnectionManager(self.task_s2s)
         self._queue_message = QueueMessage(self._connection_manager)
@@ -94,9 +103,7 @@ class Server:
         metadata_root_path.set(SERVER_FILE_PATH)
         metadata_database_in_memory.set(False)
 
-    async def run_server(self):
-        logger.info("Starting server...")
-
+    def setup_database(self):
         if self._database_in_memory:
             logger.info("Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!")
             self._db_in_memory_con = sqlite3.connect("file::memory:?cache=shared", uri=True)
@@ -121,6 +128,7 @@ class Server:
                         con.cursor().executescript(script.read())
                     con.commit()
 
+    def setup_certs(self):
         try:
             if CertGenerator.check_hostname_cert_exists(self._host, self._cert_path) is False:
                 CertGenerator.generate_hostname_cert(self._host, self._cert_path)
@@ -130,85 +138,22 @@ class Server:
             logger.error("Closing server")
             raise SystemExit
 
-        loop = asyncio.get_running_loop()
+    async def setup_tls_worker(self, tls_queue: queue.Queue):
+        """
+        A TLS Worker for process STARTTLS petitions.
+        A global Asyncio queue must be declared and used across the server. The main producer of the queue will be the
+        XMLProtocol class, where the transport/buffer/protocol is managed.
+        The worker is global for all the server components, and it can be duplicated across multiple workers in
+        different threads to handle a high number of new connections established within a very short period of time.
 
-        lan_ip = self.query_local_ip()
-
-        try:
-            self._client_listener = await loop.create_server(
-                lambda: XMLProtocol(
-                    namespace="jabber:client",
-                    host=self._host,
-                    connection_timeout=self._connection_timeout,
-                    cert_path=self._cert_path,
-                    enable_tls1_3=self._enable_tls1_3,
-                ),
-                host=[self._host, lan_ip] if lan_ip else [self._host],
-                port=self._client_port,
-                family=self._family
-            )
-        except OSError as e:
-            logger.error(e)
-            raise SystemExit
-
-
-        logger.info(f"Client domain => {self._host}")
-        logger.info(f"Server is listening clients on {[s.getsockname() for s in self._client_listener.sockets if s]}")
-
-        try:
-            self._server_listener = await loop.create_server(
-                lambda: XMLServerIncomingProtocol(
-                    namespace="jabber:server",
-                    host=self._host,
-                    connection_timeout=self._connection_timeout,
-                    cert_path=self._cert_path,
-                    enable_tls1_3=self._enable_tls1_3,
-                ),
-                host=["0.0.0.0"],
-                port=self._server_port,
-                family=self._family
-            )
-        except OSError as e:
-            logger.error(e)
-            raise SystemExit
-
-        logger.info(f"Server is listening servers on {[s.getsockname() for s in self._server_listener.sockets if s]}")
-        logger.info("Server started...")
-
-    async def stop(self):
-        logger.info("Stopping server...")
-
-        if self._db_in_memory_con:
-            self._db_in_memory_con.close()
-
-        if self._client_listener and self._client_listener.is_serving():
-            self._client_listener.close()
-            await self._client_listener.wait_closed()
-
-        if self._server_listener and self._server_listener.is_serving():
-            self._server_listener.close()
-            await self._server_listener.wait_closed()
-
-        logger.info("Server stopped...")
-
-    def task_s2s(self, host):
-        host = host.split("@")[-1]
-        loop = asyncio.get_running_loop()
-
-        asyncio.ensure_future(self.server_connection(host, loop), loop=loop)
-
-    async def tls_worker(self, tls_queue: queue.Queue):
+        :param tls_queue: The global queue used ONLY for (TRANSPORT, PROTOCOL, PARSER) tuples
+        """
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        if not self._enable_tls1_3:
-            ssl_context.options |= ssl.OP_NO_TLSv1_3
-
         ssl_context.load_cert_chain(
             certfile=os.path.join(self._cert_path, f"{self._host}_cert.pem"),
             keyfile=os.path.join(self._cert_path, f"{self._host}_key.pem"),
         )
-
         loop = asyncio.get_running_loop()
-
         try:
             while True:
                 transport, protocol, parser = await tls_queue.get()
@@ -231,11 +176,81 @@ class Server:
         except asyncio.CancelledError:
             pass
 
+    async def run_server(self):
+        """Launches the configured server, and return a coroutine"""
+        logger.info("Starting server...")
+
+        self.setup_database()
+        self.setup_certs()
+        lan_ip = setup_query_local_ip()
+
+        loop = asyncio.get_running_loop()
+
+        try:
+            self._client_listener = await loop.create_server(
+                lambda: XMLProtocol(
+                    namespace="jabber:client",
+                    host=self._host,
+                    connection_timeout=self._connection_timeout,
+                    cert_path=self._cert_path,
+                ),
+                host=[self._host, lan_ip] if lan_ip else [self._host],
+                port=self._client_port,
+                family=self._family
+            )
+        except OSError as e:
+            logger.error(e)
+            raise SystemExit
+
+        logger.info(f"Client domain => {self._host}")
+        logger.info(f"Server is listening clients on {[s.getsockname() for s in self._client_listener.sockets if s]}")
+
+        try:
+            self._server_listener = await loop.create_server(
+                lambda: XMLServerIncomingProtocol(
+                    namespace="jabber:server",
+                    host=self._host,
+                    connection_timeout=self._connection_timeout,
+                    cert_path=self._cert_path,
+                ),
+                host=["0.0.0.0"],
+                port=self._server_port,
+                family=self._family
+            )
+        except OSError as e:
+            logger.error(e)
+            raise SystemExit
+
+        logger.info(f"Server is listening servers on {[s.getsockname() for s in self._server_listener.sockets if s]}")
+        logger.info("Server started...")
+
+    async def stop_server(self):
+        """Safely stops the running server"""
+        logger.info("Stopping server...")
+
+        if self._db_in_memory_con:
+            self._db_in_memory_con.close()
+
+        if self._client_listener and self._client_listener.is_serving():
+            self._client_listener.close()
+            await self._client_listener.wait_closed()
+
+        if self._server_listener and self._server_listener.is_serving():
+            self._server_listener.close()
+            await self._server_listener.wait_closed()
+
+        logger.info("Server stopped...")
+
+    def task_s2s(self, host):
+        host = host.split("@")[-1]
+        loop = asyncio.get_running_loop()
+
+        asyncio.ensure_future(self.server_connection(host, loop), loop=loop)
+
     async def server_connection(self, remote_host, loop):
-        """
-            Task to connect to another XMPP server
-            :param remote_host: Host of the remote server to connect
-            :param loop: Asyncio running loop. Necessary to perform task
+        """Task to connect to another XMPP server
+        :param remote_host: Host of the remote server to connect
+        :param loop: Asyncio running loop. Necessary to perform task
         """
         await loop.create_connection(
             lambda: XMLServerOutcomingProtocol(
@@ -243,34 +258,17 @@ class Server:
                 host=remote_host,
                 public_host=self._public_ip,
                 connection_timeout=self._connection_timeout,
-                enable_tls1_3=self._enable_tls1_3,
             ),
             host=remote_host,
             port=self._server_out_port
         )
 
-    def query_local_ip(self):
-        """
-            Return the local IP of the host machine
-        """
-        mock_connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            mock_connection.connect(("8.8.8.8", 80))
-            local_ip_address = mock_connection.getsockname()[0]
-            return local_ip_address
-        except OSError as e:
-            logger.error(f"Unable to retrieve LAN IP: {e}")
-        finally:
-            mock_connection.close()
-
     def raise_exit(self, *args):
+        """Exception used to signal the safe close of the server"""
         raise SystemExit(1)
 
     async def start(self):
-        """
-            Start the already created and configuration server
-            :param debug: Boolean. Enables debug mode in asyncio
-        """
+        """Start the already created and configuration server"""
 
         signal.signal(signal.SIGINT, self.raise_exit)
         signal.signal(signal.SIGABRT, self.raise_exit)
@@ -281,7 +279,7 @@ class Server:
         try:
             main_server = asyncio.create_task(self.run_server())
             admin_coro = self._adminServer.start()
-            tls_task = asyncio.create_task(self.tls_worker(tls_queue))
+            tls_task = asyncio.create_task(self.setup_tls_worker(tls_queue))
             await asyncio.gather(main_server, admin_coro, tls_task)
 
         except (SystemExit, KeyboardInterrupt):  # pragma: no cover
@@ -289,4 +287,4 @@ class Server:
 
         finally:
             tls_task.cancel()
-            await asyncio.gather(self.stop(), self._adminServer.app.cleanup())
+            await asyncio.gather(self.stop_server(), self._adminServer.app.cleanup())

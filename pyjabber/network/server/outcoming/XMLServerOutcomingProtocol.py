@@ -24,15 +24,13 @@ class XMLServerOutcomingProtocol(XMLProtocol):
             namespace,
             host,
             public_host,
-            connection_timeout,
-            enable_tls1_3=False):
+            connection_timeout):
 
         super().__init__(
             namespace,
             host,
             connection_timeout,
-            None,
-            enable_tls1_3)
+            None)
 
         self._public_host = public_host
 

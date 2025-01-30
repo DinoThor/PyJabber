@@ -1,6 +1,5 @@
 from asyncio import Transport
 from contextlib import closing
-from enum import Enum
 from itertools import chain
 from typing import List, Tuple
 from uuid import uuid4
@@ -12,6 +11,7 @@ from yaml import load, Loader
 from pyjabber.metadata import host, config_path
 from pyjabber.db.database import connection
 from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.plugins.xep_0060.enum import NodeAttrib, SubscribersAttrib, Subscription, Affiliation
 from pyjabber.plugins.xep_0060.error import ErrorType
 from pyjabber.plugins.xep_0060.error import error_response
 from pyjabber.stanzas.IQ import IQ
@@ -19,46 +19,6 @@ from pyjabber.stanzas.Message import Message
 from pyjabber.stanzas.error import StanzaError
 from pyjabber.stream.JID import JID
 from pyjabber.utils import Singleton, ClarkNotation as CN
-
-
-class NodeAttrib(Enum):
-    NODE = 0
-    OWNER = 1
-    NAME = 2
-    TYPE = 3
-    MAXITEMS = 4
-
-
-class SubscribersAttrib(Enum):
-    NODE = 0
-    JID = 1
-    SUBID = 2
-    SUBSCRIPTION = 3
-    AFFILIATION = 4
-
-
-class Subscription(Enum):
-    NONE = 'none'
-    PENDING = 'pending'
-    UNCONFIGURED = 'unconfigured'
-    SUBSCRIBED = 'subscribed'
-
-
-class NodeAccess(Enum):
-    OPEN = 0
-    PRESENCE = 1
-    ROSTER = 2
-    AUTHORIZE = 3
-    WHITELIST = 4
-
-
-class Affiliation:
-    OWNER = 'owner'
-    PUBLISHER = 'publisher'
-    MEMBER = 'member'
-    NONE = 'none'
-    OUTCAST = 'outcast'
-
 
 def success_response(element: ET.Element, owner: bool = False):
     iq_res = IQ(
@@ -196,7 +156,7 @@ class PubSub(metaclass=Singleton):
             con.commit()
 
         self.update_memory_from_database()
-        
+
         iq_res, pubsub = success_response(element)
         ET.SubElement(pubsub, 'create', attrib={'node': new_node})
         return ET.tostring(iq_res)
@@ -250,10 +210,15 @@ class PubSub(metaclass=Singleton):
         except IndexError:
             return error_response(element, jid, ErrorType.ITEM_NOT_FOUND)
 
-        current_state = [s for s in self._subscribers if s[SubscribersAttrib.JID.value] == jid_request.user and s[SubscribersAttrib.NODE.value] == node]
+        current_state = [
+            s for s in self._subscribers
+            if s[SubscribersAttrib.JID.value] == jid_request.user and s[SubscribersAttrib.NODE.value] == node
+        ]
         if len(current_state) >= 1:
             current_state = current_state[0]
-            if current_state[SubscribersAttrib.SUBSCRIPTION.value] in [Subscription.SUBSCRIBED.value, Subscription.UNCONFIGURED.value]:
+            if (current_state[SubscribersAttrib.SUBSCRIPTION.value]
+                in [Subscription.SUBSCRIBED.value, Subscription.UNCONFIGURED.value]
+            ):
                 iq_res, pubsub = success_response(element)
                 ET.SubElement(
                     pubsub,
@@ -266,7 +231,7 @@ class PubSub(metaclass=Singleton):
                     }
                 )
                 return ET.tostring(iq_res)
-            
+
             elif current_state[SubscribersAttrib.SUBSCRIPTION.value] == Subscription.PENDING.value:
                 return error_response(element, jid, ErrorType.PENDING_SUBSCRIPTION)
 

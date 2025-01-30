@@ -58,7 +58,7 @@ class StreamHandler:
         self._buffer = value
 
     def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
-        # TCP Connection opened
+        # TCP connection opened. The server returns the available features (only TLS)
         if self._stage == Stage.CONNECTED:
             self._streamFeature.reset()
             self._streamFeature.register(StartTLSFeature())
@@ -67,7 +67,7 @@ class StreamHandler:
             self._stage = Stage.OPENED
             return
 
-        # TLS feature offered
+        # TLS offered. The client should have responded with a starttls message
         elif self._stage == Stage.OPENED:
             if "starttls" in elem.tag:
                 self._buffer.write(proceed_response())

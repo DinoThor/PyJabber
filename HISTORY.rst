@@ -7,7 +7,7 @@ History
 * Fixed, refactored and sped up the STARTTLS process. Now there's an independent worker (async task), who awaits from a queue for TLS upgrades petitions from StreamHandler objects.
 
 0.1.9.post1 (2024-12-18)
------------------------
+------------------------
 * Update the README + HISTORY
 
 0.1.9 (2024-12-17)
