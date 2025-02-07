@@ -177,7 +177,9 @@ class Server:
             pass
 
     async def run_server(self):
-        """Launches the configured server, and return a coroutine"""
+        """
+        Launches the configured server, and returns a coroutine.
+        """
         logger.info("Starting server...")
 
         self.setup_database()
@@ -225,7 +227,9 @@ class Server:
         logger.info("Server started...")
 
     async def stop_server(self):
-        """Safely stops the running server"""
+        """
+        Safely stops the running server
+        """
         logger.info("Stopping server...")
 
         if self._db_in_memory_con:
@@ -277,14 +281,14 @@ class Server:
         tls_queue = TLSQueue().queue
 
         try:
-            main_server = asyncio.create_task(self.run_server())
-            admin_coro = self._adminServer.start()
-            tls_task = asyncio.create_task(self.setup_tls_worker(tls_queue))
-            await asyncio.gather(main_server, admin_coro, tls_task)
+            server = asyncio.create_task(self.run_server())
+            admin = self._adminServer.start()
+            tls = asyncio.create_task(self.setup_tls_worker(tls_queue))
+            await asyncio.gather(server, admin, tls)
 
         except (SystemExit, KeyboardInterrupt):  # pragma: no cover
             pass
 
         finally:
-            tls_task.cancel()
+            tls.cancel()
             await asyncio.gather(self.stop_server(), self._adminServer.app.cleanup())

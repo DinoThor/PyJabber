@@ -37,6 +37,16 @@ def iq_register_result(iq_id: str) -> bytes:
 
 
 class SASL(metaclass=Singleton):
+    """
+        SASL Class.
+
+        An instance of this class will manage the authentication from new connections,
+        during the stream negotiation process.
+
+        :param db_connection_factory: The DB connection object used to look up the credentials
+
+    """
+
     def __init__(self, db_connection_factory=connection):
         self._handlers = {
             "iq": self.handleIQ,
@@ -57,7 +67,7 @@ class SASL(metaclass=Singleton):
         return self._handlers[tag](element)
 
     def handleIQ(
-            self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
+        self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
         query = element.find("{jabber:iq:register}query")
 
         if query is None:
@@ -104,7 +114,7 @@ class SASL(metaclass=Singleton):
             return ET.tostring(iq)
 
     def handleAuth(
-            self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
+        self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
         data = base64.b64decode(element.text).split("\x00".encode())
         jid = data[1].decode()
         key_hash = hashlib.sha256(data[2]).hexdigest()
@@ -121,8 +131,15 @@ class SASL(metaclass=Singleton):
         return SE.not_authorized()
 
 
-def SASLFeature(mechanismList: List[MECHANISM]=None):
-    mechanismList = mechanismList or [MECHANISM.PLAIN]
+def SASLFeature(mechanism_list: List[MECHANISM] = None) -> ET.Element:
+    """
+    SASL Feature Stream message.
+
+    Indicates to the client the methods available to authenticate.
+
+    :param mechanism_list: List of Mechanism selected for the stream session. Default is PLAIN
+    """
+    mechanism_list = mechanism_list or [MECHANISM.PLAIN]
 
     element = ET.Element(
         "mechanisms",
@@ -131,7 +148,7 @@ def SASLFeature(mechanismList: List[MECHANISM]=None):
         }
     )
 
-    for m in mechanismList:
+    for m in mechanism_list:
         mechanism = ET.SubElement(element, "mechanism")
         mechanism.text = m.value
 

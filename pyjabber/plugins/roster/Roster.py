@@ -9,6 +9,18 @@ from pyjabber.utils import Singleton
 
 
 class Roster(metaclass=Singleton):
+    """
+    Roster plugin.
+
+    Manages the roster list for each registered user in the server.
+
+    A roster in XMPP is a server-stored contact list that manages contacts, presence status,
+    and subscription requests.
+    It enables real-time presence updates, contact organization, and synchronization across devices,
+    ensuring seamless and private communication.
+
+    :param db_connection_factory: The DB connection object
+    """
     def __init__(self, db_connection_factory=None) -> None:
         self._handlers = {
             "get": self.handle_get,
@@ -27,9 +39,6 @@ class Roster(metaclass=Singleton):
             return SE.invalid_xml()
 
         return self._handlers[element.attrib["type"]](jid, element)
-
-    ############################################################
-    ############################################################
 
     def handle_get(self, jid: JID, element: ET.Element):
         jid = jid.bare()

@@ -6,7 +6,7 @@ import click
 if sys.platform != 'win32':
     from uvloop import run
 else:
-    from asyncio import run
+    from winloop import run
 
 from loguru import logger
 from pyjabber.server import Server
