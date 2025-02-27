@@ -133,7 +133,7 @@ class SASL(metaclass=Singleton):
 
 def SASLFeature(mechanism_list: List[MECHANISM] = None) -> ET.Element:
     """
-    SASL Feature Stream message.
+    SASL    Feature Stream message.
 
     Indicates to the client the methods available to authenticate.
 
