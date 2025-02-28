@@ -3,7 +3,9 @@ import os
 
 from loguru import logger
 from xml import sax
+from xml.etree.ElementTree import Element
 
+from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.XMLParser import XMLParser
@@ -33,6 +35,7 @@ class XMLProtocol(asyncio.Protocol):
         self._host = host
         self._connection_timeout = connection_timeout
         self._connection_manager = ConnectionManager()
+        self._presence_manager = Presence()
         self._cert_path = cert_path
         self._tls_queue = TLSQueue().queue
 
@@ -40,6 +43,7 @@ class XMLProtocol(asyncio.Protocol):
         self._peer = None
         self._xml_parser = None
         self._timeout_monitor = None
+
 
     def connection_made(self, transport):
         """
@@ -78,11 +82,15 @@ class XMLProtocol(asyncio.Protocol):
         :param exc: Exception that caused the connection to close
         :type exc: Exception
         """
-        if self._transport:
-            logger.info(f"Connection lost from {self._peer}: Reason {exc}")
+        logger.info(f"Connection lost from {self._peer}: Reason {exc}")
+        jid = self._connection_manager.get_jid(self._peer)
+        if jid and jid.user and jid.domain:
+            self._presence_manager.feed(jid, Element("presence", attrib={"type": "INTERNAL"}))
 
-            self._transport = None
-            self._xml_parser = None
+        self._transport = None
+        self._xml_parser = None
+
+        self._connection_manager.disconnection(self._peer)
 
     def data_received(self, data):
         """
@@ -120,7 +128,6 @@ class XMLProtocol(asyncio.Protocol):
         """
         if self._transport:
             logger.debug(f"EOF received from {self._peer}")
-            self._connection_manager.disconnection(self._peer)
 
     def connection_timeout(self):
         """
@@ -132,7 +139,7 @@ class XMLProtocol(asyncio.Protocol):
             self._transport.write("<connection-timeout/>".encode())
             self._transport.close()
         except:
-            logger.info(f"Connection with {self._peer} is already closed. Removing from online list")
+            logger.warning(f"Connection with {self._peer} is already closed. Removing from online list")
 
         self._connection_manager.disconnection(self._peer)
 

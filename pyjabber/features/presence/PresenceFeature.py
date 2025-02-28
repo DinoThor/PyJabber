@@ -34,7 +34,8 @@ class Presence(metaclass=Singleton):
             "subscribe": self.handle_subscribe,
             "subscribed": self.handle_subscribed,
             "unsubscribed": self.handle_unsubscribed,
-            "unavailable": self.handle_initial_presence
+            "unavailable": self.handle_initial_presence,
+            "INTERNAL": self.handle_lost_connection
         }
         self._connections = ConnectionManager()
         self._roster = Roster()
@@ -72,45 +73,63 @@ class Presence(metaclass=Singleton):
 
         return None
 
-    def handle_initial_presence(self, jid: JID, element: ET.Element):
-        if element.attrib.get("type") == PresenceType.UNAVAILABLE.value:
-            present = [i for i in self._online_status[jid.bare()] if i[0] == jid.resource]
-            if present:
-                self._online_status[jid.bare()].remove(present[0])
-                if len(self._online_status[jid.bare()]) == 0:
-                    self._online_status.pop(jid.bare())
-
-            for contact in self._roster.roster_by_jid(jid):
-                item = ET.fromstring(contact.get("item"))
-                if item.attrib.get("subscription") not in ["from", "both"]:
-                    continue
-
-                contact_jid = item.attrib.get("jid")
-
-                if len(contact_jid.split("@")) < 2:
-                    contact_jid = JID(contact_jid + f"@{host.get()}")
-                else:
-                    contact_jid = JID(contact_jid)
-
-                if contact_jid.bare() in self._online_status:
-                    for user_connected in [i for i in self._online_status[contact_jid.bare()] if
-                                           i[1] == PresenceType.AVAILABLE]:
-                        resource = user_connected[0]
-                        dest_jid, buffer = self._connections.get_buffer(
-                            JID(user=contact_jid.user, domain=contact_jid.domain, resource=resource))[0]
-
-                        presence = ET.Element(
-                            "presence",
-                            attrib={
-                                "from": str(jid),
-                                "to": dest_jid.bare(),
-                                "type": PresenceType.UNAVAILABLE.value
-                            }
-                        )
-                        buffer.write(ET.tostring(presence))
-
+    def handle_lost_connection(self, jid: JID, element: Element):
+        if jid.bare() not in self._online_status:
             return None
 
+        index, present = self._present_in_online_list(jid)
+        if present:
+            if self._online_status[jid.bare()][index][1] == PresenceType.UNAVAILABLE:
+                self._online_status[jid.bare()].pop(index)
+                if len(self._online_status[jid.bare()]) == 0:
+                    self._online_status.pop(jid.bare())
+                return None
+
+        for contact in self._roster.roster_by_jid(jid):
+            item = ET.fromstring(contact.get("item"))
+            if item.attrib.get("subscription") not in ["from", "both"]:
+                continue
+
+            contact_jid = item.attrib.get("jid")
+
+            if len(contact_jid.split("@")) < 2:
+                contact_jid = JID(contact_jid + f"@{host.get()}")
+            else:
+                contact_jid = JID(contact_jid)
+
+            if contact_jid.bare() in self._online_status:
+                for user_connected in [i for i in self._online_status[contact_jid.bare()] if
+                                       i[1] == PresenceType.AVAILABLE]:
+                    resource = user_connected[0]
+                    dest_jid, buffer = self._connections.get_buffer(
+                        JID(user=contact_jid.user, domain=contact_jid.domain, resource=resource))[0]
+
+                    presence = ET.Element(
+                        "presence",
+                        attrib={
+                            "from": str(jid),
+                            "to": dest_jid.bare(),
+                            "type": PresenceType.UNAVAILABLE.value
+                        }
+                    )
+                    buffer.write(ET.tostring(presence))
+
+        for _, neighbour_resource in self._connections.get_buffer(JID(jid.bare())):
+            presence = ET.Element(
+                "presence",
+                attrib={
+                    "from": str(jid),
+                    "to": jid.bare(),
+                    "type": PresenceType.UNAVAILABLE.value
+                }
+            )
+            neighbour_resource.write(ET.tostring(presence))
+
+        self._online_status[jid.bare()].remove(present[0])
+        if len(self._online_status[jid.bare()]) == 0:
+            self._online_status.pop(jid.bare())
+
+    def handle_initial_presence(self, jid: JID, element: ET.Element):
         if jid.bare() not in self._online_status:
             self._online_status[jid.bare()] = []
 
@@ -118,7 +137,18 @@ class Presence(metaclass=Singleton):
         status = next((c.text for c in element if c.tag == 'status'), None)
         priority = next((c.text for c in element if c.tag == 'priority'), None)
 
-        self._online_status[jid.bare()].append((jid.resource, PresenceType.AVAILABLE, show, status, priority))
+        index, present = self._present_in_online_list(jid)
+        if element.attrib.get("type") == PresenceType.UNAVAILABLE.value:
+            if present:
+                self._online_status[jid.bare()][index] = (jid.resource, PresenceType.UNAVAILABLE, show, status, priority)
+            else:
+                self._online_status[jid.bare()].append((jid.resource, PresenceType.UNAVAILABLE, show, status, priority))
+        else:
+            if present:
+                self._online_status[jid.bare()][index] = (jid.resource, PresenceType.AVAILABLE, show, status, priority)
+            else:
+                self._online_status[jid.bare()].append((jid.resource, PresenceType.AVAILABLE, show, status, priority))
+
 
         for contact in self._roster.roster_by_jid(jid):
             item = ET.fromstring(contact.get("item"))
@@ -408,3 +438,9 @@ class Presence(metaclass=Singleton):
                 buffer = self._connections.get_buffer(JID(to))
                 for b in buffer:
                     b[-1].write(ET.tostring(presence))
+
+    def _present_in_online_list(self, jid: JID):
+        present = [(i,p) for i, p in enumerate(self._online_status[jid.bare()]) if p[0] == jid.resource]
+        if present:
+            return present[0]
+        return None, None

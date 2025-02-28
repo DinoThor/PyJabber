@@ -94,7 +94,7 @@ class Server:
         self._custom_loop = True
 
         # Singletons
-        self._connection_manager = ConnectionManager(self.task_s2s)
+        self._connection_manager = ConnectionManager()
         self._queue_message = QueueMessage(self._connection_manager)
 
         metadata_host.set(host)

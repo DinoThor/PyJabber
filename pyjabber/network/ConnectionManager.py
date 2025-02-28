@@ -1,41 +1,36 @@
 import asyncio
 import re
+from glob import translate
 from typing import List
-from asyncio import Transport
+from asyncio import Transport, Event
 from typing import Dict, Union, Tuple
 from loguru import logger
 
 from pyjabber.stream.JID import JID as JIDClass
 from pyjabber.utils import Singleton
 
-peerName = Tuple[str, str]
-peerItem = Dict[JIDClass, Transport]
-peerList = [peerName, peerItem]
+type peerList = Dict[
+    (str, str),
+    (JIDClass, Transport, Event)
+]
 
-
-class peerKeys:
-    JID = "jid"
-    TRANSPORT = "transport"
-
+# EXAMPLE
+# peerKeys = {
+#     ("0.0.0.0", "50000"): ("demo@localhost/12341234", <Transport>, <DisconnectEvent>),
+#     ("0.0.0.0", "50001"): ("test@localhos/43214321", <Transport>, <DisconnectEvent>)
+# }
 
 class ConnectionManager(metaclass=Singleton):
-    def __init__(self, task_s2s=None) -> None:
-        # if task_s2s:
-        #     self._task_s2s = task_s2s
+    def __init__(self) -> None:
 
         self._peerList: peerList = {}
-        self._online_queue = asyncio.Queue()
         self._remoteList = {}
-
-    @property
-    def online_queue(self):
-        return self._online_queue
 
     ###################
     ### LOCAL BOUND ###
     ###################
 
-    def connection(self, peer, transport: Transport = None) -> None:
+    def connection(self, peer: (str, str), transport: Transport = None) -> None:
         """
             Store a new connection, without jid or transport.
             Those will be added in the future with the set_jid method.
@@ -44,21 +39,21 @@ class ConnectionManager(metaclass=Singleton):
             :param transport: The transport object associated to the connection
         """
         if peer not in self._peerList:
-            self._peerList[peer] = {
-                peerKeys.JID: None,
-                peerKeys.TRANSPORT: transport
-            }
+            self._peerList[peer] = (None, transport, asyncio.Event())
 
     def disconnection(self, peer) -> None:
         """
-            Remove a stored connection.
+            Remove a stored connection, and fires the DisconnectEvent
 
             :param peer: The peer value in the tuple format ({IP}, {PORT})
         """
+
+
         try:
-            self._peerList.pop(peer)
+            _, _, disconnect_event = self._peerList.pop(peer)
+            disconnect_event.set()
         except KeyError:
-            logger.error(f"{peer} not present in the online list")
+            logger.warning(f"{peer} not present in the online list")
 
     def close(self, peer) -> None:
         """
@@ -68,23 +63,21 @@ class ConnectionManager(metaclass=Singleton):
             :param peer: The peer value in the tuple format ({IP}, {PORT})
         """
         try:
-            buffer: Transport = self._peerList.pop(peer)[peerKeys.TRANSPORT]
+            _, buffer, _ = self._peerList.pop(peer)
             buffer.write('</stream:stream>'.encode())
             self.disconnection(peer)
         except KeyError as e:
             logger.error(f"{peer} not present in the online list")
-            raise e
 
     def get_users_connected(self) -> peerList:
         """
             Return all the users connected
 
-            :return: A dictionary of users connected in the format { (IP, PORT): {jid: <JID>, transport:
-            <TRANSPORT> }}
+            :return: peerList
         """
         return self._peerList
 
-    def get_buffer(self, jid: Union[JIDClass]) -> List[Tuple[JIDClass, Transport]]:
+    def get_buffer(self, jid: JIDClass) -> List[Tuple[JIDClass, Transport]]:
         """
             Get all the available buffers associated with a jid.
 
@@ -99,38 +92,37 @@ class ConnectionManager(metaclass=Singleton):
             :param jid: The jid to get the buffers for. It can be a full jid or a bare jid
             :return: (JID, TRANSPORT) tuple
         """
+        if jid.domain is None:
+            logger.error("JID must have, at least, user and domain")
+            return []
 
-        return [(self._peerList[key][peerKeys.JID], self._peerList[key][peerKeys.TRANSPORT])
-                for key, values in self._peerList.items()
-                if values[peerKeys.JID] is not None and re.match(f"{str(jid)}/*", str(values[peerKeys.JID]))
-                ]
+        return [(jid, buffer) for jid, buffer, _ in self._peerList.values() if re.match(f"{str(jid)}/*", str(jid))]
 
-    def set_online(self, jid: JIDClass):
-        """
-            Sets the client as online, and fires the asyncio.Event associated to inform any
-            process (like Presence)
-        @return: None
-        """
-        if jid.resource is None:
-            return False
-        self._online_queue.put_nowait(jid)
+    def get_disconnect_event(self, peer: (str, str) = None, jid: JIDClass = None) -> Event:
+        try:
+            if peer:
+                return self._peerList[peer][2]
+            if jid:
+                return next(iter([i[2] for i in list(self._peerList.values()) if i[0] == jid]), None)
+        except KeyError:
+            logger.error(f"Unable to find {peer} during event retrieve")
 
     ###########
     ### JID ###
     ###########
 
-    def get_jid(self, peer) -> Union[JIDClass, None]:
+    def get_jid(self, peer: (str, str)) -> Union[JIDClass, None]:
         """
             Return the jid associated with the peername
 
             :param peer: The peer value in the tuple format ({IP}, {PORT})
         """
         try:
-            return self._peerList[peer][peerKeys.JID]
+            return self._peerList[peer][0]
         except KeyError:
             return None
 
-    def set_jid(self, peer: Tuple[str, int], jid: JIDClass, transport: Transport = None) -> Union[None, bool]:
+    def set_jid(self, peer: (str, int), jid: JIDClass, transport: Transport = None) -> None:
         """
             Set/update the jid of a registered connection.
 
@@ -142,17 +134,16 @@ class ConnectionManager(metaclass=Singleton):
             :param transport: Transport to use
         """
         try:
-            self._peerList[peer][peerKeys.JID] = jid
-            if transport:
-                self._peerList[peer][peerKeys.TRANSPORT] = transport
+            _, old_transport, event = self._peerList[peer]
+            self._peerList[peer] = (jid, transport or old_transport, event)
         except KeyError:
-            return False
+            logger.error(f"Unable to find {peer} during jid/transport update")
 
     def update_resource(self, peer: Tuple[str, int], resource: str):
         try:
-            self._peerList[peer][peerKeys.JID].resource = resource
+            self._peerList[peer][0].resource = resource
         except KeyError:
-            logger.warning(f"Tried to update {peer} resource, but peer was not in the online list")
+            logger.warning(f"Unable to find {peer} during resource update")
 
     ###########################################################################
     ############################# REMOTE SERVER ###############################

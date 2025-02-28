@@ -26,8 +26,6 @@ class StanzaHandler:
         self._pluginManager = PluginManager(self._jid)
         self._presenceManager = Presence()
 
-        self._connections.set_online(self._jid)
-
         self._functions = {
             "{jabber:client}iq": self.handle_iq,
             "{jabber:client}message": self.handle_msg,
