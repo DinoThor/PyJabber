@@ -89,6 +89,7 @@ class XMLProtocol(asyncio.Protocol):
 
         self._transport = None
         self._xml_parser = None
+        self._timeout_monitor.__del__()
 
         self._connection_manager.disconnection(self._peer)
 
