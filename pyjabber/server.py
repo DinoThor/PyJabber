@@ -5,7 +5,6 @@ import signal
 import socket
 import sqlite3
 import ssl
-import sys
 
 from contextlib import closing
 from typing import LiteralString
@@ -13,7 +12,7 @@ from typing import LiteralString
 from loguru import logger
 
 from pyjabber.db.database import connection
-from pyjabber.network.XMLProtocol import XMLProtocol
+from pyjabber.network.XMLProtocol import XMLProtocol, TransportProxy
 from pyjabber.network.server.incoming.XMLServerIncomingProtocol import XMLServerIncomingProtocol
 from pyjabber.network.server.outcoming.XMLServerOutcomingProtocol import XMLServerOutcomingProtocol
 from pyjabber.network.ConnectionManager import ConnectionManager
@@ -25,11 +24,6 @@ from pyjabber.metadata import host as metadata_host, config_path as metadata_con
 from pyjabber.metadata import database_path as metadata_database_path, root_path as metadata_root_path
 from pyjabber.metadata import database_in_memory as metadata_database_in_memory
 
-if sys.platform == "win32":
-    #from winloop import run
-    pass
-else:
-    import uvloop
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -157,22 +151,23 @@ class Server:
         try:
             while True:
                 transport, protocol, parser = await tls_queue.get()
-                old_peer = transport.get_extra_info("peername")
+                peer = transport.get_extra_info("peername")
                 try:
                     new_transport = await loop.start_tls(
-                        transport=transport,
+                        transport=transport.originalTransport,
                         protocol=protocol,
                         sslcontext=ssl_context,
                         server_side=True)
 
+                    new_transport = TransportProxy(new_transport, peer)
                     transport = new_transport
                     parser.buffer = new_transport
-                    logger.debug(f"Done TLS for <{old_peer}>")
+                    logger.debug(f"Done TLS for <{peer}>")
 
                 except ConnectionResetError:
-                    logger.error(f"ERROR DURING TLS UPGRADE WITH <{old_peer}>")
+                    logger.error(f"ERROR DURING TLS UPGRADE WITH <{peer}>")
                     if not transport.is_closing():
-                        self._connection_manager.close(old_peer)
+                        self._connection_manager.close(peer)
         except asyncio.CancelledError:
             pass
 
@@ -207,23 +202,23 @@ class Server:
         logger.info(f"Client domain => {self._host}")
         logger.info(f"Server is listening clients on {[s.getsockname() for s in self._client_listener.sockets if s]}")
 
-        try:
-            self._server_listener = await loop.create_server(
-                lambda: XMLServerIncomingProtocol(
-                    namespace="jabber:server",
-                    host=self._host,
-                    connection_timeout=self._connection_timeout,
-                    cert_path=self._cert_path,
-                ),
-                host=["0.0.0.0"],
-                port=self._server_port,
-                family=self._family
-            )
-        except OSError as e:
-            logger.error(e)
-            raise SystemExit
+        # try:
+        #     self._server_listener = await loop.create_server(
+        #         lambda: XMLServerIncomingProtocol(
+        #             namespace="jabber:server",
+        #             host=self._host,
+        #             connection_timeout=self._connection_timeout,
+        #             cert_path=self._cert_path,
+        #         ),
+        #         host=["0.0.0.0"],
+        #         port=self._server_port,
+        #         family=self._family
+        #     )
+        # except OSError as e:
+        #     logger.error(e)
+        #     raise SystemExit
 
-        logger.info(f"Server is listening servers on {[s.getsockname() for s in self._server_listener.sockets if s]}")
+        # logger.info(f"Server is listening servers on {[s.getsockname() for s in self._server_listener.sockets if s]}")
         logger.info("Server started...")
 
     async def stop_server(self):

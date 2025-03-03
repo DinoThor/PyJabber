@@ -165,21 +165,22 @@ class Presence(metaclass=Singleton):
             if contact_jid.bare() in self._online_status:
                 for user_connected in [i for i in self._online_status[contact_jid.bare()] if i[1] == PresenceType.AVAILABLE]:
                     resource = user_connected[0]
-                    dest_jid, buffer = self._connections.get_buffer(
-                        JID(user=contact_jid.user, domain=contact_jid.domain, resource=resource))[0]
+                    online = self._connections.get_buffer(JID(user=contact_jid.user, domain=contact_jid.domain, resource=resource))
+                    if online:
+                        dest_jid, buffer = online[0]
 
-                    presence = ET.Element(
-                        "presence",
-                        attrib={
-                            "from": str(jid),
-                            "to": dest_jid.bare()
-                        }
-                    )
-                    for attrib in user_connected[2:]:
-                        if attrib:
-                            presence.append(attrib)
+                        presence = ET.Element(
+                            "presence",
+                            attrib={
+                                "from": str(jid),
+                                "to": dest_jid.bare()
+                            }
+                        )
+                        for attrib in user_connected[2:]:
+                            if attrib:
+                                presence.append(attrib)
 
-                    buffer.write(ET.tostring(presence))
+                        buffer.write(ET.tostring(presence))
 
         if jid.bare() in self._pending:
             for item in self._pending[jid.bare()]:
@@ -306,6 +307,9 @@ class Presence(metaclass=Singleton):
                     new_item_sender.attrib['jid'] = new_item_sender.attrib['jid'] + f"@{host.get()}"
                     roster_push_sender = new_item_sender
 
+                else:
+                    item_sender = None
+
             if item_receiver:
                 item_id = item_receiver[0].get("id")
                 item_receiver = item_receiver[0].get("item")
@@ -327,17 +331,22 @@ class Presence(metaclass=Singleton):
                     new_item_receiver.attrib['jid'] = new_item_receiver.attrib['jid'] + f"@{host.get()}"
                     roster_push_receiver = new_item_receiver
 
-            for sender in self._connections.get_buffer(JID(to.bare())):
-                res = ET.Element(
-                    "presence",
-                    attrib={
-                        "from": jid.bare(),
-                        "to": str(to),
-                        "id": element.attrib.get('id') or str(uuid4()),
-                        "type": "subscribed",
-                    },
-                )
-                sender[-1].write(ET.tostring(res))
+                else:
+                    item_receiver = None
+
+            if item_receiver:
+                for sender in self._connections.get_buffer(JID(to.bare())):
+                    res = ET.Element(
+                        "presence",
+                        attrib={
+                            "from": jid.bare(),
+                            "to": str(to),
+                            "id": element.attrib.get('id') or str(uuid4()),
+                            "type": "subscribed",
+                        },
+                    )
+                    sender[-1].write(ET.tostring(res))
+                return None
 
             if roster_push_sender is not None:
                 for sender in self._connections.get_buffer(JID(to.bare())):

@@ -14,6 +14,23 @@ from pyjabber.network.tls.TLSWorker import TLSQueue
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
 
 
+class TransportProxy:
+    def __init__(self, transport, peer):
+        self._transport = transport
+        self._peer = peer
+
+    @property
+    def originalTransport(self):
+        return self._transport
+
+    def write(self, data):
+        logger.trace(f"Sending to {self._peer}: {data}")
+        return self._transport.write(data)
+
+    def __getattr__(self, name):
+        return getattr(self._transport, name)
+
+
 class XMLProtocol(asyncio.Protocol):
     """
     Protocol to manage the network connection between nodes in the XMPP network. Handles the transport layer.
@@ -53,8 +70,8 @@ class XMLProtocol(asyncio.Protocol):
         :type transport: asyncio.Transport
         """
         if transport:
-            self._transport = transport
-            self._peer = self._transport.get_extra_info('peername')
+            self._peer = transport.get_extra_info('peername')
+            self._transport = TransportProxy(transport, self._peer)
 
             self._xml_parser = sax.make_parser()
             self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
@@ -70,6 +87,15 @@ class XMLProtocol(asyncio.Protocol):
                 )
 
             self._connection_manager.connection(self._peer, self._transport)
+
+            # # Overrides the original transport write method to log outcoming data to client (trace)
+            # original_write = transport.write
+            #
+            # def write_with_log(data):
+            #     logger.trace(f"Sending to {self._peer}: {data}")
+            #     original_write(data)
+            #
+            # transport.write = write_with_log
 
             logger.info(f"Connection from {self._peer}")
         else:

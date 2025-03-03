@@ -1,24 +1,25 @@
 import asyncio
 import re
-from glob import translate
 from typing import List
-from asyncio import Transport, Event
+from asyncio import Transport
 from typing import Dict, Union, Tuple
 from loguru import logger
 
-from pyjabber.stream.JID import JID as JIDClass
+from pyjabber.stream.JID import JID
 from pyjabber.utils import Singleton
 
 type peerList = Dict[
     (str, str),
-    (JIDClass, Transport, Event)
+    (JID, Transport)
 ]
+
 
 # EXAMPLE
 # peerKeys = {
-#     ("0.0.0.0", "50000"): ("demo@localhost/12341234", <Transport>, <DisconnectEvent>),
-#     ("0.0.0.0", "50001"): ("test@localhos/43214321", <Transport>, <DisconnectEvent>)
+#     ("0.0.0.0", "50000"): ("demo@localhost/12341234", <Transport>),
+#     ("0.0.0.0", "50001"): ("test@localhos/43214321", <Transport>)
 # }
+
 
 class ConnectionManager(metaclass=Singleton):
     def __init__(self) -> None:
@@ -48,7 +49,6 @@ class ConnectionManager(metaclass=Singleton):
             :param peer: The peer value in the tuple format ({IP}, {PORT})
         """
 
-
         try:
             _, _, disconnect_event = self._peerList.pop(peer)
             disconnect_event.set()
@@ -77,7 +77,7 @@ class ConnectionManager(metaclass=Singleton):
         """
         return self._peerList
 
-    def get_buffer(self, jid: JIDClass) -> List[Tuple[JIDClass, Transport]]:
+    def get_buffer(self, jid: JID) -> List[Tuple[JID, Transport]]:
         """
             Get all the available buffers associated with a jid.
 
@@ -96,22 +96,17 @@ class ConnectionManager(metaclass=Singleton):
             logger.error("JID must have, at least, user and domain")
             return []
 
-        return [(jid, buffer) for jid, buffer, _ in self._peerList.values() if re.match(f"{str(jid)}/*", str(jid))]
-
-    def get_disconnect_event(self, peer: (str, str) = None, jid: JIDClass = None) -> Event:
-        try:
-            if peer:
-                return self._peerList[peer][2]
-            if jid:
-                return next(iter([i[2] for i in list(self._peerList.values()) if i[0] == jid]), None)
-        except KeyError:
-            logger.error(f"Unable to find {peer} during event retrieve")
+        if jid.resource:
+            return [(jid_stored, buffer) for jid_stored, buffer, _ in self._peerList.values() if str(jid) == jid_stored]
+        else:
+            return [(jid_stored, buffer) for jid_stored, buffer, _ in self._peerList.values() if
+                    re.match(f"{str(jid)}/*", str(jid_stored))]
 
     ###########
     ### JID ###
     ###########
 
-    def get_jid(self, peer: (str, str)) -> Union[JIDClass, None]:
+    def get_jid(self, peer: (str, str)) -> Union[JID, None]:
         """
             Return the jid associated with the peername
 
@@ -122,7 +117,7 @@ class ConnectionManager(metaclass=Singleton):
         except KeyError:
             return None
 
-    def set_jid(self, peer: (str, int), jid: JIDClass, transport: Transport = None) -> None:
+    def set_jid(self, peer: (str, int), jid: JID, transport: Transport = None) -> None:
         """
             Set/update the jid of a registered connection.
 

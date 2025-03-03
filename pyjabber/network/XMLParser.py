@@ -49,7 +49,7 @@ class XMLParser(ContentHandler):
         self._streamHandler.buffer = value
 
     def startElementNS(self, name, qname, attrs):
-        logger.trace(f"Start element from <{hex(id(self._buffer))}>: {name}")
+        # logger.trace(f"Start element from <{hex(id(self._buffer))}>: {name}")
 
         if self._stack:  # "<stream:stream>" tag already present in the data stack
             elem = ET.Element(
@@ -75,7 +75,7 @@ class XMLParser(ContentHandler):
             raise Exception()
 
     def endElementNS(self, name, qname):
-        logger.trace(f"End element NS: {qname} : {name}")
+        # logger.trace(f"End element NS: {qname} : {name}")
 
         if "stream" in name:
             self._buffer.write(b'</stream:stream>')
