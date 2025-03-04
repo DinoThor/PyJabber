@@ -75,5 +75,5 @@ class RPC(metaclass=Singleton):
 
     def error_response(self, to_: JID, from_: JID, id_: str, error: str):
         iq_res = IQ(type_=IQ.TYPE.ERROR, to_=str(to_), from_=str(from_), id_=id_)
-        iq_res.append(SE.not_acceptable(error))
+        iq_res.append(ET.fromstring(SE.not_acceptable(error)))
         return iq_res

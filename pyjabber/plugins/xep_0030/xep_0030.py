@@ -30,11 +30,9 @@ class Disco(metaclass=Singleton):
         self._config_path = config_path.get()
         self._items = list(load(open(self._config_path), Loader=Loader).get('items'))
 
-        """
-        Search if any item has the substring pubsub, and replace the placeholder
-        with the server's host of the current session
-        A none result means the pubsub feature is disable
-        """
+        # Search if any item has the substring pubsub, and replace the placeholder
+        # with the server's host of the current session
+        # A none result means the pubsub feature is disable
         self._pubsub_jid = next((s for s in list(self._items) if 'pubsub' in s), None)
         if self._pubsub_jid:
             self._pubsub_jid = self._pubsub_jid.replace('$', self._host)

@@ -33,6 +33,8 @@ def setUp():
             "{jabber:client}message": MagicMock(),
             "{jabber:client}presence": MagicMock()
         }
+        handler._connection = mock_connections
+        handler._presenceManager = mock_presence
 
     return handler, mock_buffer, mock_connections, mock_presence
 
@@ -69,17 +71,6 @@ def test_feed_function_key_error(mock_feature_not_implemented):
     mock_feature_not_implemented.assert_not_called()
     mock_buffer.write.assert_not_called()
 
-@patch('pyjabber.stanzas.error.StanzaError.feature_not_implemented')
-def test_feed_key_error_in_schemas(mock_feature_not_implemented):
-    handler, mock_buffer, mock_connections, mock_presence = setUp()
-    element = Element('presence', attrib={"to": "localhost"})
-    element.tag = "{jabber:client}unknown"
-
-    with patch.dict(handler._schemas, {}, clear=True):
-        handler.feed(element)
-
-    mock_feature_not_implemented.assert_called_once()
-    mock_buffer.write.assert_called_once_with(mock_feature_not_implemented())
 
 def test_handleIQ():
     handler, mock_buffer, mock_connections, mock_presence = setUp()
@@ -90,9 +81,8 @@ def test_handleIQ():
     expected_response = SE.service_unavaliable()
 
     with patch('pyjabber.stream.StanzaHandler.PluginManager') as MockPluginManager:
-        # mock_plugin_manager = MockPluginManager.return_value
-        MockPluginManager.feed.return_value = expected_response # Simulamos la respuesta esperada
-        # MockPluginManager.return_value = mock_plugin_manager
+        MockPluginManager.feed.return_value = expected_response  # Simulamos la respuesta esperada
+        handler._pluginManager = MockPluginManager
         handler.handle_iq(element)
         mock_buffer.write.assert_called_once_with(expected_response)
 

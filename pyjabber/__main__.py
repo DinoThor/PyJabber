@@ -6,7 +6,7 @@ import click
 if sys.platform != 'win32':
     from uvloop import run
 else:
-    from asyncio import run
+    from winloop import run
 
 from loguru import logger
 from pyjabber.server import Server
@@ -30,7 +30,6 @@ FILE_PATH = os.path.dirname(os.path.abspath(__file__))
               default='ipv4',
               show_default=True,
               help='(ipv4 / ipv6)')
-@click.option('--tls1_3', is_flag=True, help='Enables TLSv1_3')
 @click.option('--timeout', type=int, default=60,
               show_default=True, help='Timeout for connection')
 @click.option('--database_path', type=str, default=os.path.join(os.getcwd(), "pyjabber.db"),
@@ -53,7 +52,6 @@ def main(
         server_port,
         server_out_port,
         family,
-        tls1_3,
         timeout,
         database_path,
         database_purge,
@@ -90,7 +88,6 @@ def main(
         database_path=database_path,
         database_purge=database_purge,
         database_in_memory=database_in_memory,
-        enable_tls1_3=tls1_3,
     )
 
     run(server.start(), debug=debug)
@@ -99,11 +96,11 @@ def main(
 
 
 def set_verbosity(verbose):
-    if verbose == 0:
+    if verbose == 1:
         return 'INFO'
-    elif verbose == 1:
-        return 'WARNING'
     elif verbose == 2:
+        return 'WARNING'
+    elif verbose == 3:
         return 'DEBUG'
     else:
         return 'TRACE'

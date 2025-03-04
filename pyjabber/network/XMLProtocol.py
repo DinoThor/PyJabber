@@ -1,16 +1,34 @@
 import asyncio
 import os
-import ssl
 
 from loguru import logger
 from xml import sax
+from xml.etree.ElementTree import Element
 
+from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.XMLParser import XMLParser
 from pyjabber.network.tls.TLSWorker import TLSQueue
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
+
+
+class TransportProxy:
+    def __init__(self, transport, peer):
+        self._transport = transport
+        self._peer = peer
+
+    @property
+    def originalTransport(self):
+        return self._transport
+
+    def write(self, data):
+        logger.trace(f"Sending to {self._peer}: {data}")
+        return self._transport.write(data)
+
+    def __getattr__(self, name):
+        return getattr(self._transport, name)
 
 
 class XMLProtocol(asyncio.Protocol):
@@ -21,7 +39,6 @@ class XMLProtocol(asyncio.Protocol):
     :param host: Host for connections
     :param connection_timeout: Max time without any response from a client. After that, the server will terminate the connection
     :param cert_path: Path to custom domain certs. By default, the server generates its own certificates for hostname
-    :param enable_tls1_3: Boolean. Enables the use of TLSv1.3 in the STARTTLS process
     """
 
     def __init__(
@@ -29,21 +46,22 @@ class XMLProtocol(asyncio.Protocol):
             namespace,
             host,
             connection_timeout,
-            cert_path,
-            enable_tls1_3=False):
+            cert_path):
 
         self._xmlns = namespace
         self._host = host
         self._connection_timeout = connection_timeout
         self._connection_manager = ConnectionManager()
+        self._presence_manager = Presence()
         self._cert_path = cert_path
-        self._enable_tls1_3 = enable_tls1_3
         self._tls_queue = TLSQueue().queue
 
         self._transport = None
         self._peer = None
         self._xml_parser = None
         self._timeout_monitor = None
+        self._timeout_flag = False
+
 
     def connection_made(self, transport):
         """
@@ -53,8 +71,8 @@ class XMLProtocol(asyncio.Protocol):
         :type transport: asyncio.Transport
         """
         if transport:
-            self._transport = transport
-            self._peer = self._transport.get_extra_info('peername')
+            self._peer = transport.get_extra_info('peername')
+            self._transport = TransportProxy(transport, self._peer)
 
             self._xml_parser = sax.make_parser()
             self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
@@ -82,11 +100,19 @@ class XMLProtocol(asyncio.Protocol):
         :param exc: Exception that caused the connection to close
         :type exc: Exception
         """
-        if self._transport:
-            logger.info(f"Connection lost from {self._peer}: Reason {exc}")
+        if self._timeout_flag:
+            return
 
-            self._transport = None
-            self._xml_parser = None
+        logger.info(f"Connection lost from {self._peer}: Reason {exc}")
+        jid = self._connection_manager.get_jid(self._peer)
+        if jid and jid.user and jid.domain:
+            self._presence_manager.feed(jid, Element("presence", attrib={"type": "INTERNAL"}))
+
+        self._transport = None
+        self._xml_parser = None
+        self._timeout_monitor.__del__()
+
+        self._connection_manager.disconnection(self._peer)
 
     def data_received(self, data):
         """
@@ -124,7 +150,6 @@ class XMLProtocol(asyncio.Protocol):
         """
         if self._transport:
             logger.debug(f"EOF received from {self._peer}")
-            self._connection_manager.disconnection(self._peer)
 
     def connection_timeout(self):
         """
@@ -136,53 +161,16 @@ class XMLProtocol(asyncio.Protocol):
             self._transport.write("<connection-timeout/>".encode())
             self._transport.close()
         except:
-            logger.info(f"Connection with {self._peer} is already closed. Removing from online list")
+            logger.warning(f"Connection with {self._peer} is already closed. Removing from online list")
 
         self._connection_manager.disconnection(self._peer)
 
         self._transport = None
         self._xml_parser = None
-
-    ###########################################################################
-    ###########################################################################
-    ###########################################################################
+        self._timeout_flag = True
 
     def task_tls(self):
         """
             Sync function to call the STARTTLS coroutine
         """
         self._tls_queue.put_nowait((self._transport, self, self._xml_parser.getContentHandler()))
-
-    async def enable_tls(self, loop):
-        """
-            Coroutine to upgrade the connection to TLS
-            It swaps the transport for the XMLProtocol, and XMLParser
-
-            :param loop: Running asyncio loop
-        """
-        parser = self._xml_parser.getContentHandler()
-
-        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        if not self._enable_tls1_3:
-            ssl_context.options |= ssl.OP_NO_TLSv1_3
-
-        ssl_context.load_cert_chain(
-            certfile=os.path.join(self._cert_path, f"{self._host}_cert.pem"),
-            keyfile=os.path.join(self._cert_path, f"{self._host}_key.pem"),
-        )
-
-        try:
-            new_transport = await loop.start_tls(
-                transport=self._transport,
-                protocol=self,
-                sslcontext=ssl_context,
-                server_side=True)
-
-            self._transport = new_transport
-            parser.buffer = self._transport
-            logger.debug(f"Done TLS for <{self._peer}>")
-
-        except ConnectionResetError:
-            logger.error(f"ERROR DURING TLS UPGRADE WITH <{self._peer}>")
-            if not self._transport.is_closing():
-                self._connection_manager.close(self._peer)

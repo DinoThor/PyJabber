@@ -1,3 +1,3 @@
 import pyjabber
 
-__version__ = "0.1.10.post1"
+__version__ = "0.1.11"

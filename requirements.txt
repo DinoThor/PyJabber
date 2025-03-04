@@ -4,4 +4,4 @@ cryptography==43.0.1
 loguru==0.7.2
 pyyaml~=6.0.2
 uvloop==0.21.0; sys_platform != 'win32'
-#winloop==0.1.7; sys_platform == 'win32'
+winloop==0.1.8; sys_platform == 'win32'
