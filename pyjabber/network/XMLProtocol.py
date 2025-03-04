@@ -60,6 +60,7 @@ class XMLProtocol(asyncio.Protocol):
         self._peer = None
         self._xml_parser = None
         self._timeout_monitor = None
+        self._timeout_flag = False
 
 
     def connection_made(self, transport):
@@ -88,15 +89,6 @@ class XMLProtocol(asyncio.Protocol):
 
             self._connection_manager.connection(self._peer, self._transport)
 
-            # # Overrides the original transport write method to log outcoming data to client (trace)
-            # original_write = transport.write
-            #
-            # def write_with_log(data):
-            #     logger.trace(f"Sending to {self._peer}: {data}")
-            #     original_write(data)
-            #
-            # transport.write = write_with_log
-
             logger.info(f"Connection from {self._peer}")
         else:
             logger.error("Invalid transport")
@@ -108,6 +100,9 @@ class XMLProtocol(asyncio.Protocol):
         :param exc: Exception that caused the connection to close
         :type exc: Exception
         """
+        if self._timeout_flag:
+            return
+
         logger.info(f"Connection lost from {self._peer}: Reason {exc}")
         jid = self._connection_manager.get_jid(self._peer)
         if jid and jid.user and jid.domain:
@@ -172,6 +167,7 @@ class XMLProtocol(asyncio.Protocol):
 
         self._transport = None
         self._xml_parser = None
+        self._timeout_flag = True
 
     def task_tls(self):
         """

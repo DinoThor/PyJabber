@@ -34,7 +34,7 @@ class Presence(metaclass=Singleton):
             "subscribe": self.handle_subscribe,
             "subscribed": self.handle_subscribed,
             "unsubscribed": self.handle_unsubscribed,
-            "unavailable": self.handle_initial_presence,
+            "unavailable": self.handle_global_presence,
             "INTERNAL": self.handle_lost_connection
         }
         self._connections = ConnectionManager()
@@ -69,7 +69,7 @@ class Presence(metaclass=Singleton):
             return self._handlers[element.get("type")](jid, element)
 
         if "to" not in element.attrib:
-            return self.handle_initial_presence(jid, element)
+            return self.handle_global_presence(jid, element)
 
         return None
 
@@ -129,7 +129,7 @@ class Presence(metaclass=Singleton):
         if len(self._online_status[jid.bare()]) == 0:
             self._online_status.pop(jid.bare())
 
-    def handle_initial_presence(self, jid: JID, element: ET.Element):
+    def handle_global_presence(self, jid: JID, element: ET.Element):
         if jid.bare() not in self._online_status:
             self._online_status[jid.bare()] = []
 
