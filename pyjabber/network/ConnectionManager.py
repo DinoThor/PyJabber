@@ -40,7 +40,7 @@ class ConnectionManager(metaclass=Singleton):
             :param transport: The transport object associated to the connection
         """
         if peer not in self._peerList:
-            self._peerList[peer] = (None, transport, asyncio.Event())
+            self._peerList[peer] = (None, transport)
 
     def disconnection(self, peer) -> None:
         """
@@ -50,8 +50,7 @@ class ConnectionManager(metaclass=Singleton):
         """
 
         try:
-            _, _, disconnect_event = self._peerList.pop(peer)
-            disconnect_event.set()
+            self._peerList.pop(peer)
         except KeyError:
             logger.warning(f"{peer} not present in the online list")
 
@@ -99,7 +98,7 @@ class ConnectionManager(metaclass=Singleton):
         if jid.resource:
             return [(jid_stored, buffer) for jid_stored, buffer, _ in self._peerList.values() if str(jid) == jid_stored]
         else:
-            return [(jid_stored, buffer) for jid_stored, buffer, _ in self._peerList.values() if
+            return [(jid_stored, buffer) for jid_stored, buffer in self._peerList.values() if
                     re.match(f"{str(jid)}/*", str(jid_stored))]
 
     ###########
@@ -129,8 +128,8 @@ class ConnectionManager(metaclass=Singleton):
             :param transport: Transport to use
         """
         try:
-            _, old_transport, event = self._peerList[peer]
-            self._peerList[peer] = (jid, transport or old_transport, event)
+            _, old_transport = self._peerList[peer]
+            self._peerList[peer] = (jid, transport or old_transport)
         except KeyError:
             logger.error(f"Unable to find {peer} during jid/transport update")
 

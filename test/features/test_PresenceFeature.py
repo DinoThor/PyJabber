@@ -5,6 +5,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 import xml.etree.ElementTree as ET
 from pyjabber.features.presence.PresenceFeature import Presence
+from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.stream.JID import JID
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -15,39 +16,33 @@ def setup_database():
     cur = con.cursor()
     cur.execute('''
         CREATE TABLE pendingsub (
-            jid_from VARCHAR(255) NOT NULL,
-            jid_to VARCHAR(255) NOT NULL,
+            jid VARCHAR(255) NOT NULL,
             item VARCHAR(255) NOT NULL
+        )
+    ''')
+    cur.execute('''
+        CREATE TABLE roster(
+            id INTEGER,
+            jid VARCHAR(255) NOT NULL,
+            rosterItem VARCHAR(255) NOT NULL,
+            PRIMARY KEY(id)
         )
     ''')
     con.commit()
     yield con
     con.close()
 
-@pytest.fixture
-def db_connection_factory(setup_database):
-    def factory():
-        return setup_database
-
-    return factory
-
 
 @pytest.fixture
-def setup_presence(db_connection_factory):
-    with patch('pyjabber.features.feature_utils.RosterUtils.retrieve_roster') as mock_retrieve_roster:
-        with patch('pyjabber.features.feature_utils.RosterUtils.update') as mock_update:
-                with patch('pyjabber.features.feature_utils.RosterUtils.create_roster_entry') as mock_create_roster_entry:
-                    with patch('pyjabber.features.feature_utils.RosterUtils.check_pending_sub') as mock_check_pending:
-                         with patch('pyjabber.features.feature_utils.RosterUtils.check_pending_sub_to') as mock_check_pending_to:
-                            with patch('pyjabber.features.feature_utils.RosterUtils.store_pending_sub') as mock_store_pending_sub:
-                                with patch('pyjabber.features.presence.PresenceFeature.ConnectionManager') as mock_connections_manager:
-                                    mock_connections_manager = mock_connections_manager.return_value
-                                    mock_check_pending.return_value = []
-                                    mock_check_pending_to.return_value = []
-                                    mock_store_pending_sub.return_values = []
-                                    jid = JID('user2@localhost')
-                                    presence = Presence(jid)
-                                    yield presence, mock_connections_manager, mock_retrieve_roster, mock_update, mock_create_roster_entry
+def setup_presence(setup_database):
+    with patch('pyjabber.features.presence.PresenceFeature.host') as mock_host, \
+         patch('pyjabber.features.presence.PresenceFeature.ConnectionManager') as mock_connections_manager, \
+         patch('pyjabber.features.presence.PresenceFeature.connection') as mock_connection, \
+         patch('pyjabber.features.presence.PresenceFeature.Roster') as mock_roster:
+        mock_connection.return_value = setup_database
+        mock_host.get.return_value = 'localhost'
+        presence = Presence()
+        yield presence, mock_connections_manager, mock_roster
 
 
 def elements_are_equal(e1, e2):
@@ -56,23 +51,22 @@ def elements_are_equal(e1, e2):
     return all(elements_are_equal(c1, c2) for c1, c2 in zip(e1, e2))
 
 def test_handle_subscribe(setup_presence):
-    presence, mock_connections, mock_retrieve_roster, mock_update, _ = setup_presence
+    presence, mock_connections, mock_roster = setup_presence
     element = ET.Element('presence', attrib={'type': 'subscribe', 'to': 'user@localhost', 'id': '123'})
-
-    mock_retrieve_roster.side_effect = [
-        [(1, 'user2@localhost', '<item jid="user@localhost" subscription="none"/>')],  # Initial simulation
-        [(1, 'user2@localhost', '<item jid="user@localhost" subscription="ask"/>')]  # After update
+    mock_roster().roster_by_jid.side_effect = [
+        [{"id_": 1, "item": '<item jid="user@localhost" subscription="none"/>'}],  # Initial simulation
+        [{"id_": 1, "item": '<item jid="user@localhost" subscription="ask"/>'}]  # After update
     ]
 
-    mock_update.return_value = '<item jid="user@localhost" subscription="ask"/>'
-    mock_connections.get_buffer.return_value = [MagicMock()]
+    mock_connections().get_buffer.return_value = [MagicMock()]
 
-    presence._jid = JID('user2@localhost')
+    jid = JID('user2@localhost')
+    presence._jid = jid
 
-    result = presence.handle_subscribe(element)
+    result = presence.handle_subscribe(presence._jid, element)
 
     assert result is None
-    mock_retrieve_roster.assert_called_with('user2@localhost')
+    mock_roster().roster_by_jid.assert_called_with(jid)
 
     expected_item = ET.Element('item', attrib={'jid': 'user@localhost', 'subscription': 'none', 'ask': 'subscribe'})
     actual_call = mock_update.call_args

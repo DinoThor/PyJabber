@@ -10,6 +10,7 @@ from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.XMLParser import XMLParser
 from pyjabber.network.tls.TLSWorker import TLSQueue
+from pyjabber.stream.StanzaHandler import InternalServerError
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
 
@@ -110,7 +111,7 @@ class XMLProtocol(asyncio.Protocol):
 
         self._transport = None
         self._xml_parser = None
-        self._timeout_monitor.__del__()
+        self._timeout_monitor.cancel()
 
         self._connection_manager.disconnection(self._peer)
 
@@ -142,7 +143,11 @@ class XMLProtocol(asyncio.Protocol):
         data = data.replace(b"<?xml version=\'1.0\'?>", b"")
         data = data.replace(b"<?xml version=\"1.0\"?>", b"")
 
-        self._xml_parser.feed(data)
+        try:
+            self._xml_parser.feed(data)
+        except InternalServerError:
+            a = 1
+            pass
 
     def eof_received(self):
         """

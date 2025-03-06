@@ -41,7 +41,7 @@ FILE_PATH = os.path.dirname(os.path.abspath(__file__))
               "-v",
               "--verbose",
               count=True,
-              help="Show verbose debug level: -v level 1, -vv level 2, -vvv level 3, -vvvv level 4")
+              help="Show verbose debug level: -v DEBUG, -vv level TRACE, ")
 @click.option('--log_path', type=str, help='Path to log dumpfile')
 @click.option('--debug', '-D', is_flag=True,
               help='Enables debug mode in Asyncio')
@@ -99,11 +99,11 @@ def set_verbosity(verbose):
     if verbose == 1:
         return 'INFO'
     elif verbose == 2:
-        return 'WARNING'
-    elif verbose == 3:
         return 'DEBUG'
-    else:
+    elif verbose == 3:
         return 'TRACE'
+    else:
+        return 'SUCCESS'
 
 
 """Allow cookiecutter to be executable through `python -m pyjabber`."""
