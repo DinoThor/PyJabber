@@ -5,11 +5,11 @@ name: Python application
 
 on:
   push:
-    branches: [ "master"]
+    branches: [ "master", "develop"]
     tags:
       - "*"
   pull_request:
-    branches: [ "master"]
+    branches: [ "master", "develop"]
 
 permissions:
   contents: read
