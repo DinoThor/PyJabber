@@ -201,7 +201,9 @@ class Presence(metaclass=Singleton):
             roster = self._roster.roster_by_jid(jid)
 
             item = [item for item in roster
-                    if ET.fromstring(item.get("item")).attrib.get("jid") == to.user]
+                    if ET.fromstring(item.get("item")).attrib.get("jid") == to.user
+                    or ET.fromstring(item.get("item")).attrib.get("jid") == to.bare()
+                    ]
 
             if not item:
                 self._roster.create_roster_entry(jid, to)
@@ -213,7 +215,7 @@ class Presence(metaclass=Singleton):
 
             roster_item = item[0].get("item")
             et_item = ET.fromstring(roster_item)
-            item_id = item[0].get("id")
+            item_id = item[0].get("id_")
 
             if et_item.attrib.get("ask") == "subscribe":
                 return
@@ -263,6 +265,9 @@ class Presence(metaclass=Singleton):
             roster_sender = self._roster.roster_by_jid(to)
             roster_receiver = self._roster.roster_by_jid(jid)
 
+            if not roster_sender:
+                return None
+
             if not roster_receiver:
                 self._roster.create_roster_entry(JID(jid.bare()), to)
                 roster_receiver = self._roster.roster_by_jid(jid)
@@ -281,7 +286,7 @@ class Presence(metaclass=Singleton):
             ]
 
             if item_sender:
-                item_id = item_sender[0].get("id")
+                item_id = item_sender[0].get("id_")
                 item_sender = item_sender[0].get("item")
                 et_item_sender = ET.fromstring(item_sender)
 
@@ -291,7 +296,7 @@ class Presence(metaclass=Singleton):
                         new_item_sender.attrib.pop("ask")
 
                     new_item_sender.attrib["subscription"] = "to"
-                    self._roster.update_item(new_item_sender, to, item_id)
+                    self._roster.update_item(new_item_sender, item_id)
 
                     new_item_sender.attrib['jid'] = new_item_sender.attrib['jid'] + f"@{host.get()}"
                     roster_push_sender = new_item_sender
@@ -302,7 +307,7 @@ class Presence(metaclass=Singleton):
                         new_item_sender.attrib.pop("ask")
 
                     new_item_sender.attrib["subscription"] = "both"
-                    self._roster.update_item(new_item_sender, to, item_id)
+                    self._roster.update_item(new_item_sender, item_id)
 
                     new_item_sender.attrib['jid'] = new_item_sender.attrib['jid'] + f"@{host.get()}"
                     roster_push_sender = new_item_sender
@@ -311,14 +316,14 @@ class Presence(metaclass=Singleton):
                     item_sender = None
 
             if item_receiver:
-                item_id = item_receiver[0].get("id")
+                item_id = item_receiver[0].get("id_")
                 item_receiver = item_receiver[0].get("item")
                 et_item_receiver = ET.fromstring(item_receiver)
 
                 if et_item_receiver.attrib.get("subscription") == "none":
                     new_item_receiver = et_item_receiver.__copy__()
                     new_item_receiver.attrib["subscription"] = "from"
-                    self._roster.update_item(new_item_receiver, to, item_id)
+                    self._roster.update_item(new_item_receiver, item_id)
 
                     new_item_receiver.attrib['jid'] = new_item_receiver.attrib['jid'] + f"@{host.get()}"
                     roster_push_receiver = new_item_receiver
@@ -326,7 +331,7 @@ class Presence(metaclass=Singleton):
                 elif et_item_receiver.attrib["subscription"] == "to":
                     new_item_receiver = et_item_receiver.__copy__()
                     new_item_receiver.attrib["subscription"] = "both"
-                    self._roster.update_item(new_item_receiver, to, item_id)
+                    self._roster.update_item(new_item_receiver, item_id)
 
                     new_item_receiver.attrib['jid'] = new_item_receiver.attrib['jid'] + f"@{host.get()}"
                     roster_push_receiver = new_item_receiver

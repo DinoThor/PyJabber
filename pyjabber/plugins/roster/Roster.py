@@ -62,7 +62,7 @@ class Roster(metaclass=Singleton):
             con.execute("INSERT INTO pendingsub values (?, ?, ?)", (from_, to_, ET.tostring(item).decode()))
             con.commit()
 
-    def update_item(self, item: ET.Element, jid: JID, id_: int):
+    def update_item(self, item: ET.Element, id_: int):
         with closing(connection()) as con:
             con.execute("UPDATE roster SET rosterItem = ? WHERE id = ?",
                         (ET.tostring(item).decode(), id_))
