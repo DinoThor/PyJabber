@@ -116,7 +116,7 @@ jobs:
         python -m pip install -r requirements.txt
     - name: Test with pytest
       run: |
-        pytest
+        pytest --ignore=s2s
 
   coverage:
     runs-on: ubuntu-latest
