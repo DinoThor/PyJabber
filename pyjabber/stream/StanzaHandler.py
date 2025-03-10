@@ -1,6 +1,7 @@
 import re
 import xml.etree.ElementTree as ET
-import loguru
+
+from loguru import logger
 
 from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.network.ConnectionManager import ConnectionManager
@@ -36,8 +37,9 @@ class StanzaHandler:
         try:
             self._functions[element.tag](element)
         except (KeyError, InternalServerError) as e:
-            loguru.logger.error(e)
-            loguru.logger.error(f"INTERNAL SERVER ERROR WITH {self._peername}. CLOSING CONNECTION FOR SERVER STABILITY")
+            logger.error(e)
+            logger.error(f"INTERNAL SERVER ERROR WITH {self._peername}. CLOSING CONNECTION FOR SERVER STABILITY")
+            raise InternalServerError
 
     def handle_iq(self, element: ET.Element):
         """
@@ -63,16 +65,20 @@ class StanzaHandler:
         jid = JID(element.attrib["to"])
 
         if re.match(fr'^[a-zA-Z0-9._%+-]+@{re.escape(self._host)}$', jid.bare()):
-            for buffer in self._connections.get_buffer(JID(jid.bare())):
-                buffer[-1].write(ET.tostring(element))
+            for _, buffer in self._connections.get_buffer(JID(jid.bare())):
+                buffer.write(ET.tostring(element))
 
         else:
-            server_buffer = self._connections.get_server_buffer(jid.bare())
-            if server_buffer:
-                server_buffer[-1].write(ET.tostring(element))
+            pass
+            # the s2s feature is currently disabled due to bad implementation
+            # Future version of the server will fix that
 
-            else:
-                self._queue_message.enqueue(jid.domain, ET.tostring(element))
+            # server_buffer = self._connections.get_server_buffer(jid.bare())
+            # if server_buffer:
+            #     server_buffer[-1].write(ET.tostring(element))
+            #
+            # else:
+            #     self._queue_message.enqueue(jid.domain, ET.tostring(element))
 
     def handle_pre(self, element: ET.Element):
         """

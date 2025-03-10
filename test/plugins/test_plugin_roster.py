@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 import sqlite3
 import xml.etree.ElementTree as ET
@@ -6,7 +8,7 @@ from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stream.JID import JID
 
 
-@pytest.fixture
+@pytest.fixture(scope='function')
 def setup_database():
     con = sqlite3.connect(':memory:')
     cur = con.cursor()
@@ -26,17 +28,15 @@ def setup_database():
     yield con
     con.close()
 
-
 @pytest.fixture
-def db_connection_factory(setup_database):
-    def factory():
-        return setup_database
+def setup(setup_database):
+    with patch('pyjabber.plugins.roster.Roster.connection') as mock_con:
+        mock_con = setup_database
+        yield Roster()
 
-    return factory
 
-
-def test_feed_invalid_xml(db_connection_factory):
-    roster = Roster(db_connection_factory)
+def test_feed_invalid_xml(setup):
+    roster = setup
 
     # Crear un elemento XML inválido (más de un hijo)
     element = ET.Element('element')
@@ -48,8 +48,8 @@ def test_feed_invalid_xml(db_connection_factory):
     assert result == SE.invalid_xml()
 
 
-def test_feed_handle_get(db_connection_factory):
-    roster = Roster(db_connection_factory)
+def test_feed_handle_get(setup):
+    roster = setup
 
     # Mock del manejador 'get'
     def mock_handle_get(jid, element):
@@ -66,31 +66,47 @@ def test_feed_handle_get(db_connection_factory):
     assert result == '<result />'
 
 
-def test_handleGet_existing_jid(db_connection_factory):
-    roster = Roster(db_connection_factory)
+def test_handleGet_existing_jid(setup):
+    roster = setup
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'get'})
 
-    result = roster.handle_get(JID('jid1@localhost'), element)
+    with patch('pyjabber.plugins.roster.Roster.host'):
+        result = roster.handle_get(JID('jid1@localhost'), element)
 
-    assert b'<iq id="1234" type="result">' in result  # Verificamos que el resultado contiene la respuesta IQ correcta
+        assert b'<iq id="1234" type="result">' in result  # Verificamos que el resultado contiene la respuesta IQ correcta
 
 
-def test_handleGet_non_existing_jid(db_connection_factory):
-    roster = Roster(db_connection_factory)
+def test_handleGet_non_existing_jid(setup):
+    roster = setup
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'get'})
 
-    result = roster.handle_get(JID('non_existing_jid@localhost'), element)
+    with patch('pyjabber.plugins.roster.Roster.host'):
+        result = roster.handle_get(JID('non_existing_jid@localhost'), element)
 
-    assert b'<iq id="1234" type="result">' in result  # Verificamos que se maneja adecuadamente aunque el jid no exista
+        assert b'<iq id="1234" type="result">' in result  # Verificamos que se maneja adecuadamente aunque el jid no exista
 
 
 ###########
 #Handle SET
 ###########
 
-def test_handleSet_add_new_item(db_connection_factory):
-    roster = Roster(db_connection_factory)
+def test_handleSet_add_new_item(setup):
+    roster = setup
+    element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
+    # Definimos correctamente el elemento 'query' con el espacio de nombres correcto
+    query = ET.SubElement(element, '{jabber:iq:roster}query')
+    ET.SubElement(query, '{jabber:iq:roster}item',
+                         attrib={'jid': 'jid3', 'name': 'name3', 'subscription': 'both'})
+
+    with patch('pyjabber.plugins.roster.Roster.host'):
+        result = roster.handle_set(JID('jid3@localhost'), element)
+
+        assert b'<iq id="1234" type="result" />' in result
+
+
+def test_handleSet_update_existing_item(setup):
+    roster = setup
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
     # Definimos correctamente el elemento 'query' con el espacio de nombres correcto
@@ -98,27 +114,14 @@ def test_handleSet_add_new_item(db_connection_factory):
     item = ET.SubElement(query, '{jabber:iq:roster}item',
                          attrib={'jid': 'jid3', 'name': 'name3', 'subscription': 'both'})
 
-    result = roster.handle_set(JID('jid3@localhost'), element)
+    with patch('pyjabber.plugins.roster.Roster.host'):
+        result = roster.handle_set(JID('jid1@localhost'), element)
 
-    assert b'<iq id="1234" type="result" />' in result
-
-
-def test_handleSet_update_existing_item(db_connection_factory):
-    roster = Roster(db_connection_factory)
-
-    element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
-    # Definimos correctamente el elemento 'query' con el espacio de nombres correcto
-    query = ET.SubElement(element, '{jabber:iq:roster}query')
-    item = ET.SubElement(query, '{jabber:iq:roster}item',
-                         attrib={'jid': 'jid3', 'name': 'name3', 'subscription': 'both'})
-
-    result = roster.handle_set(JID('jid1@localhost'), element)
-
-    assert b'<iq id="1234" type="result" />' in result
+        assert b'<iq id="1234" type="result" />' in result
 
 
-def test_handleSet_remove_item(db_connection_factory):
-    roster = Roster(db_connection_factory)
+def test_handleSet_remove_item(setup):
+    roster = setup
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
     # Definimos correctamente el elemento 'query' con el espacio de nombres correcto
@@ -126,13 +129,14 @@ def test_handleSet_remove_item(db_connection_factory):
     item = ET.SubElement(query, '{jabber:iq:roster}item',
                          attrib={'jid': 'jid3', 'name': 'name3', 'subscription': 'both'})
 
-    result = roster.handle_set(JID('jid1@localhost'), element)
+    with patch('pyjabber.plugins.roster.Roster.host'):
+        result = roster.handle_set(JID('jid1@localhost'), element)
 
-    assert b'<iq id="1234" type="result" />' in result
+        assert b'<iq id="1234" type="result" />' in result
 
 
-def test_handleSet_invalid_xml(db_connection_factory):
-    roster = Roster(db_connection_factory)
+def test_handleSet_invalid_xml(setup):
+    roster = setup
 
     # Create an element with multiple items
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
@@ -144,8 +148,8 @@ def test_handleSet_invalid_xml(db_connection_factory):
         roster.handle_set(JID('jid1@localhost'), element)
 
 
-def test_handleSet_missing_query(db_connection_factory):
-    roster = Roster(db_connection_factory)
+def test_handleSet_missing_query(setup):
+    roster = setup
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
 
@@ -153,8 +157,8 @@ def test_handleSet_missing_query(db_connection_factory):
         roster.handle_set(JID('jid1@localhost'), element)
 
 
-def test_handleSet_no_items(db_connection_factory):
-    roster = Roster(db_connection_factory)
+def test_handleSet_no_items(setup):
+    roster = setup
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
     query = ET.SubElement(element, '{jabber:iq:roster}query')

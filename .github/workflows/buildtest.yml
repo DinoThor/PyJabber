@@ -1,0 +1,29 @@
+name: Build test
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+
+      - name: Check BUILDTEST flag is present in message
+        id: check_commit
+        run: |
+          if git log -1 --pretty=%B | grep -iq 'BUILDTEST'; then
+            echo "should_run=true" >> $GITHUB_ENV
+          else
+            echo "should_run=false" >> $GITHUB_ENV
+          fi
+
+      - name: Build
+        if: env.should_run == 'true'
+        run: |
+          python setup.py sdist bdist_wheel
+          echo "Build complete"

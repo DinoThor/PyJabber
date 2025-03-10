@@ -14,8 +14,7 @@ class StreamAlivenessMonitor:
         self._reset_event = asyncio.Event()
 
     def __del__(self):
-        if self._timeout_task is not None:
-            self._timeout_task.cancel()
+        self.cancel()
 
     async def _timeout_task_coro(self):
         try:
@@ -36,3 +35,7 @@ class StreamAlivenessMonitor:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self._timeout_task = asyncio.create_task(self._timeout_task_coro())
+
+    def cancel(self):
+        if self._timeout_task is not None:
+            self._timeout_task.cancel()

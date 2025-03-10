@@ -219,7 +219,7 @@ class Server:
         #     raise SystemExit
 
         # logger.info(f"Server is listening servers on {[s.getsockname() for s in self._server_listener.sockets if s]}")
-        logger.info("Server started...")
+        logger.success("Server started...")
 
     async def stop_server(self):
         """
@@ -238,7 +238,7 @@ class Server:
             self._server_listener.close()
             await self._server_listener.wait_closed()
 
-        logger.info("Server stopped...")
+        logger.success("Server stopped...")
 
     def task_s2s(self, host):
         host = host.split("@")[-1]

@@ -5,11 +5,11 @@ name: Python application
 
 on:
   push:
-    branches: [ "master"]
+    branches: [ "master", "develop"]
     tags:
       - "*"
   pull_request:
-    branches: [ "master"]
+    branches: [ "master", "develop"]
 
 permissions:
   contents: read
@@ -40,16 +40,19 @@ jobs:
           - "ubuntu-py39"
           - "ubuntu-py310"
           - "ubuntu-py311"
+          - "ubuntu-py312"
 
           - "macos-py38"
           - "macos-py39"
           - "macos-py310"
           - "macos-py311"
+          - "macos-py312"
 
           - "windows-py38"
           - "windows-py39"
           - "windows-py310"
           - "windows-py311"
+          - "windows-py312"
 
         include:
           - name: "ubuntu-py38"
@@ -68,6 +71,10 @@ jobs:
             python: "3.11"
             os: ubuntu-latest
             tox_env: "py311"
+          - name: "ubuntu-py312"
+            python: "3.12"
+            os: ubuntu-latest
+            tox_env: "py312"
 
           - name: "macos-py38"
             python: "3.8"
@@ -85,6 +92,10 @@ jobs:
             python: "3.11"
             os: macos-latest
             tox_env: "py311"
+          - name: "macos-py312"
+            python: "3.12"
+            os: macos-latest
+            tox_env: "py312"
 
           - name: "windows-py38"
             python: "3.8"
@@ -102,6 +113,10 @@ jobs:
             python: "3.11"
             os: windows-latest
             tox_env: "py311"
+          - name: "windows-py312"
+            python: "3.12"
+            os: windows-latest
+            tox_env: "py312"
 
     steps:
     - uses: actions/checkout@v4
@@ -123,7 +138,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}

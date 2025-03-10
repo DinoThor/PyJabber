@@ -7,7 +7,7 @@ class JID:
             try:
                 self._user, domain = jid.split('@')
                 try:
-                    self._domain, self._resource = domain.split('#')
+                    self._domain, self._resource = domain.split('/')
                 except ValueError:
                     self._domain = domain
                     self._resource = None

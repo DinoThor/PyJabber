@@ -17,7 +17,7 @@ def setup():
             starttls = Mock()
             mock_host.get.return_value = 'localhost'
             mock_host_sasl.get.return_value = 'localhost'
-            return StreamHandler(buffer, starttls)
+            yield StreamHandler(buffer, starttls)
 
 
 def test_stage_enum():
@@ -80,42 +80,30 @@ def test_handle_open_stream_ssl(setup):
     assert handler._stage == Stage.SASL
     handler._buffer.write.assert_called_once()
 
-from pyjabber.features.SASLFeature import SASL, connection
+from pyjabber.features.SASLFeature import SASL, connection, SASLFeature
 
 
-@patch('pyjabber.features.SASLFeature.connection')
-def test_handle_open_stream_sasl_continue(mock_connection, setup):
+def test_handle_open_stream_sasl_continue(setup):
     handler = setup
     handler._stage = Stage.SASL
 
     password = b'password'
     keyhash = sha256(password).hexdigest()
 
-    mock_conn = MagicMock()
-    mock_cursor = MagicMock()
-
-    mock_cursor.fetchone.return_value = (keyhash,)
-    mock_conn.execute.return_value = mock_cursor
-    mock_connection.return_value = mock_conn
-
     elem = ET.Element("{urn:ietf:params:xml:ns:xmpp-sasl}auth")
     auth_text = b64encode(b'\x00username\x00password').decode('ascii')
     elem.text = auth_text
 
-    # Ajustar la función _db_connection_factory para que tome un argumento
-    def mock_db_connection_factory():
-        return mock_conn
+    with patch.object(SASL, "__init__", lambda self: None), \
+         patch.object(SASL, "feed", return_value=(Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")):
 
-    with patch('pyjabber.features.SASLFeature.host') as mock_host:
-        mock_host.get.return_value = 'localhost'
-        sasl_instance = SASL(db_connection_factory=mock_db_connection_factory)
-        sasl_instance._connections = MagicMock()
-
-        handler.handle_open_stream(elem)
+         handler.handle_open_stream(elem)
 
     assert handler._stage == Stage.AUTH
     expected_response = b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>"
     handler._buffer.write.assert_called_once_with(expected_response)
+
+
 def test_handle_open_stream_auth(setup):
     handler = setup
     handler._stage = Stage.AUTH
