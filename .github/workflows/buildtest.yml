@@ -13,7 +13,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v2
 
-      - name: Check BUILDTEST flag present in message
+      - name: Check BUILDTEST flag is present in message
         id: check_commit
         run: |
           if git log -1 --pretty=%B | grep -iq 'BUILDTEST'; then
