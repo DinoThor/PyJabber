@@ -1,6 +1,6 @@
 import asyncio
 import re
-from typing import List
+from typing import List, Optional
 from asyncio import Transport
 from typing import Dict, Union, Tuple
 from loguru import logger
@@ -8,9 +8,9 @@ from loguru import logger
 from pyjabber.stream.JID import JID
 from pyjabber.utils import Singleton
 
-type peerList = Dict[
-    (str, str),
-    (JID, Transport)
+PeerList = Dict[
+    Tuple[str, int],
+    Tuple[Optional[JID], Transport]
 ]
 
 
@@ -24,14 +24,14 @@ type peerList = Dict[
 class ConnectionManager(metaclass=Singleton):
     def __init__(self) -> None:
 
-        self._peerList: peerList = {}
+        self._peerList: PeerList = {}
         self._remoteList = {}
 
     ###################
     ### LOCAL BOUND ###
     ###################
 
-    def connection(self, peer: (str, str), transport: Transport = None) -> None:
+    def connection(self, peer: Tuple[str, int], transport: Transport = None) -> None:
         """
             Store a new connection, without jid or transport.
             Those will be added in the future with the set_jid method.
@@ -42,7 +42,7 @@ class ConnectionManager(metaclass=Singleton):
         if peer not in self._peerList:
             self._peerList[peer] = (None, transport)
 
-    def disconnection(self, peer) -> None:
+    def disconnection(self, peer: Tuple[str, int]) -> None:
         """
             Remove a stored connection, and fires the DisconnectEvent
 
@@ -54,7 +54,7 @@ class ConnectionManager(metaclass=Singleton):
         except KeyError:
             logger.warning(f"{peer} not present in the online list")
 
-    def close(self, peer) -> None:
+    def close(self, peer: Tuple[str, int]) -> None:
         """
             Closes a connection by sending a '</stream:stream> message' and
             deletes it from the peers list
@@ -62,13 +62,13 @@ class ConnectionManager(metaclass=Singleton):
             :param peer: The peer value in the tuple format ({IP}, {PORT})
         """
         try:
-            _, buffer, _ = self._peerList.pop(peer)
+            _, buffer = self._peerList.pop(peer)
             buffer.write('</stream:stream>'.encode())
             self.disconnection(peer)
         except KeyError as e:
             logger.error(f"{peer} not present in the online list")
 
-    def get_users_connected(self) -> peerList:
+    def get_users_connected(self) -> PeerList:
         """
             Return all the users connected
 
@@ -105,7 +105,7 @@ class ConnectionManager(metaclass=Singleton):
     ### JID ###
     ###########
 
-    def get_jid(self, peer: (str, str)) -> Union[JID, None]:
+    def get_jid(self, peer: Tuple[str, int]) -> Union[JID, None]:
         """
             Return the jid associated with the peername
 
@@ -116,7 +116,7 @@ class ConnectionManager(metaclass=Singleton):
         except KeyError:
             return None
 
-    def set_jid(self, peer: (str, int), jid: JID, transport: Transport = None) -> None:
+    def set_jid(self, peer: Tuple[str, int], jid: JID, transport: Transport = None) -> None:
         """
             Set/update the jid of a registered connection.
 
