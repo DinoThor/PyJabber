@@ -95,7 +95,7 @@ The CLI launcher provides access to all the configuration options available in t
 .. code-block::
 
 
-        Usage: pyjabber [OPTIONS]
+       Usage: pyjabber [OPTIONS]
 
         Options:
           --host TEXT                Host name  [default: localhost]
@@ -104,15 +104,18 @@ The CLI launcher provides access to all the configuration options available in t
           --server_out_port INTEGER  Server-to-server port (Out coming connection)
                                      [default: 5269]
           --family [ipv4|ipv6]       (ipv4 / ipv6)  [default: ipv4]
-          --tls1_3                   Enables TLSv1_3
           --timeout INTEGER          Timeout for connection  [default: 60]
-          --database_path TEXT       Path for database file  [default: Current workdir]
+          --database_path TEXT       Path for database file  [default:
+                                     /home/aaron/pyjabber.db]
           --database_purge           Restore database file to default state (empty)
-          -v, --verbose              Show verbose debug level: -v level 1, -vv level
-                                     2, -vvv level 3, -vvvv level 4
+          --database_in_memory       Database in memory. The data will be erased after
+                                     server shutdown
+          -v, --verbose              Show verbose debug level: -v INFO -vv DEBUG, -vvv level
+                                     TRACE,
           --log_path TEXT            Path to log dumpfile
           -D, --debug                Enables debug mode in Asyncio
           --help                     Show this message and exit.
+
 
 And to launch a default profile
 

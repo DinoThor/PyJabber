@@ -41,7 +41,7 @@ FILE_PATH = os.path.dirname(os.path.abspath(__file__))
               "-v",
               "--verbose",
               count=True,
-              help="Show verbose debug level: -v DEBUG, -vv level TRACE, ")
+              help="Show verbose debug level: -v INFO -vv DEBUG, -vvv level TRACE, ")
 @click.option('--log_path', type=str, help='Path to log dumpfile')
 @click.option('--debug', '-D', is_flag=True,
               help='Enables debug mode in Asyncio')
