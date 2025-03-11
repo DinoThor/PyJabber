@@ -215,7 +215,7 @@ class Presence(metaclass=Singleton):
 
             roster_item = item[0].get("item")
             et_item = ET.fromstring(roster_item)
-            item_id = item[0].get("id_")
+            item_id = item[0].get("id")
 
             if et_item.attrib.get("ask") == "subscribe":
                 return
@@ -286,7 +286,7 @@ class Presence(metaclass=Singleton):
             ]
 
             if item_sender:
-                item_id = item_sender[0].get("id_")
+                item_id = item_sender[0].get("id")
                 item_sender = item_sender[0].get("item")
                 et_item_sender = ET.fromstring(item_sender)
 
@@ -316,7 +316,7 @@ class Presence(metaclass=Singleton):
                     item_sender = None
 
             if item_receiver:
-                item_id = item_receiver[0].get("id_")
+                item_id = item_receiver[0].get("id")
                 item_receiver = item_receiver[0].get("item")
                 et_item_receiver = ET.fromstring(item_receiver)
 
@@ -387,7 +387,7 @@ class Presence(metaclass=Singleton):
             if not item:
                 return
 
-            item_id = item[0].get("id_")
+            item_id = item[0].get("id")
             item = item[0].get("item")
             et_item = ET.fromstring(item)
             new_item = et_item.__copy__()

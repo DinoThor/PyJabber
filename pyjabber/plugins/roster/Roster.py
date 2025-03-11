@@ -52,14 +52,14 @@ class Roster(metaclass=Singleton):
 
     def check_pending_sub_to(self, jid: JID, to: str) -> ET.Element:
         with closing(connection()) as con:
-            res = con.execute("SELECT * FROM pendingsub WHERE jid_from = ? AND jid_to = ?", (jid, to))
+            res = con.execute("SELECT * FROM pendingsub WHERE jid = ?", (jid,))
             res = res.fetchone()
         if res:
             return res
 
-    def store_pending_sub(self, from_: str, to_: str, item: ET.Element) -> None:
+    def store_pending_sub(self, to_: str, item: ET.Element) -> None:
         with closing(connection()) as con:
-            con.execute("INSERT INTO pendingsub values (?, ?, ?)", (from_, to_, ET.tostring(item).decode()))
+            con.execute("INSERT INTO pendingsub values (?, ?)", (to_, ET.tostring(item).decode()))
             con.commit()
 
     def update_item(self, item: ET.Element, id_: int):

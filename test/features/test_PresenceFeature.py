@@ -50,8 +50,8 @@ def test_handle_subscribe(setup_presence):
     presence, mock_connections, mock_roster = setup_presence
     element = ET.Element('presence', attrib={'type': 'subscribe', 'to': 'user@localhost', 'id': '123'})
     mock_roster.roster_by_jid.side_effect = [
-        [{"id_": 1, "item": '<item jid="user@localhost" subscription="none"/>'}],  # Initial simulation
-        [{"id_": 1, "item": '<item jid="user@localhost" subscription="none" ask="subscribe"/>'}]  # After update
+        [{"id": 1, "item": '<item jid="user@localhost" subscription="none"/>'}],  # Initial simulation
+        [{"id": 1, "item": '<item jid="user@localhost" subscription="none" ask="subscribe"/>'}]  # After update
     ]
     mock_connections().get_buffer.return_value = [MagicMock()]
     jid = JID('user2@localhost')
@@ -86,7 +86,7 @@ def test_handle_subscribe_subscription_both(setup_presence):
     presence, mock_connections, mock_roster = setup_presence
     element = ET.Element('presence', attrib={'type': 'subscribe', 'to': 'user@localhost', 'id': '123'})
     mock_roster.roster_by_jid.return_value = [
-        {"id_": 1, "item": '<item jid="user@localhost" subscription="both"/>'}
+        {"id": 1, "item": '<item jid="user@localhost" subscription="both"/>'}
     ]
     jid = JID('user2@localhost')
     presence._jid = jid
@@ -132,8 +132,8 @@ def test_feed_handle_subscribed(setup_presence):
     element = ET.Element('presence', attrib={'type': 'subscribed', 'to': 'user@localhost', 'id': '123'})
     jid = JID('user2@localhost/1223')
     mock_roster.roster_by_jid.side_effect = [
-        [{"id_": 1, "item": '<item jid="user2" subscription="none" ask="subscribe"/>'}],  # Initial simulation
-        [{"id_": 2, "item": '<item jid="user" subscription="none"/>'}]  # After update
+        [{"id": 1, "item": '<item jid="user2" subscription="none" ask="subscribe"/>'}],  # Initial simulation
+        [{"id": 2, "item": '<item jid="user" subscription="none"/>'}]  # After update
     ]
     mock_connections.get_buffer.return_value = []
     presence._jid = jid
@@ -159,7 +159,7 @@ def test_feed_handle_unsubscribed(setup_presence):
     element = ET.Element('presence', attrib={'type': 'unsubscribed', 'to': 'user@localhost', 'id': '123'})
     jid = JID('user2@localhost/1223')
     mock_roster.roster_by_jid.side_effect = [
-        [{"id_": 1, "item": '<item jid="user" subscription="to"/>'}]
+        [{"id": 1, "item": '<item jid="user" subscription="to"/>'}]
     ]
     mock_connections.get_buffer.return_value = ([(JID("user@localhost/123"), MagicMock())])
     presence._jid = jid
