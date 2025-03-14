@@ -7,13 +7,11 @@ import sqlite3
 import ssl
 
 from contextlib import closing
-from typing import LiteralString
 
 from loguru import logger
 
 from pyjabber.db.database import connection
 from pyjabber.network.XMLProtocol import XMLProtocol, TransportProxy
-from pyjabber.network.server.incoming.XMLServerIncomingProtocol import XMLServerIncomingProtocol
 from pyjabber.network.server.outcoming.XMLServerOutcomingProtocol import XMLServerOutcomingProtocol
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.tls.TLSWorker import TLSQueue
@@ -23,7 +21,6 @@ from pyjabber.network import CertGenerator
 from pyjabber.metadata import host as metadata_host, config_path as metadata_config_path
 from pyjabber.metadata import database_path as metadata_database_path, root_path as metadata_root_path
 from pyjabber.metadata import database_in_memory as metadata_database_in_memory
-
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -62,10 +59,10 @@ class Server:
         server_out_port: int = 5269,
         family: socket.AddressFamily = socket.AF_INET,
         connection_timeout: int = 60,
-        database_path: LiteralString = os.path.join(os.getcwd(), "pyjabber.db"),
+        database_path: str = os.path.join(os.getcwd(), "pyjabber.db"),
         database_purge: bool = False,
         database_in_memory: bool = False,
-        cert_path: LiteralString = None
+        cert_path: str = None
     ):
         # Server
         self._host = host
@@ -78,24 +75,35 @@ class Server:
         self._adminServer = AdminPage()
         self._public_ip = None
         self._connection_timeout = connection_timeout
+
+        # Database
         self._database_path = database_path
         self._sql_init_script = os.path.join(SERVER_FILE_PATH, "db", "schema.sql")
         self._sql_delete_script = os.path.join(SERVER_FILE_PATH, "db", "delete.sql")
         self._database_purge = database_purge
         self._database_in_memory = database_in_memory
         self._db_in_memory_con = None
+
+        # Certs
         self._cert_path = cert_path or os.path.join(SERVER_FILE_PATH, "network", "certs")
-        self._custom_loop = True
 
         # Singletons
         self._connection_manager = ConnectionManager()
         self._queue_message = QueueMessage(self._connection_manager)
 
+        # Contextvars
         metadata_host.set(host)
         metadata_database_path.set(self._database_path)
         metadata_config_path.set(os.path.join(os.path.dirname(os.path.abspath(__file__)), "config/config.yaml"))
         metadata_root_path.set(SERVER_FILE_PATH)
         metadata_database_in_memory.set(False)
+
+        # Flags
+        self._ready = asyncio.Event()
+
+    @property
+    def ready(self):
+        return self._ready
 
     def setup_database(self):
         if self._database_in_memory:
@@ -220,6 +228,7 @@ class Server:
 
         # logger.info(f"Server is listening servers on {[s.getsockname() for s in self._server_listener.sockets if s]}")
         logger.success("Server started...")
+        self._ready.set()
 
     async def stop_server(self):
         """

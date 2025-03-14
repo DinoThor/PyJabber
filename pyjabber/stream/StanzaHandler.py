@@ -1,4 +1,3 @@
-import re
 import xml.etree.ElementTree as ET
 
 from loguru import logger
@@ -8,15 +7,15 @@ from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stream.JID import JID
 from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.plugins.PluginManager import PluginManager
-
+from pyjabber.metadata import host
 
 class InternalServerError(Exception):
     pass
 
 
 class StanzaHandler:
-    def __init__(self, host, buffer) -> None:
-        self._host = host
+    def __init__(self, buffer) -> None:
+        self._host = host.get()
         self._buffer = buffer
         self._connections = ConnectionManager()
         self._queue_message = QueueMessage()
@@ -64,9 +63,27 @@ class StanzaHandler:
         """
         jid = JID(element.attrib["to"])
 
-        if re.match(fr'^[a-zA-Z0-9._%+-]+@{re.escape(self._host)}$', jid.bare()):
-            for _, buffer in self._connections.get_buffer(JID(jid.bare())):
-                buffer.write(ET.tostring(element))
+        if jid.domain == self._host:
+            if not jid.resource:
+                priority = self._presenceManager.most_priority(jid)
+                if not priority:
+                    self._queue_message.enqueue(jid.bare(), ET.tostring(element))
+
+                all_resources_online = []
+                for user in priority:
+                    all_resources_online += self._connections.get_buffer(JID(user=jid.user, domain=jid.domain, resource=user[0]))
+                if not all_resources_online:
+                    self._queue_message.enqueue(jid.bare(), ET.tostring(element))
+                else:
+                    for _, buffer in all_resources_online:
+                        buffer.write(ET.tostring(element))
+            else:
+                resource_online = self._connections.get_buffer(jid)
+                if not resource_online:
+                    self._queue_message.enqueue(str(jid), ET.tostring(element))
+                else:
+                    for _, buffer in resource_online:
+                        buffer.write(ET.tostring(element))
 
         else:
             pass

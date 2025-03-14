@@ -10,13 +10,11 @@ from pyjabber.network.XMLParser import XMLParser
 @pytest.fixture
 def setup():
     with patch('pyjabber.stream.StreamHandler.host') as mock_host:
-        with patch('pyjabber.network.XMLParser.host') as mock_host_parser:
-            buffer = Mock()
-            starttls = Mock()
-            mock_host.get.return_value = 'localhost'
-            mock_host_parser.get.return_value = 'localhost'
+        buffer = Mock()
+        starttls = Mock()
+        mock_host.get.return_value = 'localhost'
 
-            return XMLParser(buffer, starttls)
+        return XMLParser(buffer, starttls)
 
 def test_initialization(setup):
     handler = setup
@@ -125,7 +123,8 @@ def test_end_element_ns_stream_handling(mock_plugin_manager, mock_presence, mock
     mock_stream_handler.handle_open_stream.return_value = Signal.DONE
     handler._streamHandler = mock_stream_handler
 
-    handler.endElementNS(("namespace", "dummy"), "dummy")
+    with patch('pyjabber.network.XMLParser.StanzaHandler') as mock_stanza_handler:
+        handler.endElementNS(("namespace", "dummy"), "dummy")
 
     assert handler._state == XMLParser.StreamState.READY
 

@@ -3,9 +3,6 @@ from enum import Enum
 from xml.etree import ElementTree as ET
 from xml.sax import ContentHandler
 
-from loguru import logger
-
-from pyjabber.metadata import host
 from pyjabber.stream import Stream
 from pyjabber.stream.StanzaHandler import StanzaHandler
 from pyjabber.stream.StreamHandler import Signal, StreamHandler
@@ -23,10 +20,7 @@ class XMLParser(ContentHandler):
 
     def __init__(self, buffer, starttls):
         super().__init__()
-
-        self._host = host.get()
         self._buffer = buffer
-
         self._state = self.StreamState.CONNECTED
         self._stanzaHandler = None
         self._stack = []
@@ -102,7 +96,7 @@ class XMLParser(ContentHandler):
                 if signal == Signal.RESET and "stream" in self._stack[-1].tag:
                     self._stack.clear()
                 elif signal == Signal.DONE:
-                    self._stanzaHandler = StanzaHandler(self._host, self._buffer)
+                    self._stanzaHandler = StanzaHandler(self._buffer)
                     self._state = self.StreamState.READY
 
     def characters(self, content: str) -> None:

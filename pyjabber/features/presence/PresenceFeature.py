@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as ET
 from contextlib import closing
 from enum import Enum
-from typing import Any, Dict
+from typing import Any, Dict, Tuple, List, Union
 from uuid import uuid4
 from xml.etree.ElementTree import Element
 
@@ -63,6 +63,17 @@ class Presence(metaclass=Singleton):
             con.execute("DELETE FROM pendingsub WHERE jid = ?", (jid,))
             con.commit()
         self._pending[jid].pop()
+
+    def priority_by_jid(self, jid: JID):
+        return self._online_status[jid.bare()]
+
+    def most_priority(self, jid: JID) -> List[Tuple[str, PresenceType, Union[str, None], Union[str, None], Union[str, None]]]:
+        priority = self.priority_by_jid(jid)
+
+        values = [item[-1] for item in priority if item[-1] is not None]
+        max_value = max(values) if values else None
+        return [item for item in priority if item[-1] == max_value]
+
 
     def feed(self, jid: JID, element: Element, extra: Dict[str, Any] = None):
         if "type" in element.attrib:
