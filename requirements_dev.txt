@@ -11,3 +11,4 @@ twine==5.1.1
 wheel==0.43.0
 Sphinx==7.1.2
 build==1.2.1
+slixmpp==1.8.6
