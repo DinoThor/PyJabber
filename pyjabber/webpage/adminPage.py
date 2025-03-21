@@ -33,6 +33,9 @@ class AdminPage:
         await site.start()
 
         logger.info("Serving admin webpage on http://localhost:9090")
-        while True:
-            await asyncio.sleep(3600)  # Keep alive the server
+        try:
+            while True:
+                await asyncio.sleep(3600)  # Keep alive the server
+        except asyncio.CancelledError:
+            await runner.cleanup()
 

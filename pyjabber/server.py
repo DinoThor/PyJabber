@@ -286,13 +286,20 @@ class Server:
 
         try:
             server = asyncio.create_task(self.run_server())
-            admin = self._adminServer.start()
+            admin = asyncio.create_task(self._adminServer.start())
             tls = asyncio.create_task(self.setup_tls_worker(tls_queue))
             await asyncio.gather(server, admin, tls)
 
-        except (SystemExit, KeyboardInterrupt):  # pragma: no cover
-            pass
+        except (SystemExit, KeyboardInterrupt, asyncio.CancelledError, Exception) as e:  # pragma: no cover
+            logger.trace(f"Signal {e.__class__.__name__} intercepted. Stoping server")
 
         finally:
             tls.cancel()
-            await asyncio.gather(self.stop_server(), self._adminServer.app.cleanup())
+            admin.cancel()
+            try:
+                await tls
+                await admin
+            except asyncio.CancelledError:
+                pass
+
+            await self.stop_server()
