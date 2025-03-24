@@ -1,3 +1,4 @@
+import asyncio
 import xml.etree.ElementTree as ET
 from contextlib import closing
 from enum import Enum
@@ -5,8 +6,8 @@ from typing import Any, Dict, Tuple, List, Union
 from uuid import uuid4
 from xml.etree.ElementTree import Element
 
+from pyjabber.metadata import host, connection_queue
 from pyjabber.db.database import connection
-from pyjabber.metadata import host
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.features.feature_utils import RosterUtils as RU
 from pyjabber.plugins.roster.Roster import Roster
@@ -42,6 +43,7 @@ class Presence(metaclass=Singleton):
 
         self._pending = {}
         self._get_all_pending_presence()
+        self._connection_queue: asyncio.Queue = connection_queue.get()
 
         self._online_status = {}
 
@@ -65,7 +67,10 @@ class Presence(metaclass=Singleton):
         self._pending[jid].pop()
 
     def priority_by_jid(self, jid: JID):
-        return self._online_status[jid.bare()]
+        try:
+            return self._online_status[jid.bare()]
+        except KeyError:
+            return []
 
     def most_priority(self, jid: JID) -> List[Tuple[str, PresenceType, Union[str, None], Union[str, None], Union[str, None]]]:
         priority = self.priority_by_jid(jid)
@@ -136,10 +141,6 @@ class Presence(metaclass=Singleton):
             )
             neighbour_resource.write(ET.tostring(presence))
 
-        self._online_status[jid.bare()].remove(present[0])
-        if len(self._online_status[jid.bare()]) == 0:
-            self._online_status.pop(jid.bare())
-
     def handle_global_presence(self, jid: JID, element: ET.Element):
         if jid.bare() not in self._online_status:
             self._online_status[jid.bare()] = []
@@ -156,10 +157,13 @@ class Presence(metaclass=Singleton):
                 self._online_status[jid.bare()].append((jid.resource, PresenceType.UNAVAILABLE, show, status, priority))
         else:
             if present:
+                previous_status = self._online_status[jid.bare()][index][1]
                 self._online_status[jid.bare()][index] = (jid.resource, PresenceType.AVAILABLE, show, status, priority)
+                if previous_status == PresenceType.UNAVAILABLE:
+                    self._connection_queue.put_nowait(('CONNECTION', jid))
             else:
                 self._online_status[jid.bare()].append((jid.resource, PresenceType.AVAILABLE, show, status, priority))
-
+                self._connection_queue.put_nowait(('CONNECTION', jid))
 
         for contact in self._roster.roster_by_jid(jid):
             item = ET.fromstring(contact.get("item"))
@@ -468,6 +472,9 @@ class Presence(metaclass=Singleton):
                     b[-1].write(ET.tostring(presence))
 
     def _present_in_online_list(self, jid: JID):
+        if jid.bare() not in self._online_status:
+            return None, None
+
         present = [(i,p) for i, p in enumerate(self._online_status[jid.bare()]) if p[0] == jid.resource]
         if present:
             return present[0]
