@@ -2,12 +2,11 @@ import xml.etree.ElementTree as ET
 
 from loguru import logger
 
+from pyjabber import metadata
 from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stream.JID import JID
-from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.plugins.PluginManager import PluginManager
-from pyjabber.metadata import host
 
 class InternalServerError(Exception):
     pass
@@ -15,10 +14,10 @@ class InternalServerError(Exception):
 
 class StanzaHandler:
     def __init__(self, buffer) -> None:
-        self._host = host.get()
+        self._host = metadata.host.get()
         self._buffer = buffer
         self._connections = ConnectionManager()
-        self._queue_message = QueueMessage()
+        self._message_queue = metadata.message_queue.get()
 
         self._peername = buffer.get_extra_info('peername')
         self._jid = self._connections.get_jid(self._peername)
@@ -67,20 +66,20 @@ class StanzaHandler:
             if not jid.resource:
                 priority = self._presenceManager.most_priority(jid)
                 if not priority:
-                    self._queue_message.enqueue(jid.bare(), ET.tostring(element))
+                    self._message_queue.enqueue('MESSAGE', jid.bare(), ET.tostring(element))
 
                 all_resources_online = []
                 for user in priority:
                     all_resources_online += self._connections.get_buffer(JID(user=jid.user, domain=jid.domain, resource=user[0]))
                 if not all_resources_online:
-                    self._queue_message.enqueue(jid.bare(), ET.tostring(element))
+                    self._message_queue.enqueue('MESSAGE', jid.bare(), ET.tostring(element))
                 else:
                     for _, buffer in all_resources_online:
                         buffer.write(ET.tostring(element))
             else:
                 resource_online = self._connections.get_buffer(jid)
                 if not resource_online:
-                    self._queue_message.enqueue(str(jid), ET.tostring(element))
+                    self._message_queue.enqueue('MESSAGE', str(jid), ET.tostring(element))
                 else:
                     for _, buffer in resource_online:
                         buffer.write(ET.tostring(element))

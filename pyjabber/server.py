@@ -14,12 +14,8 @@ from pyjabber.db.database import connection
 from pyjabber.network.XMLProtocol import XMLProtocol, TransportProxy
 from pyjabber.network.server.outcoming.XMLServerOutcomingProtocol import XMLServerOutcomingProtocol
 from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber.network.tls.TLSWorker import TLSQueue
-from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.webpage.adminPage import AdminPage
 from pyjabber.network import CertGenerator
-from pyjabber.metadata import host as metadata_host, config_path as metadata_config_path
-from pyjabber.metadata import database_path as metadata_database_path, root_path as metadata_root_path
 from pyjabber.metadata import database_in_memory as metadata_database_in_memory
 from pyjabber import metadata
 from pyjabber.workers import tls_worker, queue_worker

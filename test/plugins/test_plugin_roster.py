@@ -144,8 +144,8 @@ def test_handleSet_invalid_xml(setup):
     ET.SubElement(query, '{jabber:iq:roster}item', attrib={'jid': 'jid1', 'subscription': 'both'})
     ET.SubElement(query, '{jabber:iq:roster}item', attrib={'jid': 'jid2', 'subscription': 'none'})
 
-    with pytest.raises(Exception):
-        roster.handle_set(JID('jid1@localhost'), element)
+    res = roster.handle_set(JID('jid1@localhost'), element)
+    assert res == SE.invalid_xml()
 
 
 def test_handleSet_missing_query(setup):
@@ -153,8 +153,8 @@ def test_handleSet_missing_query(setup):
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
 
-    with pytest.raises(Exception):
-        roster.handle_set(JID('jid1@localhost'), element)
+    res = roster.handle_set(JID('jid1@localhost'), element)
+    assert res == SE.invalid_xml()
 
 
 def test_handleSet_no_items(setup):
@@ -163,5 +163,5 @@ def test_handleSet_no_items(setup):
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'set'})
     query = ET.SubElement(element, '{jabber:iq:roster}query')
 
-    with pytest.raises(Exception):
-        roster.handle_set(JID('jid1@localhost'), element)
+    res = roster.handle_set(JID('jid1@localhost'), element)
+    assert res == SE.invalid_xml()
