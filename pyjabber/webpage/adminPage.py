@@ -30,7 +30,11 @@ class AdminPage:
         runner = web.AppRunner(self._app)
         await runner.setup()
         site = web.TCPSite(runner, 'localhost', 9090)
-        await site.start()
+        try:
+            await site.start()
+        except OSError as e:
+            logger.error(e)
+            return
 
         logger.info("Serving admin webpage on http://localhost:9090")
         try:

@@ -5,11 +5,11 @@ from loguru import logger
 from xml import sax
 from xml.etree.ElementTree import Element
 
+from pyjabber import metadata
 from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.XMLParser import XMLParser
-from pyjabber.network.tls.TLSWorker import TLSQueue
 from pyjabber.stream.StanzaHandler import InternalServerError
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
@@ -55,7 +55,7 @@ class XMLProtocol(asyncio.Protocol):
         self._connection_manager = ConnectionManager()
         self._presence_manager = Presence()
         self._cert_path = cert_path
-        self._tls_queue = TLSQueue().queue
+        self._tls_queue = metadata.tls_queue.get()
 
         self._transport = None
         self._peer = None
