@@ -130,10 +130,10 @@ def test_handleMsg_enqueue_resource(setup):
 
     handler.handle_msg(element)
 
-    args = mock_queue.enqueue.call_args
-    assert args[0][0] == 'MESSAGE'
-    assert args[0][1] == 'user@localhost/res1'
-    assert args[0][2] == ET.tostring(element)
+    args = mock_queue.put_nowait.call_args.args[0]
+    assert args [0] == 'MESSAGE'
+    assert args [1] == 'user@localhost/res1'
+    assert args [2] == ET.tostring(element)
 
 def test_handleMsg_enqueue_bare(setup):
     handler, mock_buffer, mock_connections, mock_presence, _, mock_queue = setup
@@ -153,7 +153,7 @@ def test_handleMsg_enqueue_bare(setup):
 
     handler.handle_msg(element)
 
-    mock_queue.enqueue.assert_not_called()
+    mock_queue.put_nowait.assert_not_called()
     assert str(mock_presence.return_value.most_priority.call_args[0][0]) == 'user@localhost'
     con_calls = mock_connections.return_value.get_buffer.call_args_list
     assert str(con_calls[0][0][0]) == 'user@localhost/res1'
