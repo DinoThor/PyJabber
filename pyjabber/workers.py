@@ -11,6 +11,7 @@ from xml.etree import ElementTree as ET
 from pyjabber import metadata
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.XMLProtocol import TransportProxy
+from pyjabber.stream.JID import JID
 
 
 async def tls_worker():
@@ -102,17 +103,25 @@ async def queue_worker():
 
             if result[0] == 'CONNECTION':
                 _, jid = result
-                while pending_stanzas[jid]:
+
+                if str(jid) in pending_stanzas:
+                    jid = str(jid)
+                elif jid.bare() in pending_stanzas:
+                    jid = jid.bare()
+                else:
+                    jid = None
+
+                while jid and pending_stanzas[jid]:
                     stanza_bytes = pending_stanzas[jid].pop()
-                    buffer = connection_manager.get_buffer(jid)
+                    buffer = connection_manager.get_buffer_online(JID(jid))
                     for b in buffer:
-                        b[-1].write(stanza_bytes)
+                        b[1].write(stanza_bytes)
 
             else:
                 _, jid, stanza_bytes = result
-                if jid not in pending_stanzas:
-                    pending_stanzas[jid] = []
-                pending_stanzas[jid].append(stanza_bytes)
+                if str(jid) not in pending_stanzas:
+                    pending_stanzas[str(jid)] = []
+                pending_stanzas[str(jid)].append(stanza_bytes)
 
     except asyncio.CancelledError:
         pass
