@@ -79,7 +79,6 @@ class Presence(metaclass=Singleton):
         max_value = max(values) if values else None
         return [item for item in priority if item[-1] == max_value]
 
-
     def feed(self, jid: JID, element: Element, extra: Dict[str, Any] = None):
         if "type" in element.attrib:
             return self._handlers[element.get("type")](jid, element)
@@ -117,7 +116,7 @@ class Presence(metaclass=Singleton):
                 for user_connected in [i for i in self._online_status[contact_jid.bare()] if
                                        i[1] == PresenceType.AVAILABLE]:
                     resource = user_connected[0]
-                    dest_jid, buffer = self._connections.get_buffer(
+                    dest_jid, buffer, _ = self._connections.get_buffer(
                         JID(user=contact_jid.user, domain=contact_jid.domain, resource=resource))[0]
 
                     presence = ET.Element(
@@ -130,7 +129,7 @@ class Presence(metaclass=Singleton):
                     )
                     buffer.write(ET.tostring(presence))
 
-        for _, neighbour_resource in self._connections.get_buffer(JID(jid.bare())):
+        for _, neighbour_resource, _ in self._connections.get_buffer(JID(jid.bare())):
             presence = ET.Element(
                 "presence",
                 attrib={
@@ -160,9 +159,11 @@ class Presence(metaclass=Singleton):
                 previous_status = self._online_status[jid.bare()][index][1]
                 self._online_status[jid.bare()][index] = (jid.resource, PresenceType.AVAILABLE, show, status, priority)
                 if previous_status == PresenceType.UNAVAILABLE:
+                    self._connections.online(jid)
                     self._connection_queue.put_nowait(('CONNECTION', jid))
             else:
                 self._online_status[jid.bare()].append((jid.resource, PresenceType.AVAILABLE, show, status, priority))
+                self._connections.online(jid)
                 self._connection_queue.put_nowait(('CONNECTION', jid))
 
         for contact in self._roster.roster_by_jid(jid):
@@ -182,7 +183,7 @@ class Presence(metaclass=Singleton):
                     resource = user_connected[0]
                     online = self._connections.get_buffer(JID(user=contact_jid.user, domain=contact_jid.domain, resource=resource))
                     if online:
-                        dest_jid, buffer = online[0]
+                        dest_jid, buffer, _ = online[0]
 
                         presence = ET.Element(
                             "presence",
@@ -200,7 +201,7 @@ class Presence(metaclass=Singleton):
         if jid.bare() in self._pending:
             for item in self._pending[jid.bare()]:
                 for buffer in self._connections.get_buffer(jid):
-                    buffer[-1].write(item)
+                    buffer[1].write(item)
             self._delete_pending_presence(jid.bare())
 
         return None
@@ -264,10 +265,10 @@ class Presence(metaclass=Singleton):
                     }
                 )
                 for b in buffer:
-                    b[-1].write(ET.tostring(petition))
+                    b[1].write(ET.tostring(petition))
 
             else:
-                self._roster.store_pending_sub(jid.bare(), to.bare(), element)
+                self._roster.store_pending_sub(to.bare(), element)
 
     def handle_subscribed(self, jid: JID, element: ET.Element):
         to = JID(element.attrib.get("to"))
@@ -365,7 +366,7 @@ class Presence(metaclass=Singleton):
                             "type": "subscribed",
                         },
                     )
-                    sender[-1].write(ET.tostring(res))
+                    sender[1].write(ET.tostring(res))
                 return None
 
             if roster_push_sender is not None:
@@ -374,7 +375,7 @@ class Presence(metaclass=Singleton):
                     query = ET.SubElement(res, "query", attrib={"xmlns": "jabber:iq:roster"})
                     query.append(roster_push_sender)
 
-                    sender[-1].write(ET.tostring(res))
+                    sender[1].write(ET.tostring(res))
 
             if roster_push_receiver is not None:
                 for receiver in self._connections.get_buffer(JID(jid.bare())):
@@ -382,7 +383,7 @@ class Presence(metaclass=Singleton):
                     query = ET.SubElement(res, "query", attrib={"xmlns": "jabber:iq:roster"})
                     query.append(roster_push_receiver)
 
-                    receiver[-1].write(ET.tostring(res))
+                    receiver[1].write(ET.tostring(res))
 
     def handle_unsubscribed(self, jid: JID, element: ET.Element):
         to = JID(element.attrib["to"])
@@ -434,7 +435,7 @@ class Presence(metaclass=Singleton):
                     }
                 )
                 for buffer in self._connections.get_buffer(to):
-                    buffer[-1].write(ET.tostring(presence))
+                    buffer[1].write(ET.tostring(presence))
                 # roster_push = ET.Element(
                 #     "iq",
                 #     attrib={
@@ -448,8 +449,8 @@ class Presence(metaclass=Singleton):
                 # query.append(new_item)
                 # roster_push.append(query)
                 #
-                # b[-1].write(ET.tostring(presence))
-                # b[-1].write(ET.tostring(roster_push))
+                # b[1].write(ET.tostring(presence))
+                # b[1].write(ET.tostring(roster_push))
 
     def handle_unavailable(self, jid: JID, element: ET.Element):
         # bare_jid = self._jid.bare()
@@ -469,7 +470,7 @@ class Presence(metaclass=Singleton):
 
                 buffer = self._connections.get_buffer(JID(to))
                 for b in buffer:
-                    b[-1].write(ET.tostring(presence))
+                    b[1].write(ET.tostring(presence))
 
     def _present_in_online_list(self, jid: JID):
         if jid.bare() not in self._online_status:
