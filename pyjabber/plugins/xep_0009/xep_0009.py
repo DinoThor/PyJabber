@@ -29,7 +29,7 @@ class RPC(metaclass=Singleton):
             to = element.attrib.get('to')
             buffer = self._connections.get_buffer(JID(to))
             for b in buffer:
-                b[-1].write(ET.tostring(element))
+                b[1].write(ET.tostring(element))
         except:
             return SE.invalid_xml()
 

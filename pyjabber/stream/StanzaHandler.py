@@ -8,6 +8,7 @@ from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stream.JID import JID
 from pyjabber.plugins.PluginManager import PluginManager
 
+
 class InternalServerError(Exception):
     pass
 
@@ -71,14 +72,14 @@ class StanzaHandler:
 
                 all_resources_online = []
                 for user in priority:
-                    all_resources_online += self._connections.get_buffer(JID(user=jid.user, domain=jid.domain, resource=user[0]))
+                    all_resources_online += self._connections.get_buffer_online(JID(user=jid.user, domain=jid.domain, resource=user[0]))
                 if not all_resources_online:
                     self._message_queue.put_nowait(('MESSAGE', jid.bare(), ET.tostring(element)))
                 else:
-                    for _, buffer in all_resources_online:
-                        buffer.write(ET.tostring(element))
+                    for buffer in all_resources_online:
+                        buffer[1].write(ET.tostring(element))
             else:
-                resource_online = self._connections.get_buffer(jid)
+                resource_online = self._connections.get_buffer_online(jid)
                 if not resource_online:
                     self._message_queue.put_nowait(('MESSAGE', str(jid), ET.tostring(element)))
                 else:
@@ -92,7 +93,7 @@ class StanzaHandler:
 
             # server_buffer = self._connections.get_server_buffer(jid.bare())
             # if server_buffer:
-            #     server_buffer[-1].write(ET.tostring(element))
+            #     server_buffer[1].write(ET.tostring(element))
             #
             # else:
             #     self._queue_message.enqueue(jid.domain, ET.tostring(element))
