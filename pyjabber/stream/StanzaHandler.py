@@ -73,18 +73,15 @@ class StanzaHandler:
                 all_resources_online = []
                 for user in priority:
                     all_resources_online += self._connections.get_buffer_online(JID(user=jid.user, domain=jid.domain, resource=user[0]))
-                if not all_resources_online:
-                    self._message_queue.put_nowait(('MESSAGE', jid.bare(), ET.tostring(element)))
-                else:
-                    for buffer in all_resources_online:
-                        buffer[1].write(ET.tostring(element))
+                for buffer in all_resources_online:
+                    buffer[1].write(ET.tostring(element))
             else:
                 resource_online = self._connections.get_buffer_online(jid)
                 if not resource_online:
                     self._message_queue.put_nowait(('MESSAGE', str(jid), ET.tostring(element)))
                 else:
-                    for _, buffer in resource_online:
-                        buffer.write(ET.tostring(element))
+                    for buffer in resource_online:
+                        buffer[1].write(ET.tostring(element))
 
         else:
             pass
