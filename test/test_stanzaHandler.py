@@ -91,7 +91,7 @@ def test_handleMsg_resource(setup):
     element.tag = "{jabber:client}message"
 
     mock_server_buffer = MagicMock()
-    mock_connections.return_value.get_buffer.return_value = [(None, mock_server_buffer)]
+    mock_connections.return_value.get_buffer_online.return_value = [(None, mock_server_buffer, [True])]
 
     handler.handle_msg(element)
 
@@ -106,9 +106,9 @@ def test_handleMsg_no_resource_tie_priority(setup):
 
     mock_server_buffer_1 = MagicMock()
     mock_server_buffer_2 = MagicMock()
-    mock_connections.return_value.get_buffer.side_effect = [
-        [(JID('user@localhost/res1'), mock_server_buffer_1)],
-        [(JID('user@localhost/res2'), mock_server_buffer_2)]
+    mock_connections.return_value.get_buffer_online.side_effect = [
+        [(JID('user@localhost/res1'), mock_server_buffer_1, [True])],
+        [(JID('user@localhost/res2'), mock_server_buffer_2, [True])]
     ]
 
     mock_presence.return_value.most_priority.return_value = [('res1', 10), ('res2', 10)]
@@ -125,7 +125,7 @@ def test_handleMsg_enqueue_resource(setup):
     element = Element('message', attrib={"to": "user@localhost/res1"})
     element.tag = "{jabber:client}message"
 
-    mock_connections.return_value.get_buffer.return_value = []
+    mock_connections.return_value.get_buffer_online.return_value = []
     mock_presence.return_value.most_priority.return_value = []
 
     handler.handle_msg(element)
@@ -135,7 +135,8 @@ def test_handleMsg_enqueue_resource(setup):
     assert args [1] == 'user@localhost/res1'
     assert args [2] == ET.tostring(element)
 
-def test_handleMsg_enqueue_bare(setup):
+
+def test_handleMsg_bare(setup):
     handler, mock_buffer, mock_connections, mock_presence, _, mock_queue = setup
     element = Element('message', attrib={"to": "user@localhost"})
     element.tag = "{jabber:client}message"
@@ -143,8 +144,8 @@ def test_handleMsg_enqueue_bare(setup):
     buffer_mock_1 = MagicMock()
     buffer_mock_2 = MagicMock()
 
-    mock_connections.return_value.get_buffer.side_effect = [
-        [(MagicMock(), buffer_mock_1)], [(MagicMock(), buffer_mock_2)]
+    mock_connections.return_value.get_buffer_online.side_effect = [
+        [(MagicMock(), buffer_mock_1, [True])], [(MagicMock(), buffer_mock_2, [True])]
     ]
     mock_presence.return_value.most_priority.return_value = [
         ('res1', PresenceType.AVAILABLE, None, None, None),
@@ -155,7 +156,7 @@ def test_handleMsg_enqueue_bare(setup):
 
     mock_queue.put_nowait.assert_not_called()
     assert str(mock_presence.return_value.most_priority.call_args[0][0]) == 'user@localhost'
-    con_calls = mock_connections.return_value.get_buffer.call_args_list
+    con_calls = mock_connections.return_value.get_buffer_online.call_args_list
     assert str(con_calls[0][0][0]) == 'user@localhost/res1'
     assert str(con_calls[1][0][0]) == 'user@localhost/res2'
     buffer_mock_1.write.assert_called_with(ET.tostring(element))
