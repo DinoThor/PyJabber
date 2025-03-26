@@ -36,6 +36,23 @@ def test_to_string_jid():
     assert jid_string == str(jid)
 
 
+def test_eq():
+    jid_1 = JID("demo@host")
+    jid_2 = JID(user="demo", domain="host")
+
+    assert (jid_1 == jid_2) is True
+
+    jid_3 = JID("demo@host/res1")
+    jid_4 = JID(user="demo", domain="host", resource="res1")
+
+    assert (jid_3 == jid_4) is True
+
+    jid_5 = JID("demo@host")
+    jid_6 = JID("demo@host/res1")
+
+    assert (jid_5 == jid_6) == False
+
+
 def test_bad_arguments():
     with pytest.raises(ValueError):
         JID(jid='demo@host', user='demo')

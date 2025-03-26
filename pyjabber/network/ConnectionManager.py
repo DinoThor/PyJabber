@@ -10,14 +10,14 @@ from pyjabber.utils import Singleton
 
 PeerList = Dict[
     Tuple[str, int],
-    Tuple[Optional[JID], Transport]
+    Tuple[Optional[JID], Transport, List[bool]]
 ]
 
 
 # EXAMPLE
 # peerKeys = {
-#     ("0.0.0.0", "50000"): ("demo@localhost/12341234", <Transport>),
-#     ("0.0.0.0", "50001"): ("test@localhos/43214321", <Transport>)
+#     ("0.0.0.0", "50000"): ("demo@localhost/12341234", <asyncio.Transport>, <Online: Bool>),
+#     ("0.0.0.0", "50001"): ("test@localhos/43214321", <asyncio.Transport>, <Online: Bool>)
 # }
 
 
@@ -40,7 +40,7 @@ class ConnectionManager(metaclass=Singleton):
             :param transport: The transport object associated to the connection
         """
         if peer not in self._peerList:
-            self._peerList[peer] = (None, transport)
+            self._peerList[peer] = (None, transport, [False])
 
     def disconnection(self, peer: Tuple[str, int]) -> None:
         """
@@ -54,6 +54,11 @@ class ConnectionManager(metaclass=Singleton):
         except KeyError:
             logger.warning(f"{peer} not present in the online list")
 
+    def online(self, jid: JID, online: bool = True):
+        for k, v in self._peerList.items():
+            if v[0] == jid and v[2][0] != online:
+                self._peerList[k] = (v[0], v[1], [online])
+
     def close(self, peer: Tuple[str, int]) -> None:
         """
             Closes a connection by sending a '</stream:stream> message' and
@@ -62,7 +67,7 @@ class ConnectionManager(metaclass=Singleton):
             :param peer: The peer value in the tuple format ({IP}, {PORT})
         """
         try:
-            _, buffer = self._peerList.pop(peer)
+            _, buffer, _ = self._peerList.pop(peer)
             buffer.write('</stream:stream>'.encode())
             self.disconnection(peer)
         except KeyError as e:
@@ -76,14 +81,14 @@ class ConnectionManager(metaclass=Singleton):
         """
         return self._peerList
 
-    def get_buffer(self, jid: JID) -> List[Tuple[JID, Transport]]:
+    def get_buffer(self, jid: JID) -> List[Tuple[JID, Transport, bool]]:
         """
             Get all the available buffers associated with a jid.
 
             If the jid is in the format username@domain/resource, the function
             will only return one buffer or none.
 
-            If the jid is in the format username@domain, the function
+            If the jid is in the format username@domain, the fun<Online: Bool>ction
             will return a list of the buffers for each resource available.
 
             Both cases return a list.
@@ -96,10 +101,41 @@ class ConnectionManager(metaclass=Singleton):
             return []
 
         if jid.resource:
-            return [(jid_stored, buffer) for jid_stored, buffer, _ in self._peerList.values() if str(jid) == jid_stored]
+            return [(jid_stored, buffer, online[0])
+                    for jid_stored, buffer, online in self._peerList.values()
+                    if str(jid) == jid_stored]
         else:
-            return [(jid_stored, buffer) for jid_stored, buffer in self._peerList.values() if
-                    re.match(f"{str(jid)}/*", str(jid_stored))]
+            return [(jid_stored, buffer, online[0])
+                    for jid_stored, buffer, online in self._peerList.values()
+                    if re.match(f"{str(jid)}/*", str(jid_stored))]
+
+    def get_buffer_online(self, jid: JID) -> List[Tuple[JID, Transport, bool]]:
+        """
+            Get all the available buffers associated with a jid
+            that are ready to receive messages (online).
+
+            - If the jid is in the format username@domain/resource, the function will only return one buffer or none.
+
+            - If the jid is in the format username@domain, the function will return a list of the buffers for each resource available.
+
+            Both cases return a list.
+
+            :param jid: The jid to get the buffers for. It can be a full jid or a bare jid
+            :return: (JID, TRANSPORT) tuple
+        """
+        if jid.domain is None:
+            logger.error("JID must have, at least, user and domain")
+            return []
+
+        if jid.resource:
+            return [(jid_stored, buffer, online[0])
+                    for jid_stored, buffer, online in self._peerList.values()
+                    if str(jid) == jid_stored and online[0] is True]
+        else:
+            return [(jid_stored, buffer, online[0])
+                    for jid_stored, buffer, online in self._peerList.values()
+                    if re.match(f"{str(jid)}/*", str(jid_stored))
+                    and online[0] is True]
 
     ###########
     ### JID ###
@@ -128,8 +164,8 @@ class ConnectionManager(metaclass=Singleton):
             :param transport: Transport to use
         """
         try:
-            _, old_transport = self._peerList[peer]
-            self._peerList[peer] = (jid, transport or old_transport)
+            _, old_transport, online = self._peerList[peer]
+            self._peerList[peer] = (jid, transport or old_transport, online)
         except KeyError:
             logger.error(f"Unable to find {peer} during jid/transport update")
 

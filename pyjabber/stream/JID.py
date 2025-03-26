@@ -45,3 +45,8 @@ class JID:
         if self._resource:
             return f'{self._user}@{self._domain}/{self._resource}'
         return f'{self._user}@{self._domain}'
+
+    def __eq__(self, other):
+        if isinstance(other, JID):
+            return self.user == other.user and self.domain == other.domain and self.resource == other.resource
+        return False

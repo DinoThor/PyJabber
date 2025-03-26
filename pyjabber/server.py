@@ -7,23 +7,18 @@ import sqlite3
 import ssl
 
 from contextlib import closing
-from typing import LiteralString
 
 from loguru import logger
 
 from pyjabber.db.database import connection
 from pyjabber.network.XMLProtocol import XMLProtocol, TransportProxy
-from pyjabber.network.server.incoming.XMLServerIncomingProtocol import XMLServerIncomingProtocol
 from pyjabber.network.server.outcoming.XMLServerOutcomingProtocol import XMLServerOutcomingProtocol
 from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber.network.tls.TLSWorker import TLSQueue
-from pyjabber.stream.QueueMessage import QueueMessage
 from pyjabber.webpage.adminPage import AdminPage
 from pyjabber.network import CertGenerator
-from pyjabber.metadata import host as metadata_host, config_path as metadata_config_path
-from pyjabber.metadata import database_path as metadata_database_path, root_path as metadata_root_path
 from pyjabber.metadata import database_in_memory as metadata_database_in_memory
-
+from pyjabber import metadata
+from pyjabber.workers import tls_worker, queue_worker
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -62,10 +57,10 @@ class Server:
         server_out_port: int = 5269,
         family: socket.AddressFamily = socket.AF_INET,
         connection_timeout: int = 60,
-        database_path: LiteralString = os.path.join(os.getcwd(), "pyjabber.db"),
+        database_path: str = os.path.join(os.getcwd(), "pyjabber.db"),
         database_purge: bool = False,
         database_in_memory: bool = False,
-        cert_path: LiteralString = None
+        cert_path: str = None
     ):
         # Server
         self._host = host
@@ -78,24 +73,34 @@ class Server:
         self._adminServer = AdminPage()
         self._public_ip = None
         self._connection_timeout = connection_timeout
+
+        # Database
         self._database_path = database_path
         self._sql_init_script = os.path.join(SERVER_FILE_PATH, "db", "schema.sql")
         self._sql_delete_script = os.path.join(SERVER_FILE_PATH, "db", "delete.sql")
         self._database_purge = database_purge
         self._database_in_memory = database_in_memory
         self._db_in_memory_con = None
+
+        # Certs
         self._cert_path = cert_path or os.path.join(SERVER_FILE_PATH, "network", "certs")
-        self._custom_loop = True
 
         # Singletons
         self._connection_manager = ConnectionManager()
-        self._queue_message = QueueMessage(self._connection_manager)
 
-        metadata_host.set(host)
-        metadata_database_path.set(self._database_path)
-        metadata_config_path.set(os.path.join(os.path.dirname(os.path.abspath(__file__)), "config/config.yaml"))
-        metadata_root_path.set(SERVER_FILE_PATH)
-        metadata_database_in_memory.set(False)
+        # Contextvar
+        metadata.host.set(host)
+        metadata.database_path.set(self._database_path)
+        metadata.config_path.set(os.path.join(os.path.dirname(os.path.abspath(__file__)), "config/config.yaml"))
+        metadata.cert_path.set(self._cert_path)
+        metadata.root_path.set(SERVER_FILE_PATH)
+
+        # Flags
+        self._ready = asyncio.Event()
+
+    @property
+    def ready(self):
+        return self._ready
 
     def setup_database(self):
         if self._database_in_memory:
@@ -127,12 +132,11 @@ class Server:
             if CertGenerator.check_hostname_cert_exists(self._host, self._cert_path) is False:
                 CertGenerator.generate_hostname_cert(self._host, self._cert_path)
         except FileNotFoundError as e:
-            logger.error(e)
-            logger.error("Pass an existing directory in your system to load the certs")
-            logger.error("Closing server")
+            logger.error(f"{e.__class__.__name__}: Pass an existing directory in your system to load the certs. "
+                         f"Closing server")
             raise SystemExit
 
-    async def setup_tls_worker(self, tls_queue: queue.Queue):
+    async def setup_tls_worker(self):
         """
         A TLS Worker for process STARTTLS petitions.
         A global Asyncio queue must be declared and used across the server. The main producer of the queue will be the
@@ -140,7 +144,6 @@ class Server:
         The worker is global for all the server components, and it can be duplicated across multiple workers in
         different threads to handle a high number of new connections established within a very short period of time.
 
-        :param tls_queue: The global queue used ONLY for (TRANSPORT, PROTOCOL, PARSER) tuples
         """
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         ssl_context.load_cert_chain(
@@ -197,7 +200,7 @@ class Server:
             )
         except OSError as e:
             logger.error(e)
-            raise SystemExit
+            self.raise_exit()
 
         logger.info(f"Client domain => {self._host}")
         logger.info(f"Server is listening clients on {[s.getsockname() for s in self._client_listener.sockets if s]}")
@@ -220,6 +223,7 @@ class Server:
 
         # logger.info(f"Server is listening servers on {[s.getsockname() for s in self._server_listener.sockets if s]}")
         logger.success("Server started...")
+        self._ready.set()
 
     async def stop_server(self):
         """
@@ -240,27 +244,27 @@ class Server:
 
         logger.success("Server stopped...")
 
-    def task_s2s(self, host):
-        host = host.split("@")[-1]
-        loop = asyncio.get_running_loop()
+    # def task_s2s(self, host):
+    #     # host = host.split("@")[-1]
+    #     # loop = asyncio.get_running_loop()
+    #     #
+    #     # asyncio.ensure_future(self.server_connection(host, loop), loop=loop)
 
-        asyncio.ensure_future(self.server_connection(host, loop), loop=loop)
-
-    async def server_connection(self, remote_host, loop):
-        """Task to connect to another XMPP server
-        :param remote_host: Host of the remote server to connect
-        :param loop: Asyncio running loop. Necessary to perform task
-        """
-        await loop.create_connection(
-            lambda: XMLServerOutcomingProtocol(
-                namespace="jabber:server",
-                host=remote_host,
-                public_host=self._public_ip,
-                connection_timeout=self._connection_timeout,
-            ),
-            host=remote_host,
-            port=self._server_out_port
-        )
+    # async def server_connection(self, remote_host, loop):
+    #     """Task to connect to another XMPP server
+    #     :param remote_host: Host of the remote server to connect
+    #     :param loop: Asyncio running loop. Necessary to perform task
+    #     """
+    #     await loop.create_connection(
+    #         lambda: XMLServerOutcomingProtocol(
+    #             namespace="jabber:server",
+    #             host=remote_host,
+    #             public_host=self._public_ip,
+    #             connection_timeout=self._connection_timeout,
+    #         ),
+    #         host=remote_host,
+    #         port=self._server_out_port
+    #     )
 
     def raise_exit(self, *args):
         """Exception used to signal the safe close of the server"""
@@ -273,17 +277,23 @@ class Server:
         signal.signal(signal.SIGABRT, self.raise_exit)
         signal.signal(signal.SIGTERM, self.raise_exit)
 
-        tls_queue = TLSQueue().queue
-
         try:
-            server = asyncio.create_task(self.run_server())
-            admin = self._adminServer.start()
-            tls = asyncio.create_task(self.setup_tls_worker(tls_queue))
-            await asyncio.gather(server, admin, tls)
+            server_task = asyncio.create_task(self.run_server())
+            tasks = [
+                asyncio.create_task(self._adminServer.start()),
+                asyncio.create_task(tls_worker()),
+                asyncio.create_task(queue_worker())
+            ]
+            await asyncio.gather(*tasks)
 
-        except (SystemExit, KeyboardInterrupt):  # pragma: no cover
-            pass
+        except (SystemExit, KeyboardInterrupt, asyncio.CancelledError) as e:  # pragma: no cover
+            logger.trace(f"Signal {e.__class__.__name__} intercepted. Stopping server")
 
         finally:
-            tls.cancel()
-            await asyncio.gather(self.stop_server(), self._adminServer.app.cleanup())
+            for task in tasks:
+                task.cancel()
+            try:
+                await asyncio.gather(*tasks, return_exceptions=False)
+                await self.stop_server()
+            except (asyncio.CancelledError, SystemExit, Exception) as e:
+                pass

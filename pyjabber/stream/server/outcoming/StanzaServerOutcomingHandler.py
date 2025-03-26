@@ -38,7 +38,7 @@ class StanzaServerOutcomingHandler:
         receiver_buffer = self._connection_manager.get_buffer(bare_jid)
 
         for buffer in receiver_buffer:
-            buffer[-1].write(ET.tostring(element))
+            buffer[1].write(ET.tostring(element))
 
     def handle_pre(self, element: ET.Element):
         return

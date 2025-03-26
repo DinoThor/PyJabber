@@ -104,7 +104,7 @@ def test_handle_msg(stanza_handler, mock_connection_manager):
     stanza_handler.handle_msg(msg_element)
 
     for buffer in mock_receiver_buffer:
-        buffer[-1].write.assert_called_once_with(ET.tostring(msg_element))
+        buffer[1].write.assert_called_once_with(ET.tostring(msg_element))
 
 
 def test_handle_msg(stanza_handler, mock_connection_manager):

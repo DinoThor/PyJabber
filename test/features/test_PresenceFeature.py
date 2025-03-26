@@ -46,6 +46,47 @@ def elements_are_equal(e1, e2):
     return all(elements_are_equal(c1, c2) for c1, c2 in zip(e1, e2))
 
 
+def test_presence_by_jid(setup_presence):
+    presence, _, _ = setup_presence
+    presence._online_status = {
+        "test@localhost": [
+            ('res1', PresenceType.AVAILABLE, None, None, None),
+            ('res2', PresenceType.AVAILABLE, None, None, 0),
+            ('res3', PresenceType.AVAILABLE, None, None, 1),
+            ('res4', PresenceType.AVAILABLE, None, None, 2)
+        ]
+    }
+
+    res = presence.priority_by_jid(JID("test@localhost"))
+
+    assert len(res) == 4
+    assert all([len(i) == 5 for i in res])
+    assert all([isinstance(i[0], str) for i in res])
+    assert all([isinstance(i[1], PresenceType) for i in res])
+
+    presence._online_status = {}
+
+
+def test_most_priority_by_jid(setup_presence):
+    presence, _, _ = setup_presence
+    presence._online_status = {
+        "test@localhost": [
+            ('res1', PresenceType.AVAILABLE, None, None, None),
+            ('res2', PresenceType.AVAILABLE, None, None, 0),
+            ('res3', PresenceType.AVAILABLE, None, None, 1),
+            ('res4', PresenceType.AVAILABLE, None, None, 2)
+        ]
+    }
+
+    res = presence.most_priority(JID("test@localhost"))
+
+    assert len(res) == 1
+    assert str(res[0][0]) == "res4"
+    assert res[0][-1] == 2
+
+    presence._online_status = {}
+
+
 def test_handle_subscribe(setup_presence):
     presence, mock_connections, mock_roster = setup_presence
     element = ET.Element('presence', attrib={'type': 'subscribe', 'to': 'user@localhost', 'id': '123'})
