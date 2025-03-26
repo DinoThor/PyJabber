@@ -153,7 +153,7 @@ jobs:
     - name: Run coverage
       run: |
         coverage erase
-        coverage run --source=. -m pytest
+        coverage run --source=. --omit="*/s2s/*" -m pytest
     - name: Upload coverage to Coveralls
       uses: coverallsapp/github-action@v2.2.0
       with:
