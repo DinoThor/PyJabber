@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Dict, Callable
 from yaml import load, Loader
 from xml.etree import ElementTree as ET
 
@@ -12,7 +12,7 @@ from pyjabber.utils import Singleton
 
 def iq_skeleton(element: ET.Element, disco_type: Literal['info', 'items']):
     iq_res = IQ(
-        type_=IQ.TYPE.RESULT.value,
+        type_=IQ.TYPE.RESULT,
         id_=element.get('id'),
         from_=element.get('to'),
         to=element.get('from')
@@ -20,14 +20,15 @@ def iq_skeleton(element: ET.Element, disco_type: Literal['info', 'items']):
     return iq_res, ET.SubElement(iq_res, 'query', attrib={'xmlns': f'http://jabber.org/protocol/disco#{disco_type}'})
 
 
+
 class Disco(metaclass=Singleton):
     def __init__(self):
-        self._handlers = {
+        self._handlers: Dict[str, Callable[[JID, ET.Element], bytes]] = {
             "info": self.handle_info,
             "items": self.handle_items
         }
-        self._host = host.get()
-        self._config_path = config_path.get()
+        self._host: str = host.get()
+        self._config_path: str = config_path.get()
         self._items = list(load(open(self._config_path), Loader=Loader).get('items'))
 
         # Search if any item has the substring pubsub, and replace the placeholder

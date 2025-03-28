@@ -20,7 +20,8 @@ from pyjabber.stanzas.error import StanzaError
 from pyjabber.stream.JID import JID
 from pyjabber.utils import Singleton, ClarkNotation as CN
 
-def success_response(element: ET.Element, owner: bool = False):
+
+def success_response(element: ET.Element, owner: bool = False) -> Tuple[IQ, ET.Element]:
     iq_res = IQ(
         type_=IQ.TYPE.RESULT,
         from_=host.get(),
@@ -137,7 +138,7 @@ class PubSub(metaclass=Singleton):
             return error_response(element, jid, ErrorType.CONFLICT)
 
         if config:
-            pass # TODO: create node with given configuration
+            pass  # TODO: create node with given configuration
 
         """
         A new item MUST follow the order described in the NodeAttrib enum
@@ -183,7 +184,8 @@ class PubSub(metaclass=Singleton):
             con.commit()
 
         self.update_memory_from_database()
-        return ET.tostring(success_response(element))
+        _, suc_res = success_response(element)
+        return ET.tostring(suc_res)
 
     def subscribe(self, element: ET.Element, jid: JID):
         """
@@ -217,9 +219,10 @@ class PubSub(metaclass=Singleton):
         if len(current_state) >= 1:
             current_state = current_state[0]
             if (current_state[SubscribersAttrib.SUBSCRIPTION.value]
-                in [Subscription.SUBSCRIBED.value, Subscription.UNCONFIGURED.value]
-            ):
+               in [Subscription.SUBSCRIBED.value, Subscription.UNCONFIGURED.value]):
+
                 iq_res, pubsub = success_response(element)
+                subid = current_state[SubscribersAttrib.SUBID.value]
                 ET.SubElement(
                     pubsub,
                     'subscription',
@@ -328,8 +331,10 @@ class PubSub(metaclass=Singleton):
         return ET.tostring(iq_res)
 
     def retrieve_subscriptions(self, element: ET.Element, jid: JID):
-        pubsub = element.find('{http://jabber.org/protocol/pubsub}pubsub') or element.find('{http://jabber.org/protocol/pubsub#owner}pubsub')
-        subscriptions = pubsub.find('{http://jabber.org/protocol/pubsub}subscriptions') or pubsub.find('{http://jabber.org/protocol/pubsub#owner}subscriptions')
+        pubsub = element.find('{http://jabber.org/protocol/pubsub}pubsub') or element.find(
+            '{http://jabber.org/protocol/pubsub#owner}pubsub')
+        subscriptions = pubsub.find('{http://jabber.org/protocol/pubsub}subscriptions') or pubsub.find(
+            '{http://jabber.org/protocol/pubsub#owner}subscriptions')
         target_node = subscriptions.attrib.get('node')
         from_stanza = element.attrib.get('from')
 
@@ -379,7 +384,7 @@ class PubSub(metaclass=Singleton):
             return error_response(element, jid, ErrorType.ITEM_NOT_FOUND)
 
         current_sub = [s for s in self._subscribers if s[SubscribersAttrib.AFFILIATION.value] == jid.user]
-        if jid.user != target_node[0][NodeAttrib.OWNER.value]\
+        if jid.user != target_node[0][NodeAttrib.OWNER.value] \
             or (current_sub and current_sub[0][SubscribersAttrib.AFFILIATION.value] != Affiliation.MEMBER):
             return error_response(element, jid, ErrorType.FORBIDDEN)
 
@@ -410,8 +415,8 @@ class PubSub(metaclass=Singleton):
 
     def send_notification(self, node: str, payload: ET.Element, item_id: str = None):
         receivers = [s for s in self._subscribers
-         if s[SubscribersAttrib.NODE.value] == node
-         and s[SubscribersAttrib.AFFILIATION.value] == Affiliation.MEMBER]
+                     if s[SubscribersAttrib.NODE.value] == node
+                     and s[SubscribersAttrib.AFFILIATION.value] == Affiliation.MEMBER]
 
         receivers_jid = [r[1] for r in receivers]
         receivers_buffer = [self._connections.get_buffer(JID(user=r, domain=self._host)) for r in receivers_jid]
@@ -431,5 +436,3 @@ class PubSub(metaclass=Singleton):
                 body=event
             )
             buffer.write(ET.tostring(message))
-
-
