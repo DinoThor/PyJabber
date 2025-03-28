@@ -31,7 +31,8 @@ def setup_presence(setup_database):
     with patch('pyjabber.features.presence.PresenceFeature.host') as mock_host, \
          patch('pyjabber.features.presence.PresenceFeature.ConnectionManager') as mock_connections_manager, \
          patch('pyjabber.features.presence.PresenceFeature.connection') as mock_connection, \
-         patch('pyjabber.features.presence.PresenceFeature.Roster') as mock_roster:
+         patch('pyjabber.features.presence.PresenceFeature.Roster') as mock_roster, \
+        patch('pyjabber.features.presence.PresenceFeature.connection_queue') as mock_connectoin_queue:
         con = setup_database
         mock_connection.return_value = con
         mock_host.get.return_value = 'localhost'
@@ -150,7 +151,7 @@ def test_handle_subscribe_subscription_both(setup_presence):
     mock_roster.roster_by_jid.return_value = None
 
 
-def test_handle_initial_presence_no_roster_entries(setup_presence):
+def test_handle_global_presence_no_roster_entries(setup_presence):
     presence, mock_connections, mock_roster = setup_presence
     element = ET.Element('presence', attrib={'id': '123'})
     mock_roster.roster_by_jid.return_value = []
@@ -212,6 +213,7 @@ def test_feed_handle_unsubscribed(setup_presence):
     mock_connections.get_buffer.assert_called_once()
     assert str(mock_connections.get_buffer.call_args.args[0]) == "user@localhost"
 
+
 @pytest.mark.skip
 def test_feed_handle_unavailable(setup_presence):
     presence, _, _, _, _ = setup_presence
@@ -219,6 +221,7 @@ def test_feed_handle_unavailable(setup_presence):
     presence._jid = JID('user2@localhost')
     result = presence.feed(element)
     assert result is None
+
 
 @pytest.mark.skip
 def test_handle_subscribed(setup_presence):
@@ -241,6 +244,7 @@ def test_handle_subscribed(setup_presence):
 
     assert result is None
 
+
 @pytest.mark.skip
 def test_handle_unsubscribed(setup_presence):
     presence, mock_connections, mock_retrieve_roster, _, _ = setup_presence
@@ -257,6 +261,7 @@ def test_handle_unsubscribed(setup_presence):
     result = presence.handle_unsubscribed(element)
 
     assert result is None
+
 
 @pytest.mark.skip
 def test_handle_unavailable(setup_presence):
@@ -275,9 +280,10 @@ def test_handle_unavailable(setup_presence):
 
     assert result is None
 
+
 @pytest.mark.skip
-def test_feed_handle_initial_presence(setup_presence):
-    presence, mock_connections, mock_retrieve_roster, _, _  = setup_presence
+def test_feed_handle_global_presence(setup_presence):
+    presence, mock_connections, mock_retrieve_roster, _, _ = setup_presence
     element = ET.Element('presence', attrib={'id': '123'})
     presence._jid = JID('user2@localhost')
 
@@ -294,6 +300,7 @@ def test_feed_handle_initial_presence(setup_presence):
     mock_retrieve_roster.assert_called_once()
     mock_connections.get_buffer.assert_called_once()
     buffer_mock[-1].write.assert_called_once()
+
 
 @pytest.mark.skip
 def test_handle_initial_presence(setup_presence):
@@ -313,6 +320,7 @@ def test_handle_initial_presence(setup_presence):
     mock_retrieve_roster.assert_called_once()
     mock_connections.get_buffer.assert_called_once()
     buffer_mock[-1].write.assert_called_once()
+
 
 if __name__ == "__main__":
     pytest.main()

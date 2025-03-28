@@ -4,29 +4,17 @@ from pyjabber.network.ConnectionManager import ConnectionManager
 from asyncio import Transport
 
 from loguru import logger
-import logging
 
 from pyjabber.stream.JID import JID
 
 
 @pytest.fixture
 def connections_manager():
-    mock_log = MagicMock()
     with patch('pyjabber.network.ConnectionManager.logger') as mock_logger:
-        # handler_id = logger.add(
-        #     caplog.handler,
-        #     format="{message}",
-        #     level=0,
-        #     filter=lambda record: record["level"].no >= caplog.handler.level,
-        #     enqueue=True,  # Set to 'True' if your test is spawning child processes.
-        # )
-
         yield ConnectionManager(), mock_logger
-    # logger.remove(handler_id)
 
 @pytest.fixture(autouse=True)
 def cleanup(connections_manager):
-    yield
     connections_manager[0]._peerList.clear()
 
 @pytest.fixture(autouse=True)
@@ -35,7 +23,6 @@ def setup_logging(caplog):
     logger.remove()
     # Configurar loguru para trabajar con caplog
     logger.add(caplog.handler, level="ERROR")
-
 
 
 def test_connection(connections_manager):
@@ -65,12 +52,34 @@ def test_get_users_connected(connections_manager):
 def test_get_buffer(connections_manager):
     connections_manager, _ = connections_manager
     peer = ("127.0.0.1", 12345)
+    jid = JID("user@localhost")
     transport = MagicMock(spec=Transport)
     connections_manager.connection(peer)
-    connections_manager.set_jid(peer, JID("user@localhost"), transport)
-    buffer = connections_manager.get_buffer(JID("user@localhost"))
+    connections_manager.set_jid(peer, jid, transport)
+    buffer = connections_manager.get_buffer(jid)
     assert buffer[0][1] == transport
-    assert str(buffer[0][0]) == "user@localhost"
+    assert buffer[0][0] == jid
+
+
+def test_get_buffer_online(connections_manager):
+    connections_manager, _ = connections_manager
+    peer = ("127.0.0.1", 12345)
+    jid = JID("user@localhost")
+    transport = MagicMock(spec=Transport)
+    connections_manager.connection(peer)
+    connections_manager.set_jid(peer, jid, transport)
+    connections_manager.online(jid)
+    buffer = connections_manager.get_buffer_online(jid)
+
+    assert buffer[0][0] == jid
+    assert buffer[0][1] == transport
+    assert buffer[0][2] is True
+
+    connections_manager.online(jid, False)
+
+    buffer = connections_manager.get_buffer_online(jid)
+
+    assert len(buffer) == 0
 
 
 def test_get_jid(connections_manager):
