@@ -1,3 +1,5 @@
+import os
+
 from setuptools import setup, find_packages
 import pyjabber
 
@@ -11,7 +13,7 @@ def parse_requirements(filename):
 
 setup(
     name="pyjabber",
-    version=pyjabber.__version__,
+    version=os.environ.get("VERSION") or pyjabber.__version__,
     author="Aarón Raya Lopez, Manel Soler Sanz",
     author_email="aaron.raya.lopez@gmail.com",
     description="A Python XMPP server",
