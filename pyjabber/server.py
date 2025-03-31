@@ -272,6 +272,9 @@ class Server:
 
     async def start(self):
         """Start the already created and configuration server"""
+        metadata.tls_queue.set(asyncio.Queue())
+        metadata.connection_queue.set(asyncio.Queue())
+        metadata.message_queue.set(asyncio.Queue())
 
         signal.signal(signal.SIGINT, self.raise_exit)
         signal.signal(signal.SIGABRT, self.raise_exit)

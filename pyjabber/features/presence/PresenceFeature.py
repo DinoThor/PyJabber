@@ -151,20 +151,26 @@ class Presence(metaclass=Singleton):
         index, present = self._present_in_online_list(jid)
         if element.attrib.get("type") == PresenceType.UNAVAILABLE.value:
             if present:
-                self._online_status[jid.bare()][index] = (jid.resource, PresenceType.UNAVAILABLE, show, status, priority)
+                self._online_status[jid.bare()][index] = (
+                    jid.resource, PresenceType.UNAVAILABLE, show, status, priority
+                )
             else:
-                self._online_status[jid.bare()].append((jid.resource, PresenceType.UNAVAILABLE, show, status, priority))
+                self._online_status[jid.bare()].append(
+                    (jid.resource, PresenceType.UNAVAILABLE, show, status, priority)
+                )
+
+            self._connections.online(jid, False)
         else:
             if present:
                 previous_status = self._online_status[jid.bare()][index][1]
                 self._online_status[jid.bare()][index] = (jid.resource, PresenceType.AVAILABLE, show, status, priority)
                 if previous_status == PresenceType.UNAVAILABLE:
-                    self._connections.online(jid)
                     self._connection_queue.put_nowait(('CONNECTION', jid))
             else:
                 self._online_status[jid.bare()].append((jid.resource, PresenceType.AVAILABLE, show, status, priority))
-                self._connections.online(jid)
                 self._connection_queue.put_nowait(('CONNECTION', jid))
+
+            self._connections.online(jid)
 
         for contact in self._roster.roster_by_jid(jid):
             item = ET.fromstring(contact.get("item"))

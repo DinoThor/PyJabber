@@ -14,14 +14,15 @@ def setup():
         with patch('pyjabber.network.XMLProtocol.ConnectionManager') as mock_connection:
             with patch('pyjabber.network.XMLProtocol.StreamAlivenessMonitor') as mock_monitor:
                 with patch('pyjabber.network.XMLProtocol.Presence'):
-                    protocol = XMLProtocol(
-                        host='localhost',
-                        namespace='jabber:client',
-                        connection_timeout=30,
-                        cert_path='cert_path',
-                    )
-                    protocol._timeout_monitor = mock_monitor
-                    yield protocol, mock_parser, mock_connection, mock_monitor
+                    with patch('pyjabber.network.XMLProtocol.metadata.tls_queue') as mock_queue:
+                        protocol = XMLProtocol(
+                            host='localhost',
+                            namespace='jabber:client',
+                            connection_timeout=30,
+                            cert_path='cert_path',
+                        )
+                        protocol._timeout_monitor = mock_monitor
+                        yield protocol, mock_parser, mock_connection, mock_monitor
 
 
 @patch('pyjabber.network.XMLProtocol.sax.make_parser')
