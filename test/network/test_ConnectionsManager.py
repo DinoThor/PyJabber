@@ -81,6 +81,26 @@ def test_get_buffer_online(connections_manager):
 
     assert len(buffer) == 0
 
+def test_get_buffer_online_with_resource(connections_manager):
+    connections_manager, _ = connections_manager
+    peer = ("127.0.0.1", 12345)
+    jid = JID("user@localhost/res1")
+    transport = MagicMock(spec=Transport)
+    connections_manager.connection(peer)
+    connections_manager.set_jid(peer, jid, transport)
+    connections_manager.online(jid)
+    buffer = connections_manager.get_buffer_online(jid)
+
+    assert buffer[0][0] == jid
+    assert buffer[0][1] == transport
+    assert buffer[0][2] is True
+
+    connections_manager.online(jid, False)
+
+    buffer = connections_manager.get_buffer_online(jid)
+
+    assert len(buffer) == 0
+
 
 def test_get_jid(connections_manager):
     connections_manager, _ = connections_manager
