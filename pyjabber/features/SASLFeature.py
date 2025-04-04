@@ -73,7 +73,7 @@ class SASL(metaclass=Singleton):
         if query is None:
             return SE.bad_request()
 
-        if element.attrib["type"] == IQ.TYPE.SET.value:
+        if element.attrib.get("type") == IQ.TYPE.SET.value:
             new_jid = query.find("{jabber:iq:register}username")
 
             if new_jid is None:
@@ -101,7 +101,7 @@ class SASL(metaclass=Singleton):
                     return iq_register_result(
                         element.attrib["id"])
 
-        elif element.attrib["type"] == "get":
+        elif element.attrib.get("type") == IQ.TYPE.GET.value:
             iq = IQ(
                 type_=IQ.TYPE.RESULT,
                 id_=element.attrib["id"] if "id" in element.attrib.keys() else None,

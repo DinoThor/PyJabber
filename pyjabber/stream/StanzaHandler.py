@@ -63,7 +63,7 @@ class StanzaHandler:
         """
         jid = JID(element.attrib["to"])
 
-        if jid.domain == self._host:
+        if jid.domain in [self._host, '127.0.0.1', '0.0.0.0']:
             if not jid.resource:
                 priority = self._presenceManager.most_priority(jid)
                 if not priority:

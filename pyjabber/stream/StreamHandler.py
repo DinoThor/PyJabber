@@ -11,7 +11,7 @@ from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.metadata import host
 from pyjabber.stanzas.IQ import IQ
-
+from pyjabber.stanzas.error import StanzaError as SE
 
 class Stage(Enum):
     """
@@ -29,25 +29,31 @@ class Stage(Enum):
 class Signal(Enum):
     RESET = 0
     DONE = 1
+    FORCE_CLOSE = 2
 
     def __eq__(self, other):
-        if other is None:
+        if not isinstance(other, Signal):
             return False
         return self.value == other.value
 
 
 class StreamHandler:
-    def __init__(self, buffer, starttls) -> None: # connection_manager
+    def __init__(self, buffer, starttls) -> None:
         self._host = host.get()
         self._buffer = buffer
         self._starttls = starttls
-
         self._streamFeature = StreamFeature()
         self._connection_manager: ConnectionManager = ConnectionManager()
         self._stage = Stage.CONNECTED
 
-        self._elem = None
-        self._jid = None
+        self._stages_handlers = {
+            Stage.CONNECTED: self._handle_init,
+            Stage.OPENED: self._handle_tls,
+            Stage.SSL: self._handle_init_ssl,
+            Stage.SASL: self._handle_ssl,
+            Stage.AUTH: self._handle_init_resource_bind,
+            Stage.BIND: self._handle_resource_bind
+        }
 
     @property
     def buffer(self):
@@ -58,80 +64,102 @@ class StreamHandler:
         self._buffer = value
 
     def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
-        # TCP connection opened. The server returns the available features (only TLS)
-        if self._stage == Stage.CONNECTED:
-            self._streamFeature.reset()
-            self._streamFeature.register(StartTLSFeature())
-            self._buffer.write(self._streamFeature.to_bytes())
+        try:
+            return self._stages_handlers[self._stage](elem)
+        except KeyError:
+            SE.internal_server_error()
+        # # TCP connection opened. The server returns the available features (only TLS)
+        # if self._stage == Stage.CONNECTED:
+        #     self._handle_init(elem)
+        #
+        # # TLS offered. The client should have responded with a starttls message
+        # elif self._stage == Stage.OPENED:
+        #     self._handle_tls(elem)
+        #
+        # # TLS Handshake made. Starting SASL
+        # elif self._stage == Stage.SSL:
+        #     self._handle_init_ssl(elem)
+        #
+        # # SASL
+        # elif self._stage == Stage.SASL:
+        #     self._handle_ssl(elem)
+        #
+        # # User register/authenticated. Starting resource binding
+        # elif self._stage == Stage.AUTH:
+        #     self._handle_init_resource_bind(elem)
+        #
+        # elif self._stage == Stage.BIND:
+        #     self._handle_resource_bind(elem)
 
-            self._stage = Stage.OPENED
-            return
+    def _handle_init(self, _):
+        self._streamFeature.reset()
+        self._streamFeature.register(StartTLSFeature())
+        self._buffer.write(self._streamFeature.to_bytes())
 
-        # TLS offered. The client should have responded with a starttls message
-        elif self._stage == Stage.OPENED:
-            if "starttls" in elem.tag:
-                self._buffer.write(proceed_response())
-                self._starttls()
-                self._stage = Stage.SSL
-                self._buffer.pause_reading()
+        self._stage = Stage.OPENED
+
+    def _handle_tls(self, element: ET.Element):
+        if "starttls" in element.tag:
+            self._buffer.write(proceed_response())
+            self._starttls()
+            self._stage = Stage.SSL
+            self._buffer.pause_reading()
+            return Signal.RESET
+
+        else:
+            raise Exception()
+
+    def _handle_init_ssl(self, _):
+        self._streamFeature.reset()
+
+        self._streamFeature.register(IBR.InBandRegistration())
+        self._streamFeature.register(SASLFeature())
+        self._buffer.write(self._streamFeature.to_bytes())
+
+        self._stage = Stage.SASL
+
+    def _handle_ssl(self, element: ET.Element):
+        res = SASL().feed(element, {"peername": self._buffer.get_extra_info('peername')})
+        if type(res) is tuple:
+            if res[0].value == Signal.RESET.value:
+                self._buffer.write(res[1])
+                self._stage = Stage.AUTH
                 return Signal.RESET
-
             else:
-                raise Exception()
+                self._buffer.write(res[1])
+                self._stage = Stage.AUTH
+                return
 
-        # TLS Handshake made. Starting SASL
-        elif self._stage == Stage.SSL:
-            self._streamFeature.reset()
+        self._buffer.write(res)
 
-            self._streamFeature.register(IBR.InBandRegistration())
-            self._streamFeature.register(SASLFeature())
-            self._buffer.write(self._streamFeature.to_bytes())
+    def _handle_init_resource_bind(self, _):
+        self._streamFeature.reset()
+        self._streamFeature.register(ResourceBinding())
+        self._buffer.write(self._streamFeature.to_bytes())
 
-            self._stage = Stage.SASL
+        self._stage = Stage.BIND
 
-        # SASL
-        elif self._stage == Stage.SASL:
-            res = SASL().feed(elem, {"peername": self._buffer.get_extra_info('peername')})
-            if type(res) is tuple:
-                if res[0].value == Signal.RESET.value:
-                    self._buffer.write(res[1])
-                    self._stage = Stage.AUTH
-                    return Signal.RESET
-                else:
-                    self._buffer.write(res[1])
-                    self._stage = Stage.AUTH
-                    return
+    def _handle_resource_bind(self, element: ET.Element):
+        if "iq" in element.tag:
+            if element.attrib.get("type") == "set":
+                resource_id = str(uuid4())
 
-            self._buffer.write(res)
+                iq_res = IQ(type_=IQ.TYPE.RESULT, id_=element.get('id') or str(uuid4()))
+                bind_res = ET.SubElement(iq_res, "bind", attrib={"xmlns": "urn:ietf:params:xml:ns:xmpp-bind"})
 
-        # User register/authenticated. Starting resource binding
-        elif self._stage == Stage.AUTH:
-            self._streamFeature.reset()
-            self._streamFeature.register(ResourceBinding())
-            self._buffer.write(self._streamFeature.to_bytes())
+                peername = self._buffer.get_extra_info('peername')
+                new_jid = self._connection_manager.get_jid(peername)
+                new_jid.resource = resource_id
 
-            self._stage = Stage.BIND
+                ET.SubElement(bind_res, 'jid').text = str(new_jid)
 
-        elif self._stage == Stage.BIND:
-            if "iq" in elem.tag:
-                if elem.attrib["type"] == "set":
-                    resource_id = str(uuid4())
+                self._buffer.write(ET.tostring(iq_res))
 
-                    iq_res = IQ(type_=IQ.TYPE.RESULT, id_=elem.get('id') or str(uuid4()))
-                    bind_res = ET.SubElement(iq_res, "bind", attrib={"xmlns": "urn:ietf:params:xml:ns:xmpp-bind"})
+                """
+                Stream is negotiated.
+                Update the connection register with the jid and transport
+                """
+                self._connection_manager.set_jid(peername, new_jid, self._buffer)
 
-                    peername = self._buffer.get_extra_info('peername')
-                    new_jid = self._connection_manager.get_jid(peername)
-                    new_jid.resource = resource_id
+        return Signal.DONE
 
-                    ET.SubElement(bind_res, 'jid').text = str(new_jid)
-
-                    self._buffer.write(ET.tostring(iq_res))
-
-                    """
-                    Stream is negotiated.
-                    Update the connection register with the jid and transport
-                    """
-                    self._connection_manager.set_jid(peername, new_jid, self._buffer)
-
-            return Signal.DONE

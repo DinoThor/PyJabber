@@ -43,8 +43,6 @@ class XMLParser(ContentHandler):
         self._streamHandler.buffer = value
 
     def startElementNS(self, name, qname, attrs):
-        # logger.trace(f"Start element from <{hex(id(self._buffer))}>: {name}")
-
         if self._stack:  # "<stream:stream>" tag already present in the data stack
             elem = ET.Element(
                 CN.clarkFromTuple(name),
@@ -69,8 +67,6 @@ class XMLParser(ContentHandler):
             raise Exception()
 
     def endElementNS(self, name, qname):
-        # logger.trace(f"End element NS: {qname} : {name}")
-
         if "stream" in name:
             self._buffer.write(b'</stream:stream>')
             self._stack.clear()
@@ -93,11 +89,14 @@ class XMLParser(ContentHandler):
                 self._stanzaHandler.feed(elem)
             else:
                 signal = self._streamHandler.handle_open_stream(elem)
-                if signal == Signal.RESET and "stream" in self._stack[-1].tag:
-                    self._stack.clear()
-                elif signal == Signal.DONE:
+                if signal == Signal.DONE:
                     self._stanzaHandler = StanzaHandler(self._buffer)
                     self._state = self.StreamState.READY
+                elif signal == Signal.RESET and "stream" in self._stack[-1].tag:
+                    self._stack.clear()
+                elif signal == Signal.FORCE_CLOSE:
+                    self._stack.clear()
+                    self._stack.append(b'</stream:stream>')
 
     def characters(self, content: str) -> None:
         if not self._stack:

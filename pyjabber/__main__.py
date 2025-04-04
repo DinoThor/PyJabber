@@ -3,6 +3,8 @@ import socket
 import sys
 import click
 
+from pyjabber.server_parameters import Parameters
+
 if sys.platform != 'win32':
     from uvloop import run
 else:
@@ -78,7 +80,7 @@ def main(
         level=set_verbosity(verbose),
     )
 
-    server = Server(
+    param = Parameters(
         host=host,
         client_port=client_port,
         server_port=server_port,
@@ -89,6 +91,8 @@ def main(
         database_purge=database_purge,
         database_in_memory=database_in_memory,
     )
+
+    server = Server(param)
 
     run(server.start(), debug=debug)
 
