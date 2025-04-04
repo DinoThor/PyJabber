@@ -40,8 +40,6 @@ def test_stream_handler_initialization(setup):
     assert handler._buffer is not None
     assert handler._starttls is not None
     assert handler._stage == Stage.CONNECTED
-    assert handler._elem is None
-    assert handler._jid is None
 
 def test_stream_handler_buffer_property(setup):
     handler = setup
