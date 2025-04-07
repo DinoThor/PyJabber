@@ -1,4 +1,5 @@
 import asyncio
+import contextvars
 import os
 import signal
 
@@ -26,6 +27,8 @@ class Server:
     def __init__(self, param: Parameters = Parameters()):
         # Server
         self._host = param.host
+        self._public_ip = init_utils.setup_query_local_ip()
+        self._host_ip = init_utils.setup_ip_by_host(self._host)
         self._client_port = param.client_port
         self._server_port = param.server_port
         self._server_out_port = param.server_out_port
@@ -33,7 +36,6 @@ class Server:
         self._client_listener = None
         self._server_listener = None
         self._adminServer = AdminPage()
-        self._public_ip = None
         self._connection_timeout = param.connection_timeout
 
         # Database
@@ -52,10 +54,12 @@ class Server:
 
         # Contextvar
         metadata.host.set(param.host)
+        metadata.ip.set([self._host_ip, self._public_ip])
         metadata.database_path.set(self._database_path)
         metadata.config_path.set(os.path.join(os.path.dirname(os.path.abspath(__file__)), "config/config.yaml"))
         metadata.cert_path.set(self._cert_path)
         metadata.root_path.set(SERVER_FILE_PATH)
+        metadata.message_persistence.set(param.message_persistence or False)
 
         # Flags
         self._ready = asyncio.Event()
@@ -79,7 +83,7 @@ class Server:
                 self._sql_delete_script
             )
             init_utils.setup_certs(self._host, self._cert_path)
-            lan_ip = init_utils.setup_query_local_ip()
+            self._public_ip = init_utils.setup_query_local_ip()
 
             loop = asyncio.get_running_loop()
 
@@ -91,7 +95,7 @@ class Server:
                         connection_timeout=self._connection_timeout,
                         cert_path=self._cert_path,
                     ),
-                    host=[self._host, lan_ip] if lan_ip else [self._host],
+                    host=[self._host, self._public_ip] if self._public_ip else [self._host],
                     port=self._client_port,
                     family=self._family
                 )

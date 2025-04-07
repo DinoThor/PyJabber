@@ -25,6 +25,14 @@ def setup_query_local_ip():
     return IP
 
 
+def setup_ip_by_host(host: str):
+    try:
+        return socket.gethostbyname(host)
+    except socket.gaierror as e:
+        logger.error(e)
+        return None
+
+
 def setup_database(
     database_in_memory: bool,
     database_path: str,
