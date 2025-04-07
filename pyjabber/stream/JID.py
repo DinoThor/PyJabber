@@ -34,9 +34,17 @@ class JID:
     def domain(self) -> str:
         return self._domain
 
+    @domain.setter
+    def domain(self, domain: str):
+        self._domain = domain
+
     @property
     def user(self) -> str:
         return self._user
+
+    @user.setter
+    def user(self, user: str):
+        self._user = user
 
     def bare(self) -> str:
         return f'{self._user}@{self._domain}'
