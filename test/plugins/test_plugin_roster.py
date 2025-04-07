@@ -30,8 +30,10 @@ def setup_database():
 
 @pytest.fixture
 def setup(setup_database):
-    with patch('pyjabber.plugins.roster.Roster.connection') as mock_con:
+    with patch('pyjabber.plugins.roster.Roster.connection') as mock_con, \
+         patch('pyjabber.plugins.roster.Roster.host') as mock_host:
         mock_con = setup_database
+        mock_host.return_value = 'localhost'
         yield Roster()
 
 
