@@ -16,6 +16,7 @@ class InternalServerError(Exception):
 class StanzaHandler:
     def __init__(self, buffer) -> None:
         self._host = metadata.host.get()
+        self._ip = metadata.ip.get()
         self._buffer = buffer
         self._connections = ConnectionManager()
         self._message_queue = metadata.message_queue.get()
@@ -64,7 +65,9 @@ class StanzaHandler:
         """
         jid = JID(element.attrib["to"])
 
-        if jid.domain in [self._host, '127.0.0.1', '0.0.0.0']:
+        if jid.domain == self._host or jid.domain in self._ip:
+            if jid.domain in self._ip:
+                jid.domain = self._host
             if not jid.resource:
                 priority = self._presenceManager.most_priority(jid)
                 if not priority and self._message_persistence:
