@@ -16,6 +16,7 @@ class Parameters:
     database_purge: bool = False
     database_in_memory: bool = False
     cert_path: str = None
+    message_persistence: bool = True
 
     def from_json(self, file_path: str):
         with open(file_path, "r") as file:
@@ -31,5 +32,6 @@ class Parameters:
                 database_path=loaded.get('database_path') or os.path.join(os.getcwd(), "pyjabber.db"),
                 database_purge=loaded.get('database_purge') or False,
                 database_in_memory=loaded.get('database_in_memory') or False,
-                cert_path=loaded.get('cert_path') or None
+                cert_path=loaded.get('cert_path') or None,
+                message_persistence=loaded.get('message_persistence') is True
             )

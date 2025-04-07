@@ -19,6 +19,7 @@ class StanzaHandler:
         self._buffer = buffer
         self._connections = ConnectionManager()
         self._message_queue = metadata.message_queue.get()
+        self._message_persistence = metadata.message_persistence.get() or False
 
         self._peername = buffer.get_extra_info('peername')
         self._jid = self._connections.get_jid(self._peername)
@@ -66,7 +67,7 @@ class StanzaHandler:
         if jid.domain in [self._host, '127.0.0.1', '0.0.0.0']:
             if not jid.resource:
                 priority = self._presenceManager.most_priority(jid)
-                if not priority:
+                if not priority and self._message_persistence:
                     self._message_queue.put_nowait(('MESSAGE', jid.bare(), ET.tostring(element)))
                     return None
 
@@ -77,7 +78,7 @@ class StanzaHandler:
                     buffer[1].write(ET.tostring(element))
             else:
                 resource_online = self._connections.get_buffer_online(jid)
-                if not resource_online:
+                if not resource_online and self._message_persistence:
                     self._message_queue.put_nowait(('MESSAGE', str(jid), ET.tostring(element)))
                 else:
                     for buffer in resource_online:

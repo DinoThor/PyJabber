@@ -6,7 +6,7 @@ from unittest.mock import mock_open, patch
 from pyjabber.server_parameters import Parameters
 
 
-def test_default_paramters():
+def test_default_parameters():
     param = Parameters()
     assert param.host == "localhost"
     assert param.client_port == 5222
@@ -18,7 +18,7 @@ def test_default_paramters():
     assert param.database_purge is False
     assert param.database_in_memory is False
     assert param.cert_path is None
-
+    assert param.message_persistence is True
 
 def test_load_json():
     datamock = {
@@ -29,9 +29,10 @@ def test_load_json():
         'family': socket.AF_ALG.value,
         'connection_timeout': 59,
         'database_path': '/some/fake/path',
-        'database_purge': 1,
-        'database_in_memory': 1,
-        'cert_path': '/another/fake/path'
+        'database_purge': True,
+        'database_in_memory': True,
+        'cert_path': '/another/fake/path',
+        'message_persistence': False
     }
     m = mock_open(read_data=json.dumps(datamock))
 
@@ -48,3 +49,4 @@ def test_load_json():
     assert param.database_purge is datamock["database_purge"]
     assert param.database_in_memory is datamock["database_in_memory"]
     assert param.cert_path == datamock["cert_path"]
+    assert param.message_persistence is datamock["message_persistence"]
