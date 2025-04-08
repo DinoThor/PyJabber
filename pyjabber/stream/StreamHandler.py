@@ -1,3 +1,4 @@
+from asyncio import Transport
 from enum import Enum
 from typing import Union
 from uuid import uuid4
@@ -38,9 +39,9 @@ class Signal(Enum):
 
 
 class StreamHandler:
-    def __init__(self, buffer, starttls) -> None:
+    def __init__(self, transport, starttls) -> None:
         self._host = host.get()
-        self._buffer = buffer
+        self._transport = transport
         self._starttls = starttls
         self._streamFeature = StreamFeature()
         self._connection_manager: ConnectionManager = ConnectionManager()
@@ -56,54 +57,32 @@ class StreamHandler:
         }
 
     @property
-    def buffer(self):
-        return self._buffer
+    def transport(self) -> Transport:
+        return self._transport
 
-    @buffer.setter
-    def buffer(self, value):
-        self._buffer = value
+    @transport.setter
+    def transport(self, transport: Transport):
+        self._transport = transport
 
     def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
         try:
             return self._stages_handlers[self._stage](elem)
         except KeyError:
             SE.internal_server_error()
-        # # TCP connection opened. The server returns the available features (only TLS)
-        # if self._stage == Stage.CONNECTED:
-        #     self._handle_init(elem)
-        #
-        # # TLS offered. The client should have responded with a starttls message
-        # elif self._stage == Stage.OPENED:
-        #     self._handle_tls(elem)
-        #
-        # # TLS Handshake made. Starting SASL
-        # elif self._stage == Stage.SSL:
-        #     self._handle_init_ssl(elem)
-        #
-        # # SASL
-        # elif self._stage == Stage.SASL:
-        #     self._handle_ssl(elem)
-        #
-        # # User register/authenticated. Starting resource binding
-        # elif self._stage == Stage.AUTH:
-        #     self._handle_init_resource_bind(elem)
-        #
-        # elif self._stage == Stage.BIND:
-        #     self._handle_resource_bind(elem)
 
     def _handle_init(self, _):
         self._streamFeature.reset()
         self._streamFeature.register(StartTLSFeature())
-        self._buffer.write(self._streamFeature.to_bytes())
+        self._transport.write(self._streamFeature.to_bytes())
 
         self._stage = Stage.OPENED
 
     def _handle_tls(self, element: ET.Element):
         if "starttls" in element.tag:
-            self._buffer.write(proceed_response())
+            self._transport.write(proceed_response())
             self._starttls()
             self._stage = Stage.SSL
-            self._buffer.pause_reading()
+            self._transport.pause_reading()
             return Signal.RESET
 
         else:
@@ -114,28 +93,28 @@ class StreamHandler:
 
         self._streamFeature.register(IBR.InBandRegistration())
         self._streamFeature.register(SASLFeature())
-        self._buffer.write(self._streamFeature.to_bytes())
+        self._transport.write(self._streamFeature.to_bytes())
 
         self._stage = Stage.SASL
 
     def _handle_ssl(self, element: ET.Element):
-        res = SASL().feed(element, {"peername": self._buffer.get_extra_info('peername')})
+        res = SASL().feed(element, {"peername": self._transport.get_extra_info('peername')})
         if type(res) is tuple:
             if res[0].value == Signal.RESET.value:
-                self._buffer.write(res[1])
+                self._transport.write(res[1])
                 self._stage = Stage.AUTH
                 return Signal.RESET
             else:
-                self._buffer.write(res[1])
+                self._transport.write(res[1])
                 self._stage = Stage.AUTH
                 return
 
-        self._buffer.write(res)
+        self._transport.write(res)
 
     def _handle_init_resource_bind(self, _):
         self._streamFeature.reset()
         self._streamFeature.register(ResourceBinding())
-        self._buffer.write(self._streamFeature.to_bytes())
+        self._transport.write(self._streamFeature.to_bytes())
 
         self._stage = Stage.BIND
 
@@ -147,19 +126,19 @@ class StreamHandler:
                 iq_res = IQ(type_=IQ.TYPE.RESULT, id_=element.get('id') or str(uuid4()))
                 bind_res = ET.SubElement(iq_res, "bind", attrib={"xmlns": "urn:ietf:params:xml:ns:xmpp-bind"})
 
-                peername = self._buffer.get_extra_info('peername')
+                peername = self._transport.get_extra_info('peername')
                 new_jid = self._connection_manager.get_jid(peername)
                 new_jid.resource = resource_id
 
                 ET.SubElement(bind_res, 'jid').text = str(new_jid)
 
-                self._buffer.write(ET.tostring(iq_res))
+                self._transport.write(ET.tostring(iq_res))
 
                 """
                 Stream is negotiated.
                 Update the connection register with the jid and transport
                 """
-                self._connection_manager.set_jid(peername, new_jid, self._buffer)
+                self._connection_manager.set_jid(peername, new_jid, self._transport)
 
         return Signal.DONE
 
