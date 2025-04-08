@@ -95,7 +95,7 @@ The CLI launcher provides access to all the configuration options available in t
 .. code-block::
 
 
-       Usage: pyjabber [OPTIONS]
+       Usage: python -m pyjabber [OPTIONS]
 
         Options:
           --host TEXT                Host name  [default: localhost]
@@ -105,13 +105,14 @@ The CLI launcher provides access to all the configuration options available in t
                                      [default: 5269]
           --family [ipv4|ipv6]       (ipv4 / ipv6)  [default: ipv4]
           --timeout INTEGER          Timeout for connection  [default: 60]
-          --database_path TEXT       Path for database file  [default:
-                                     /home/aaron/pyjabber.db]
+          --database_path TEXT       Path for database file  [default: */pyjabber.db]
           --database_purge           Restore database file to default state (empty)
           --database_in_memory       Database in memory. The data will be erased after
                                      server shutdown
-          -v, --verbose              Show verbose debug level: -v INFO -vv DEBUG, -vvv level
-                                     TRACE,
+          --message_persistence      Keep the unsent messages in memory waiting for
+                                     the receiver client to connect
+          -v, --verbose              Show verbose debug level: -v INFO -vv DEBUG, -vvv
+                                     level TRACE,
           --log_path TEXT            Path to log dumpfile
           -D, --debug                Enables debug mode in Asyncio
           --help                     Show this message and exit.
@@ -146,7 +147,7 @@ Features
      - Description
    * - TLS
      - Implemented
-     - v1.2 + v1.3. Localhost certificate included
+     - v1.3. Localhost certificate included
    * - SASL
      - Implemented
      - PLAIN, EXTERNAL (s2s)
