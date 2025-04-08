@@ -13,11 +13,11 @@ from pyjabber.stream.StreamHandler import Stage, Signal, StreamHandler
 def setup():
     with patch('pyjabber.stream.StreamHandler.host') as mock_host:
         with patch('pyjabber.features.SASLFeature.host') as mock_host_sasl:
-            buffer = Mock()
+            transport = Mock()
             starttls = Mock()
             mock_host.get.return_value = 'localhost'
             mock_host_sasl.get.return_value = 'localhost'
-            yield StreamHandler(buffer, starttls)
+            yield StreamHandler(transport, starttls)
 
 
 def test_stage_enum():
@@ -37,19 +37,17 @@ def test_signal_enum():
 def test_stream_handler_initialization(setup):
     handler = setup
 
-    assert handler._buffer is not None
+    assert handler._transport is not None
     assert handler._starttls is not None
     assert handler._stage == Stage.CONNECTED
-    assert handler._elem is None
-    assert handler._jid is None
 
-def test_stream_handler_buffer_property(setup):
+def test_stream_handler_transport_property(setup):
     handler = setup
 
-    new_buffer = Mock()
-    handler.buffer = new_buffer
+    new_transport = Mock()
+    handler.transport = new_transport
 
-    assert handler.buffer == new_buffer
+    assert handler.transport == new_transport
 
 def test_handle_open_stream_connected(setup):
     handler = setup
@@ -57,7 +55,7 @@ def test_handle_open_stream_connected(setup):
     handler.handle_open_stream()
 
     assert handler._stage == Stage.OPENED
-    handler._buffer.write.assert_called_once()
+    handler._transport.write.assert_called_once()
 
 def test_handle_open_stream_opened(setup):
     handler = setup
@@ -68,7 +66,7 @@ def test_handle_open_stream_opened(setup):
 
     assert handler._stage == Stage.SSL
     assert result == Signal.RESET
-    handler._buffer.write.assert_called_once()
+    handler._transport.write.assert_called_once()
     handler._starttls.assert_called_once()
 
 def test_handle_open_stream_ssl(setup):
@@ -78,7 +76,7 @@ def test_handle_open_stream_ssl(setup):
     handler.handle_open_stream()
 
     assert handler._stage == Stage.SASL
-    handler._buffer.write.assert_called_once()
+    handler._transport.write.assert_called_once()
 
 from pyjabber.features.SASLFeature import SASL, connection, SASLFeature
 
@@ -101,7 +99,7 @@ def test_handle_open_stream_sasl_continue(setup):
 
     assert handler._stage == Stage.AUTH
     expected_response = b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>"
-    handler._buffer.write.assert_called_once_with(expected_response)
+    handler._transport.write.assert_called_once_with(expected_response)
 
 
 def test_handle_open_stream_auth(setup):
@@ -111,7 +109,7 @@ def test_handle_open_stream_auth(setup):
     handler.handle_open_stream()
 
     assert handler._stage == Stage.BIND
-    handler._buffer.write.assert_called_once()
+    handler._transport.write.assert_called_once()
 
 def test_handle_open_stream_bind(monkeypatch, setup):
     handler = setup
@@ -134,13 +132,13 @@ def test_handle_open_stream_bind(monkeypatch, setup):
     result = handler.handle_open_stream(iq_elem)
 
     assert result == Signal.DONE
-    handler._buffer.write.assert_called_once()
+    handler._transport.write.assert_called_once()
 
-    connections.get_jid.assert_called_once_with(handler._buffer.get_extra_info('peername'))
+    connections.get_jid.assert_called_once_with(handler._transport.get_extra_info('peername'))
     connections.set_jid.assert_called_once_with(
-        handler._buffer.get_extra_info('peername'),
+        handler._transport.get_extra_info('peername'),
         jid,
-        handler._buffer
+        handler._transport
     )
 
 # Ejecutar los tests con pytest

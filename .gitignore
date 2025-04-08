@@ -117,3 +117,8 @@ mytesting/
 
 # Include builded admin webapp
 !pyjabber/webpage/build
+
+# Certs
+*.pem
+!ca_cert.pem
+!ca_key.pem

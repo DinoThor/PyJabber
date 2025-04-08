@@ -1,4 +1,4 @@
-from asyncio import BaseProtocol
+from asyncio import BaseProtocol, Transport
 from enum import Enum
 from xml.etree import ElementTree as ET
 from xml.sax import ContentHandler
@@ -18,13 +18,13 @@ class XMLParser(ContentHandler):
         :param starttls: Coroutine launched when server and client start the connection upgrade process to TLS
     """
 
-    def __init__(self, buffer, starttls):
+    def __init__(self, transport, starttls):
         super().__init__()
-        self._buffer = buffer
+        self._transport = transport
         self._state = self.StreamState.CONNECTED
         self._stanzaHandler = None
         self._stack = []
-        self._streamHandler = StreamHandler(self._buffer, starttls)
+        self._streamHandler = StreamHandler(self._transport, starttls)
 
     class StreamState(Enum):
         """
@@ -34,17 +34,15 @@ class XMLParser(ContentHandler):
         READY = 1
 
     @property
-    def buffer(self) -> BaseProtocol:
-        return self._buffer
+    def transport(self) -> Transport:
+        return self._transport
 
-    @buffer.setter
-    def buffer(self, value: BaseProtocol):
-        self._buffer = value
-        self._streamHandler.buffer = value
+    @transport.setter
+    def transport(self, transport: Transport):
+        self._transport = transport
+        self._streamHandler.transport = transport
 
     def startElementNS(self, name, qname, attrs):
-        # logger.trace(f"Start element from <{hex(id(self._buffer))}>: {name}")
-
         if self._stack:  # "<stream:stream>" tag already present in the data stack
             elem = ET.Element(
                 CN.clarkFromTuple(name),
@@ -54,7 +52,7 @@ class XMLParser(ContentHandler):
             self._stack.append(elem)
 
         elif name[1] == "stream" and name[0] == "http://etherx.jabber.org/streams":
-            self._buffer.write(Stream.responseStream(attrs))
+            self._transport.write(Stream.responseStream(attrs))
 
             elem = ET.Element(
                 CN.clarkFromTuple(name),
@@ -69,10 +67,8 @@ class XMLParser(ContentHandler):
             raise Exception()
 
     def endElementNS(self, name, qname):
-        # logger.trace(f"End element NS: {qname} : {name}")
-
         if "stream" in name:
-            self._buffer.write(b'</stream:stream>')
+            self._transport.write(b'</stream:stream>')
             self._stack.clear()
             return
 
@@ -93,11 +89,14 @@ class XMLParser(ContentHandler):
                 self._stanzaHandler.feed(elem)
             else:
                 signal = self._streamHandler.handle_open_stream(elem)
-                if signal == Signal.RESET and "stream" in self._stack[-1].tag:
-                    self._stack.clear()
-                elif signal == Signal.DONE:
-                    self._stanzaHandler = StanzaHandler(self._buffer)
+                if signal == Signal.DONE:
+                    self._stanzaHandler = StanzaHandler(self._transport)
                     self._state = self.StreamState.READY
+                elif signal == Signal.RESET and "stream" in self._stack[-1].tag:
+                    self._stack.clear()
+                elif signal == Signal.FORCE_CLOSE:
+                    self._stack.clear()
+                    self._stack.append(b'</stream:stream>')
 
     def characters(self, content: str) -> None:
         if not self._stack:

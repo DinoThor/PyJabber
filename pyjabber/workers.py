@@ -28,12 +28,11 @@ async def tls_worker():
     """
     connection_manager = ConnectionManager()
     ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    ssl_context.maximum_version = ssl.TLSVersion.TLSv1_2
+    # ssl_context.maximum_version = ssl.TLSVersion.TLSv1_2
     ssl_context.load_cert_chain(
         certfile=os.path.join(metadata.cert_path.get(), f"{metadata.host.get()}_cert.pem"),
         keyfile=os.path.join(metadata.cert_path.get(), f"{metadata.host.get()}_key.pem"),
     )
-    # ssl_context.load_cert_chain()
     loop = asyncio.get_running_loop()
     tls_queue = metadata.tls_queue.get()
     try:
@@ -48,8 +47,8 @@ async def tls_worker():
                     server_side=True)
 
                 new_transport = TransportProxy(new_transport, peer)
-                transport = new_transport
-                parser.buffer = new_transport
+                protocol.transport = new_transport
+                parser.transport = new_transport
                 logger.debug(f"Done TLS for <{peer}>")
 
             except ConnectionResetError:

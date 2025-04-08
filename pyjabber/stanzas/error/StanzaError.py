@@ -69,14 +69,23 @@ def invalid_xml() -> bytes:
     return f"<stream:error><invalid-xml xmlns='{XMLNS}'/></stream:error></stream:stream>".encode()
 
 
+def internal_server_error() -> bytes:
+    """
+    <stream:error>
+        <internal-server-error
+            xmlns='urn:ietf:params:xml:ns:xmpp-streams'/>
+    </stream:error>
+    </stream:stream>
+    """
+    return f"<stream:error><internal-server-error xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error></stream:stream>".encode()
+
 def item_not_found() -> bytes:
     """
     <error type='cancel'>
         <item-not-found xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
     </error>
     """
-    return f"<error type='cancel'><item-not-found xmlns='{XMLNS}'/></error>".encode(
-    )
+    return f"<error type='cancel'><item-not-found xmlns='{XMLNS}'/></error>".encode()
 
 
 def not_acceptable(text: str = None) -> bytes:

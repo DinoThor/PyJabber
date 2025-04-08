@@ -3,6 +3,8 @@ import socket
 import sys
 import click
 
+from pyjabber.server_parameters import Parameters
+
 if sys.platform != 'win32':
     from uvloop import run
 else:
@@ -37,6 +39,8 @@ FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 @click.option('--database_purge', is_flag=True, help='Restore database file to default state (empty)')
 @click.option('--database_in_memory', is_flag=True,
               help='Database in memory. The data will be erased after server shutdown')
+@click.option('--message_persistence', is_flag=True,
+              help='Keep the unsent messages in memory waiting for the receiver client to connect')
 @click.option(
               "-v",
               "--verbose",
@@ -56,6 +60,7 @@ def main(
         database_path,
         database_purge,
         database_in_memory,
+        message_persistence,
         verbose,
         log_path,
         debug):
@@ -78,7 +83,7 @@ def main(
         level=set_verbosity(verbose),
     )
 
-    server = Server(
+    param = Parameters(
         host=host,
         client_port=client_port,
         server_port=server_port,
@@ -88,7 +93,10 @@ def main(
         database_path=database_path,
         database_purge=database_purge,
         database_in_memory=database_in_memory,
+        message_persistence=message_persistence
     )
+
+    server = Server(param)
 
     run(server.start(), debug=debug)
 

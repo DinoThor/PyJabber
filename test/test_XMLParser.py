@@ -10,29 +10,29 @@ from pyjabber.network.XMLParser import XMLParser
 @pytest.fixture
 def setup():
     with patch('pyjabber.stream.StreamHandler.host') as mock_host:
-        buffer = Mock()
+        transport = Mock()
         starttls = Mock()
         mock_host.get.return_value = 'localhost'
 
-        return XMLParser(buffer, starttls)
+        return XMLParser(transport, starttls)
 
 def test_initialization(setup):
     handler = setup
 
     assert handler._state == XMLParser.StreamState.CONNECTED
-    assert handler._buffer is not None
+    assert handler._transport is not None
     assert handler._stanzaHandler is None
     assert handler._streamHandler is not None
     assert handler._stack == []
 
-def test_buffer_property(setup):
+def test_transport_property(setup):
     handler = setup
 
-    new_buffer = Mock()
-    handler.buffer = new_buffer
+    new_transport = Mock()
+    handler.transport = new_transport
 
-    assert handler.buffer == new_buffer
-    assert handler._streamHandler.buffer == new_buffer
+    assert handler.transport == new_transport
+    assert handler._streamHandler.transport == new_transport
 
 
 def test_start_element_ns_stream(setup):
@@ -41,7 +41,7 @@ def test_start_element_ns_stream(setup):
     attrs = {("http://etherx.jabber.org/streams", "version"): "1.0"}
     handler.startElementNS(("http://etherx.jabber.org/streams", "stream"), "stream", attrs)
 
-    assert handler._buffer.write.call_count == 2
+    assert handler._transport.write.call_count == 2
     assert len(handler._stack) == 1
     assert handler._stack[0].tag == CN.clarkFromTuple(("http://etherx.jabber.org/streams", "stream"))
 
@@ -71,7 +71,7 @@ def test_end_element_ns_stream(setup):
 
     handler.endElementNS(("http://etherx.jabber.org/streams", "stream"), "stream")
 
-    handler._buffer.write.assert_called_once_with(b'</stream:stream>')
+    handler._transport.write.assert_called_once_with(b'</stream:stream>')
     assert len(handler._stack) == 0
 
 

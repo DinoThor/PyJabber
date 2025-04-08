@@ -1,5 +1,7 @@
 import asyncio
 import os
+from asyncio import Transport
+from typing import Union
 
 from loguru import logger
 from xml import sax
@@ -62,6 +64,14 @@ class XMLProtocol(asyncio.Protocol):
         self._xml_parser = None
         self._timeout_monitor = None
         self._timeout_flag = False
+
+    @property
+    def transport(self):
+        return self._transport
+
+    @transport.setter
+    def transport(self, transport: Union[Transport, TransportProxy]):
+        self._transport = transport
 
 
     def connection_made(self, transport):
