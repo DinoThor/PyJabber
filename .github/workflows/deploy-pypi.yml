@@ -18,6 +18,12 @@ jobs:
         with:
           python-version: '3.x'
 
+      - name: Set PyJabber version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          VERSION=${VERSION#v}
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
