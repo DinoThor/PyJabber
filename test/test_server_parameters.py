@@ -26,7 +26,7 @@ def test_load_json():
         'client_port':  5252,
         'server_port': 2525,
         'server_out_port': 6952,
-        'family': socket.AF_ALG.value,
+        'family': socket.AF_INET6.value,
         'connection_timeout': 59,
         'database_path': '/some/fake/path',
         'database_purge': True,
