@@ -3,7 +3,7 @@ import sqlite3
 from pyjabber.metadata import database_path, database_in_memory
 
 
-def connection() -> sqlite3.Connection:
+def connection() -> sqlite3.Connection: # pragma: no cover
     """
     Returns an already crafted connection with the database.
     It takes the parameters from the server class instance (i.e., DB path | DB in memory)
