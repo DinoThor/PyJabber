@@ -195,9 +195,25 @@ class Presence(metaclass=Singleton):
                             "presence",
                             attrib={
                                 "from": str(jid),
-                                "to": dest_jid.bare()
+                                "to": dest_jid.bare(),
                             }
                         )
+
+                        if element.attrib.get("type") == PresenceType.UNAVAILABLE.value:
+                            presence.attrib["type"] = PresenceType.UNAVAILABLE.value
+
+                        if show:
+                            show_et = ET.SubElement(presence, "show")
+                            show_et.text = show
+
+                        if status:
+                            status_et = ET.SubElement(presence, "status")
+                            status_et.text = status
+
+                        if priority:
+                            priority_et = ET.SubElement(presence, "priority")
+                            priority_et.text = priority
+
                         for attrib in user_connected[2:]:
                             if attrib:
                                 presence.append(attrib)

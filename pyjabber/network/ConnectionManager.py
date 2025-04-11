@@ -103,7 +103,7 @@ class ConnectionManager(metaclass=Singleton):
         if jid.resource:
             return [(jid_stored, buffer, online[0])
                     for jid_stored, buffer, online in self._peerList.values()
-                    if str(jid) == jid_stored]
+                    if jid == jid_stored]
         else:
             return [(jid_stored, buffer, online[0])
                     for jid_stored, buffer, online in self._peerList.values()
