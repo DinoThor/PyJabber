@@ -144,9 +144,9 @@ class Presence(metaclass=Singleton):
         if jid.bare() not in self._online_status:
             self._online_status[jid.bare()] = []
 
-        show = next((c.text for c in element if c.tag == 'show' and c.text in PresenceShow), None)
-        status = next((c.text for c in element if c.tag == 'status'), None)
-        priority = next((c.text for c in element if c.tag == 'priority'), None)
+        show = next((c.text for c in element if c.tag == '{jabber:client}show' and c.text in [i.value for i in PresenceShow]), None)
+        status = next((c.text for c in element if c.tag == '{jabber:client}status'), None)
+        priority = next((c.text for c in element if c.tag == '{jabber:client}priority'), None)
 
         index, present = self._present_in_online_list(jid)
         if element.attrib.get("type") == PresenceType.UNAVAILABLE.value:
@@ -188,7 +188,9 @@ class Presence(metaclass=Singleton):
                 for user_connected in [i for i in self._online_status[contact_jid.bare()] if i[1] == PresenceType.AVAILABLE]:
                     resource = user_connected[0]
                     online = self._connections.get_buffer(JID(user=contact_jid.user, domain=contact_jid.domain, resource=resource))
+                    online = self._connections.get_buffer(JID(user=contact_jid.user, domain=contact_jid.domain, resource=resource))
                     if online:
+                        dest_jid, buffer, _ = online[0]
                         dest_jid, buffer, _ = online[0]
 
                         presence = ET.Element(
@@ -213,10 +215,6 @@ class Presence(metaclass=Singleton):
                         if priority:
                             priority_et = ET.SubElement(presence, "priority")
                             priority_et.text = priority
-
-                        for attrib in user_connected[2:]:
-                            if attrib:
-                                presence.append(attrib)
 
                         buffer.write(ET.tostring(presence))
 
