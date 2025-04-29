@@ -1,3 +1,8 @@
+CREATE TABLE IF NOT EXISTS meta (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);
+INSERT OR IGNORE INTO meta (key, value) VALUES ('version', {{version}});
 CREATE TABLE `roster`(
     `id` INTEGER,
     `jid` VARCHAR(255) NOT NULL,
@@ -33,6 +38,7 @@ CREATE TABLE `pubsubSubscribers`(
 );
 CREATE TABLE `pubsubItems`(
     `node` VARCHAR(255),
+    `publisher` VARCHAR(255),
     `itemid` VARCHAR(255),
     `payload` VARCHAR (255),
     PRIMARY KEY(`node`, `itemid`)

@@ -5,6 +5,7 @@ from contextlib import closing
 
 from loguru import logger
 
+import pyjabber
 from . import metadata
 from pyjabber.db.database import connection
 from pyjabber.network import CertGenerator
@@ -43,8 +44,10 @@ def setup_database(
     if database_in_memory:
         logger.info("Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!")
         db_in_memory_con = sqlite3.connect("file::memory:?cache=shared", uri=True)
-        with open(sql_init_script, "r") as script:
-            db_in_memory_con.cursor().executescript(script.read())
+        with open(sql_init_script, "r") as script_template:
+            script = script_template.read()
+            script = script.replace("{{version}}", f"'{pyjabber.__version__}'")
+            db_in_memory_con.cursor().executescript(script)
             db_in_memory_con.commit()
         metadata.database_in_memory.set(db_in_memory_con)
 
@@ -53,15 +56,20 @@ def setup_database(
         if database_purge:
             logger.info("Ignoring purge database flag. No DB to purge")
         with closing(connection()) as con:
-            with open(sql_init_script, "r") as script:
-                con.cursor().executescript(script.read())
+            with open(sql_init_script, "r") as script_template:
+                script = script_template.read()
+                script = script.replace("{{version}}", f"'{pyjabber.__version__}'")
+                con.cursor().executescript(script)
             con.commit()
     else:
         if database_purge:
             logger.info("Resetting the database to default state...")
+            os.remove(database_path)
             with closing(connection()) as con:
-                with open(sql_delete_script, "r") as script:
-                    con.cursor().executescript(script.read())
+                with open(sql_init_script, "r") as script_template:
+                    script = script_template.read()
+                    script = script.replace("{{version}}", f"'{pyjabber.__version__}'")
+                    con.cursor().executescript(script)
                 con.commit()
 
 
