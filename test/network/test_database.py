@@ -50,7 +50,7 @@ def test_setup_database_purge():
         mock_os.remove = MagicMock()
         mock_metadata.database_path.get.return_value = './pyjabber.db'
         mock_metadata.database_in_memory.get.return_value = None
-        setup_database(database_path='./pyjabber.db', database_purge=True, sql_init_script='../../pyjabber/db/schema.sql')
+        setup_database(database_path='./pyjabber.db', database_purge=True, sql_init_script='./pyjabber/db/schema.sql')
 
         mock_os.remove.assert_called_with('./pyjabber.db')
         assert os.path.isfile('./pyjabber.db')
