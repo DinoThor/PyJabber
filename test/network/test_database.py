@@ -38,3 +38,20 @@ def test_setup_database_local():
         setup_database(database_path='./pyjabber.db', sql_init_script='./pyjabber/db/schema.sql')
     assert os.path.isfile('./pyjabber.db')
     os.remove('./pyjabber.db')
+
+def test_setup_database_purge():
+    if os.path.isfile('./pyjabber.db'):
+        os.remove('./pyjabber.db')
+
+    with patch('pyjabber.db.database.metadata') as mock_metadata, \
+         patch('pyjabber.db.database.os') as mock_os, \
+         patch('pyjabber.db.database.__version__', '0.2.5'):
+        mock_os.path.isfile.return_value = True
+        mock_os.remove = MagicMock()
+        mock_metadata.database_path.get.return_value = './pyjabber.db'
+        mock_metadata.database_in_memory.get.return_value = None
+        setup_database(database_path='./pyjabber.db', database_purge=True, sql_init_script='../../pyjabber/db/schema.sql')
+
+        mock_os.remove.assert_called_with('./pyjabber.db')
+        assert os.path.isfile('./pyjabber.db')
+        os.remove('./pyjabber.db')
