@@ -34,45 +34,6 @@ def setup_ip_by_host(host: str):
         return None
 
 
-def setup_database(
-    database_in_memory: bool,
-    database_path: str,
-    database_purge: bool,
-    sql_init_script: str,
-    sql_delete_script: str
-):
-    if database_in_memory:
-        logger.info("Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!")
-        db_in_memory_con = sqlite3.connect("file::memory:?cache=shared", uri=True)
-        with open(sql_init_script, "r") as script_template:
-            script = script_template.read()
-            script = script.replace("{{version}}", f"'{pyjabber.__version__}'")
-            db_in_memory_con.cursor().executescript(script)
-            db_in_memory_con.commit()
-        metadata.database_in_memory.set(db_in_memory_con)
-
-    elif os.path.isfile(database_path) is False:
-        logger.info("No database found. Initializing one...")
-        if database_purge:
-            logger.info("Ignoring purge database flag. No DB to purge")
-        with closing(connection()) as con:
-            with open(sql_init_script, "r") as script_template:
-                script = script_template.read()
-                script = script.replace("{{version}}", f"'{pyjabber.__version__}'")
-                con.cursor().executescript(script)
-            con.commit()
-    else:
-        if database_purge:
-            logger.info("Resetting the database to default state...")
-            os.remove(database_path)
-            with closing(connection()) as con:
-                with open(sql_init_script, "r") as script_template:
-                    script = script_template.read()
-                    script = script.replace("{{version}}", f"'{pyjabber.__version__}'")
-                    con.cursor().executescript(script)
-                con.commit()
-
-
 def setup_certs(host: str, cert_path: str):
     try:
         if CertGenerator.check_hostname_cert_exists(host, cert_path) is False:

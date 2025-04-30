@@ -7,7 +7,8 @@ from pyjabber import __version__
 from pyjabber import metadata
 from loguru import logger
 
-def connection() -> sqlite3.Connection: # pragma: no cover
+
+def connection() -> sqlite3.Connection:
     """
     Returns an already crafted connection with the database.
     It takes the parameters from the server class instance (i.e., DB path | DB in memory)
@@ -16,11 +17,12 @@ def connection() -> sqlite3.Connection: # pragma: no cover
         return sqlite3.connect("file::memory:?cache=shared", uri=True)
     return sqlite3.connect(metadata.database_path.get())
 
+
 def setup_database(
-    database_in_memory: bool,
-    database_path: str,
-    database_purge: bool,
     sql_init_script: str,
+    database_in_memory: bool = False,
+    database_path: str = None,
+    database_purge: bool = False
 ):
     if database_in_memory:
         logger.info("Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!")
@@ -53,16 +55,10 @@ def setup_database(
                     con.cursor().executescript(script)
                 con.commit()
 
-        else:
-            with closing(connection()) as con:
-                res = con.execute("SELECT value FROM meta WHERE key = 'version'", ())
-                res = res.fetchone()
-                version = res[0] if res else None
-            migration(version)
 
-def migration(version: Optional[str]):
-    if not version:
-        return
+def migration(version: Optional[str]): # pragma: no cover
+    if not version: # pragma: no cover
+        return # pragma: no cover
 
     # DB migration feature was added in v0.2.6
     # Only changes in the db after v0.2.6 will be taken into account for migration
