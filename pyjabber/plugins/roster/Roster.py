@@ -35,7 +35,6 @@ class Roster(metaclass=Singleton):
             "query": "{jabber:iq:roster}query",
             "item": "{jabber:iq:roster}item"
         }
-        self._connection = connection
 
         self._roster_in_memory = {}
         self._update_roster()
@@ -70,7 +69,7 @@ class Roster(metaclass=Singleton):
         self._update_roster()
 
     def _update_roster(self):
-        with closing(self._connection()) as con:
+        with closing(connection()) as con:
             res = con.execute("SELECT id, jid, rosterItem FROM roster", ())
             res = res.fetchall()
         self._roster_in_memory.clear()
@@ -132,24 +131,24 @@ class Roster(metaclass=Singleton):
             if match_item:
                 match_item = match_item[0]
                 if new_item.attrib.get("remove") == "remove":
-                    with closing(self._connection()) as con:
+                    with closing(connection()) as con:
                         con.execute("DELETE FROM roster WHERE jid = ? AND rosterItem = ?",
                                     (jid, ET.tostring(match_item.get("item")).decode()))
                         con.commit()
                 else:
-                    with closing(self._connection()) as con:
+                    with closing(connection()) as con:
                         con.execute("UPDATE roster SET rosterItem = ? WHERE jid = ? AND rosterItem = ?",
                                     (ET.tostring(new_item).decode(), jid, match_item.get("item")))
                         con.commit()
             else:
                 if new_item.attrib.get("remove") != "remove":
-                    with closing(self._connection()) as con:
+                    with closing(connection()) as con:
                         con.execute("INSERT INTO roster(jid, rosterItem) VALUES (?, ?)",
                                     (jid, ET.tostring(new_item).decode()))
                         con.commit()
 
         else:
-            with closing(self._connection()) as con:
+            with closing(connection()) as con:
                 con.execute("INSERT INTO roster(jid, rosterItem) VALUES (?, ?)",
                             (jid, ET.tostring(new_item).decode()))
                 con.commit()

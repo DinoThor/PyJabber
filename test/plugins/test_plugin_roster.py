@@ -28,6 +28,7 @@ def setup_database():
     yield con
     con.close()
 
+
 @pytest.fixture
 def setup(setup_database):
     with patch('pyjabber.plugins.roster.Roster.connection') as mock_con, \

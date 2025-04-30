@@ -7,12 +7,12 @@ import pytest
 from pyjabber.plugins.xep_0060.xep_0060 import success_response
 from pyjabber.stanzas.IQ import IQ
 
-@pytest.fixture
-def pubsub():
-    with patch('pyjabber.plugins.xep_0060.xep_0060.host') as mock_host, \
-         patch('pyjabber.plugins.xep_0060.xep_0060.config_path') as mock_config_path, \
-         patch('pyjabber.plugins.xep_0060.xep_0060.ConnectionManager') as mock_connection, \
-         patch('pyjabber.plugins.xep_0060.xep_0060.update_memory_from_database') as mock_updater, \
+# @pytest.fixture
+# def pubsub():
+#     with patch('pyjabber.plugins.xep_0060.xep_0060.host') as mock_host, \
+#          patch('pyjabber.plugins.xep_0060.xep_0060.config_path') as mock_config_path, \
+#          patch('pyjabber.plugins.xep_0060.xep_0060.ConnectionManager') as mock_connection, \
+#          patch('pyjabber.plugins.xep_0060.xep_0060.update_memory_from_database') as mock_updater, \
 
 
 
@@ -34,6 +34,3 @@ def test_success_response():
 
     assert pubsub_res.tag == '{http://jabber.org/protocol/pubsub}pubsub'
     assert pubsub_res_own.tag == '{http://jabber.org/protocol/pubsub#owner}pubsub'
-
-
-def test_update_memory_from_database()
