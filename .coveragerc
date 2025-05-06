@@ -1,5 +1,4 @@
 [run]
 omit =
-    server.py,
-    __main__.py,
-    pyjabber/webpage/*
+    */__main__.py,
+    */webpage/*

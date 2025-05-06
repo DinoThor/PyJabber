@@ -14,6 +14,8 @@ class ErrorType(Enum):
     FORBIDDEN = "<error type='auth'><forbidden xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>"
     PENDING_SUBSCRIPTION = "<error type='auth'><not-authorized xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/><pending-subscription xmlns='http://jabber.org/protocol/pubsub#errors'/></error>"
     SUBID_REQUIRED = "<error type='modify'><bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/><subid-required xmlns='http://jabber.org/protocol/pubsub#errors'/></error>"
+    NODEID_REQUIRED = "<error type='modify'><bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/><nodeid-required xmlns='http://jabber.org/protocol/pubsub#errors'/></error>"
+    ITEM_REQUIRED = "<error type='modify'><bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/><item-required xmlns='http://jabber.org/protocol/pubsub#errors'/></error>"
     INVALID_SUBID = "<error type='modify'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/><invalid-subid xmlns='http://jabber.org/protocol/pubsub#errors'/></error>"
     NOT_SUBSCRIBED = "<error type='cancel'><unexpected-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/><not-subscribed xmlns='http://jabber.org/protocol/pubsub#errors'/></error>"
     NODE_FULL = "<error type='cancel'><conflict xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/><node-full xmlns='http://jabber.org/protocol/pubsub#errors'/></error>"

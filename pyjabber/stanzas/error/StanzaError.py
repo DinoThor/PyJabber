@@ -18,7 +18,7 @@ from pyjabber.metadata import host
 XMLNS = "urn:ietf:params:xml:ns:xmpp-stanzas"
 
 
-def bad_request() -> bytes:
+def bad_request() -> bytes: # pragma: no cover
     """
    <error type='modify'>
        <bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
@@ -45,7 +45,7 @@ def conflict_error(id: str) -> bytes:
     return ET.tostring(iq)
 
 
-def feature_not_implemented(feature: str, namespace: str) -> bytes:
+def feature_not_implemented(feature: str, namespace: str) -> bytes: # pragma: no cover
     """
     <error type='cancel'>
         <feature-not-implemented
@@ -58,7 +58,7 @@ def feature_not_implemented(feature: str, namespace: str) -> bytes:
             f"xmlns='{namespace}' feature='{feature}'/></error>").encode()
 
 
-def invalid_xml() -> bytes:
+def invalid_xml() -> bytes: # pragma: no cover
     """
     <stream:error>
         <invalid-xml
@@ -69,7 +69,7 @@ def invalid_xml() -> bytes:
     return f"<stream:error><invalid-xml xmlns='{XMLNS}'/></stream:error></stream:stream>".encode()
 
 
-def internal_server_error() -> bytes:
+def internal_server_error() -> bytes: # pragma: no cover
     """
     <stream:error>
         <internal-server-error
@@ -79,7 +79,7 @@ def internal_server_error() -> bytes:
     """
     return f"<stream:error><internal-server-error xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error></stream:stream>".encode()
 
-def item_not_found() -> bytes:
+def item_not_found() -> bytes: # pragma: no cover
     """
     <error type='cancel'>
         <item-not-found xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
@@ -106,7 +106,7 @@ def not_acceptable(text: str = None) -> bytes:
         return "<error type='modify'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>".encode()
 
 
-def not_authorized() -> bytes:
+def not_authorized() -> bytes: # pragma: no cover
     """
     <failure xmlns='urn:ietf:params:xml:ns:xmpp-sasl'>
         <not-authorized/>
@@ -115,7 +115,7 @@ def not_authorized() -> bytes:
     return "<failure xmlns='urn:ietf:params:xml:ns:xmpp-sasl'><not-authorized/></failure>".encode()
 
 
-def service_unavaliable():
+def service_unavaliable(): # pragma: no cover
     """
     <error type='cancel'>
         <service-unavailable

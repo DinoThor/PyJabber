@@ -1,6 +1,7 @@
 import contextvars
 from sqlite3 import Connection
 
+import bcrypt
 import pytest
 import sqlite3
 import base64
@@ -26,7 +27,7 @@ def setup_database() -> Connection:
     cur.execute('''
         INSERT INTO credentials (jid, hash_pwd) VALUES
         ('username', ?)
-    ''', (hashlib.sha256(b'password').hexdigest(),))
+    ''',  (bcrypt.hashpw(b'password', bcrypt.gensalt()),))
     con.commit()
     yield con
     con.close()

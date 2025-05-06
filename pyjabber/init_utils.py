@@ -5,6 +5,7 @@ from contextlib import closing
 
 from loguru import logger
 
+import pyjabber
 from . import metadata
 from pyjabber.db.database import connection
 from pyjabber.network import CertGenerator
@@ -31,38 +32,6 @@ def setup_ip_by_host(host: str):
     except socket.gaierror as e:
         logger.error(e)
         return None
-
-
-def setup_database(
-    database_in_memory: bool,
-    database_path: str,
-    database_purge: bool,
-    sql_init_script: str,
-    sql_delete_script: str
-):
-    if database_in_memory:
-        logger.info("Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!")
-        db_in_memory_con = sqlite3.connect("file::memory:?cache=shared", uri=True)
-        with open(sql_init_script, "r") as script:
-            db_in_memory_con.cursor().executescript(script.read())
-            db_in_memory_con.commit()
-        metadata.database_in_memory.set(db_in_memory_con)
-
-    elif os.path.isfile(database_path) is False:
-        logger.info("No database found. Initializing one...")
-        if database_purge:
-            logger.info("Ignoring purge database flag. No DB to purge")
-        with closing(connection()) as con:
-            with open(sql_init_script, "r") as script:
-                con.cursor().executescript(script.read())
-            con.commit()
-    else:
-        if database_purge:
-            logger.info("Resetting the database to default state...")
-            with closing(connection()) as con:
-                with open(sql_delete_script, "r") as script:
-                    con.cursor().executescript(script.read())
-                con.commit()
 
 
 def setup_certs(host: str, cert_path: str):

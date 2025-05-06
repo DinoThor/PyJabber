@@ -1,5 +1,6 @@
 import base64
-import hashlib
+import bcrypt
+
 from contextlib import closing
 from enum import Enum
 from typing import Dict, List, Tuple, Union
@@ -66,8 +67,7 @@ class SASL(metaclass=Singleton):
         _, tag = CN.deglose(element.tag)
         return self._handlers[tag](element)
 
-    def handleIQ(
-        self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
+    def handleIQ(self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
         query = element.find("{jabber:iq:register}query")
 
         if query is None:
@@ -90,13 +90,12 @@ class SASL(metaclass=Singleton):
                     return SE.conflict_error(
                         element.attrib["id"])
                 else:
-                    pwd = query.find(
-                        CN.clarkFromTuple(
-                            (self._ns, "password"))).text
-                    hash_pwd = hashlib.sha256(pwd.encode()).hexdigest()
+                    pwd = query.find(CN.clarkFromTuple((self._ns, "password"))).text
+                    hashed_pwd = bcrypt.hashpw(pwd.encode(), bcrypt.gensalt())
 
                     con.execute(
-                        "INSERT INTO credentials(jid, hash_pwd) VALUES (?, ?)", (new_jid, hash_pwd))
+                        "INSERT INTO credentials(jid, hash_pwd) VALUES (?, ?)", (new_jid, hashed_pwd)
+                    )
                     con.commit()
                     return iq_register_result(
                         element.attrib["id"])
@@ -113,22 +112,26 @@ class SASL(metaclass=Singleton):
 
             return ET.tostring(iq)
 
-    def handleAuth(
-        self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
-        data = base64.b64decode(element.text).split("\x00".encode())
-        jid = data[1].decode()
-        key_hash = hashlib.sha256(data[2]).hexdigest()
+    def handleAuth(self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
+        try:
+            data = base64.b64decode(element.text).split("\x00".encode())
+            jid = data[1].decode()
+            pwd = data[2]
 
-        with closing(self._db_connection_factory()) as con:
-            res = con.execute(
-                "SELECT hash_pwd FROM credentials WHERE jid = ?", (jid,))
-            hash_pwd = res.fetchone()
+            with closing(self._db_connection_factory()) as con:
+                res = con.execute(
+                    "SELECT hash_pwd FROM credentials WHERE jid = ?", (jid,)
+                )
+                hashed_pwd = res.fetchone()
 
-        if hash_pwd and hash_pwd[0] == key_hash:
-            self._connection_manager.set_jid(self._peername, JID(user=jid, domain=host.get()))
-            return Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>"
+            if bcrypt.checkpw(pwd, hashed_pwd[0]):
+                self._connection_manager.set_jid(self._peername, JID(user=jid, domain=host.get()))
+                return Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>"
+            else:
+                return SE.not_authorized()
 
-        return SE.not_authorized()
+        except Exception:
+            return SE.not_authorized()
 
 
 def SASLFeature(mechanism_list: List[MECHANISM] = None) -> ET.Element:

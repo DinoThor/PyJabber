@@ -17,9 +17,7 @@ def iq_skeleton(element: ET.Element, disco_type: Literal['info', 'items']):
         from_=element.get('to'),
         to=element.get('from')
     )
-    return iq_res, ET.SubElement(iq_res, 'query', attrib={'xmlns': f'http://jabber.org/protocol/disco#{disco_type}'})
-
-
+    return iq_res, ET.SubElement(iq_res, f'{{http://jabber.org/protocol/disco#{disco_type}}}query')
 
 class Disco(metaclass=Singleton):
     def __init__(self):
@@ -93,7 +91,9 @@ class Disco(metaclass=Singleton):
             nodes = self._pubsub.discover_items(element)
             iq_res, query = iq_skeleton(element, 'items')
             for node in nodes:
-                ET.SubElement(query, 'item', attrib={'jid': self._pubsub_jid, 'node': node[NodeAttrib.NODE.value], 'name': node[NodeAttrib.NAME.value]})
+                ET.SubElement(query, '{http://jabber.org/protocol/disco#items}item', attrib={
+                    'jid': self._pubsub_jid, 'node': node[NodeAttrib.NODE.value], 'name': node[NodeAttrib.NAME.value]
+                })
             return ET.tostring(iq_res)
 
     def server_info(self, element: ET.Element):
