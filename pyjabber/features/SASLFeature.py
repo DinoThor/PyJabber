@@ -67,8 +67,7 @@ class SASL(metaclass=Singleton):
         _, tag = CN.deglose(element.tag)
         return self._handlers[tag](element)
 
-    def handleIQ(
-        self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
+    def handleIQ(self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
         query = element.find("{jabber:iq:register}query")
 
         if query is None:
@@ -91,7 +90,7 @@ class SASL(metaclass=Singleton):
                     return SE.conflict_error(
                         element.attrib["id"])
                 else:
-                    pwd = query.find(CN.clarkFromTuple(self._ns, "password")).text
+                    pwd = query.find(CN.clarkFromTuple((self._ns, "password"))).text
                     hashed_pwd = bcrypt.hashpw(pwd.encode(), bcrypt.gensalt())
 
                     con.execute(
