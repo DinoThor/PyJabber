@@ -6,6 +6,7 @@ import signal
 from loguru import logger
 
 from pyjabber import init_utils
+from pyjabber.db.database import setup_database
 from pyjabber.network.XMLProtocol import XMLProtocol
 from pyjabber.network.server.incoming.XMLServerIncomingProtocol import XMLServerIncomingProtocol
 from pyjabber.network.ConnectionManager import ConnectionManager
@@ -75,14 +76,12 @@ class Server:
         try:
             logger.info("Starting server...")
 
-            init_utils.setup_database(
-                self._database_in_memory,
-                self._database_path,
-                self._database_purge,
-                self._sql_init_script,
-                self._sql_delete_script
+            setup_database(
+                database_in_memory=self._database_in_memory,
+                database_path=self._database_path,
+                database_purge=self._database_purge,
+                sql_init_script=self._sql_init_script,
             )
-            init_utils.setup_certs(self._host, self._cert_path)
             self._public_ip = init_utils.setup_query_local_ip()
 
             loop = asyncio.get_running_loop()
