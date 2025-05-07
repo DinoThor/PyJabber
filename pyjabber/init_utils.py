@@ -32,13 +32,3 @@ def setup_ip_by_host(host: str):
     except socket.gaierror as e:
         logger.error(e)
         return None
-
-
-def setup_certs(host: str, cert_path: str):
-    try:
-        if CertGenerator.check_hostname_cert_exists(host, cert_path) is False:
-            CertGenerator.generate_hostname_cert(host, cert_path)
-    except FileNotFoundError as e:
-        logger.error(f"{e.__class__.__name__}: Pass an existing directory in your system to load the certs. "
-                     f"Closing server")
-        raise SystemExit

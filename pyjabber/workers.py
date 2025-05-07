@@ -9,6 +9,7 @@ from loguru import logger
 from xml.etree import ElementTree as ET
 
 from pyjabber import metadata
+from pyjabber.network import CertGenerator
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.XMLProtocol import TransportProxy
 from pyjabber.stream.JID import JID
@@ -21,11 +22,15 @@ async def tls_worker():
     XMLProtocol class, where the transport/buffer/protocol is managed.
     The worker is global for all the server components, and it can be duplicated across multiple workers in
     different threads to handle a high number of new connections established within a very short period of time.
-
-    :param tls_queue: The global queue used ONLY for (TRANSPORT, PROTOCOL, PARSER) tuples
-    :param cert_path:
-    :param host:
     """
+    try:
+        if CertGenerator.check_hostname_cert_exists(metadata.host.get(), metadata.cert_path.get()) is False:
+            CertGenerator.generate_hostname_cert(metadata.host.get(), metadata.cert_path.get())
+    except FileNotFoundError as e:
+        logger.error(f"{e.__class__.__name__}: Pass an existing directory in your system to load the certs. "
+                     f"Closing server")
+        raise SystemExit
+
     connection_manager = ConnectionManager()
     ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
     ssl_context.maximum_version = ssl.TLSVersion.TLSv1_2
