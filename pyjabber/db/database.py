@@ -1,6 +1,7 @@
 import os
 import sqlite3
 from contextlib import closing
+from sqlite3 import Connection
 from typing import Optional
 
 from pyjabber import __version__
@@ -27,6 +28,8 @@ def setup_database(
     if database_in_memory:
         logger.info("Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!")
         db_in_memory_con = sqlite3.connect("file::memory:?cache=shared", uri=True)
+        if database_purge:
+            reset_memory_db(db_in_memory_con)
         with open(sql_init_script, "r") as script_template:
             script = script_template.read()
             script = script.replace("{{version}}", f"'{__version__}'")
@@ -62,4 +65,14 @@ def migration(version: Optional[str]): # pragma: no cover
 
     # DB migration feature was added in v0.2.6
     # Only changes in the db after v0.2.6 will be taken into account for migration
+
+
+def reset_memory_db(conn: Connection):
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA foreign_keys = OFF;")
+    cursor.execute("BEGIN TRANSACTION;")
+    tables = cursor.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
+    for table_name, in tables:
+        cursor.execute(f'DROP TABLE IF EXISTS "{table_name}";')
+    conn.commit()
 
