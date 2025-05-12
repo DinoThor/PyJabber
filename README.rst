@@ -2,7 +2,8 @@
 
     <h1 style="text-align: center">PyJabber</h1>
 
-.. image:: assets/logo.png
+.. image:: https://raw.githubusercontent.com/DinoThor/PyJabber/refs/heads/master/logo.png
+        :width: 300px
         :alt: Logo
         :align: center
 
