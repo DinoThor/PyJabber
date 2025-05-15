@@ -2,18 +2,18 @@ from xml.etree import ElementTree as ET
 
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
-from pyjabber.utils import Singleton
-from pyjabber.metadata import host
+from pyjabber import metadata
 
 
-class Ping(metaclass=Singleton):
+class Ping:
+    @staticmethod
     def feed(self, jid: JID, element: ET.Element):
-        if element.attrib.get('to') == host.get():
+        if element.attrib.get('to') == metadata.HOST:
             return ET.tostring(
                 IQ(
                     type_=IQ.TYPE.RESULT,
                     id_=element.attrib.get('id'),
-                    from_=host.get(),
+                    from_=metadata.HOST,
                     to=str(jid)
                 )
             )

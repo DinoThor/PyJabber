@@ -2,7 +2,7 @@ import os
 from sqlite3 import Connection
 from unittest.mock import patch, MagicMock
 
-from pyjabber.db.database import setup_database, connection
+from pyjabber.db.database import DB
 
 
 def test_connection():

@@ -1,14 +1,41 @@
-import contextvars
+from typing import List
 
-host = contextvars.ContextVar("host")
-ip = contextvars.ContextVar("ip")
-config_path = contextvars.ContextVar("config_path")
-cert_path = contextvars.ContextVar("cert_path")
-root_path = contextvars.ContextVar("root_path")
-database_path = contextvars.ContextVar("database_path")
-database_in_memory = contextvars.ContextVar("database_in_memory", default=None)
-message_persistence = contextvars.ContextVar("message_persistence")
+HOST = None
+IP = None
+CONFIG_PATH = None
+CERT_PATH = None
+ROOT_PATH = None
+DATABASE_PATH = None
+DATABASE_IN_MEMORY = None
+DATABASE_PURGE = None
+MESSAGE_PERSISTENCE = None
 
-tls_queue = contextvars.ContextVar("tls_queue")
-connection_queue = contextvars.ContextVar("connection_queue")
-message_queue = contextvars.ContextVar("message_queue")
+TLS_QUEUE = None
+CONNECTION_QUEUE = None
+MESSAGE_QUEUE = None
+
+
+def init_config(
+    host: str,
+    ip: List[str],
+    config_path: str,
+    cert_path: str,
+    root_path:str,
+    database_path: str,
+    database_in_memory: bool,
+    database_purge: bool,
+    message_persistence: bool
+):
+    global HOST, IP, CONFIG_PATH, CERT_PATH, ROOT_PATH, DATABASE_PATH, DATABASE_IN_MEMORY, DATABASE_PURGE, MESSAGE_QUEUE, MESSAGE_PERSISTENCE
+    HOST = host
+    IP = ip
+    CONFIG_PATH = config_path
+    CERT_PATH = cert_path
+    ROOT_PATH = root_path
+    DATABASE_PATH = database_path
+    DATABASE_IN_MEMORY = database_in_memory
+    DATABASE_PURGE = database_purge
+    MESSAGE_PERSISTENCE = message_persistence
+
+    global TLS_QUEUE, CONNECTION_QUEUE, MESSAGE_QUEUE
+

@@ -6,10 +6,12 @@ from uuid import uuid4
 from xml.etree import ElementTree as ET
 
 from loguru import logger
+from sqlalchemy import select, insert, delete, update
 from yaml import load, Loader
 
-from pyjabber.metadata import host, config_path
-from pyjabber.db.database import connection
+from pyjabber import metadata
+from pyjabber.db.database import DB
+from pyjabber.db.model import Model
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.plugins.xep_0060.enum import NodeAttrib, SubscribersAttrib, Subscription, Affiliation
 from pyjabber.plugins.xep_0060.error import ErrorType
@@ -24,7 +26,7 @@ from pyjabber.utils import Singleton, ClarkNotation as CN
 def success_response(element: ET.Element, owner: bool = False) -> Tuple[IQ, ET.Element]:
     iq_res = IQ(
         type_=IQ.TYPE.RESULT,
-        from_=host.get(),
+        from_=metadata.HOST,
         id_=element.attrib.get('id') or str(uuid4())
     )
     if owner:
@@ -37,12 +39,12 @@ def success_response(element: ET.Element, owner: bool = False) -> Tuple[IQ, ET.E
 
 
 class PubSub(metaclass=Singleton):
-    def __init__(self, db_connection_factory=None):
+    def __init__(self):
         super().__init__()
 
         self._connections = ConnectionManager()
 
-        items = load(open(config_path.get()), Loader=Loader)['items']
+        items = load(open(metadata.CONFIG_PATH), Loader=Loader)['items']
         service_jid = next((s for s in list(items) if 'pubsub' in s), None)
         if service_jid is None:
             raise Exception  # TODO: Define missing config exception
@@ -51,8 +53,7 @@ class PubSub(metaclass=Singleton):
         self._category = items.get('type')
         self._ver = items.get('var')
 
-        self._host = host.get()
-        self._db_connection_factory = db_connection_factory or connection
+        self._host = metadata.HOST
 
         self._nodes = None
         self._subscribers = None
@@ -68,11 +69,15 @@ class PubSub(metaclass=Singleton):
         }
 
     def update_memory_from_database(self):
-        with closing(self._db_connection_factory()) as con:
-            res = con.execute("SELECT * FROM pubsub")
-            self._nodes = res.fetchall()
-            res = con.execute("SELECT * FROM pubsubSubscribers")
-            self._subscribers = res.fetchall()
+        with DB.connection() as con:
+            query = select(Model.Pubsub)
+            self._nodes = con.execute(query).fetchall()
+            # res = con.execute("SELECT * FROM pubsub")
+            # self._nodes = res.fetchall()
+            query = select(Model.PubsubSubscribers)
+            self._subscribers = con.execute(query).fetchall()
+            # res = con.execute("SELECT * FROM pubsubSubscribers")
+            # self._subscribers = res.fetchall()
 
     def feed(self, jid: JID, element: ET.Element):
         try:
@@ -143,17 +148,20 @@ class PubSub(metaclass=Singleton):
         A new item MUST follow the order described in the NodeAttrib enum
         for correct attribute access
         """
-        item = (
-            new_node,  # NODE
-            jid.user,  # OWNER
-            None,  # NAME
-            'leaf',  # TYPE
-            1024  # MAX ITEMS
-        )
+        item = {
+            "node": new_node,
+            "owner": jid.user,
+            "name": None,
+            "type": "leaf",
+            "max_items": 1024
+        }
 
-        with closing(self._db_connection_factory()) as con:
-            con.execute("INSERT INTO pubsub VALUES (?,?,?,?,?)", item)
+        with DB.connection() as con:
+            query = insert(Model.Pubsub).values(item)
+            con.execute(query)
             con.commit()
+            # con.execute("INSERT INTO pubsub VALUES (?,?,?,?,?)", item)
+            # con.commit()
 
         self.update_memory_from_database()
 
@@ -178,9 +186,12 @@ class PubSub(metaclass=Singleton):
         if node_match[NodeAttrib.OWNER.value] != jid.user:
             return error_response(element, jid, ErrorType.FORBIDDEN)
 
-        with closing(self._db_connection_factory()) as con:
-            con.execute("DELETE FROM pubsub WHERE node = ?", (del_node,))
+        with DB.connection() as con:
+            query = delete(Model.Pubsub).where(Model.Pubsub.c.node == del_node)
+            con.execute(query)
             con.commit()
+            # con.execute("DELETE FROM pubsub WHERE node = ?", (del_node,))
+            # con.commit()
 
         self.update_memory_from_database()
         iq_res, _ = success_response(element)
@@ -239,17 +250,20 @@ class PubSub(metaclass=Singleton):
 
         subid = str(uuid4())
 
-        item = (
-            target_node[NodeAttrib.NODE.value],
-            jid_request.user,
-            subid,
-            Subscription.SUBSCRIBED.value,
-            Affiliation.PUBLISHER
-        )
+        item = {
+            "node": target_node[NodeAttrib.NODE.value],
+            "jid": jid_request.user,
+            "subid": subid,
+            "subscription": Subscription.SUBSCRIBED.value,
+            "affiliation": Affiliation.PUBLISHER
+        }
 
-        with closing(self._db_connection_factory()) as con:
-            con.execute("INSERT INTO pubsubSubscribers VALUES (?,?,?,?,?)", item)
+        with DB.connection() as con:
+            query = insert(Model.PubsubSubscribers).values(item)
+            con.execute(query)
             con.commit()
+            # con.execute("INSERT INTO pubsubSubscribers VALUES (?,?,?,?,?)", item)
+            # con.commit()
 
         self.update_memory_from_database()
 
@@ -303,15 +317,24 @@ class PubSub(metaclass=Singleton):
             if len([s for s in self._subscribers if s[SubscribersAttrib.SUBID.value] == subid]) == 0:
                 return error_response(element, jid, ErrorType.INVALID_SUBID)
 
-            query = "DELETE FROM pubsubSubscribers WHERE node = ? AND jid = ? AND subid = ?"
-            item = (target_node[NodeAttrib.NODE.value], jid_request.user, subid)
+            query = delete(Model.PubsubSubscribers).where(
+                Model.PubsubSubscribers.c.node == target_node[NodeAttrib.NODE.value]
+                and Model.PubsubSubscribers.c.jid == jid_request.user
+                and Model.PubsubSubscribers.c.subid == subid
+            )
+            # query = "DELETE FROM pubsubSubscribers WHERE node = ? AND jid = ? AND subid = ?"
+            # item = (target_node[NodeAttrib.NODE.value], jid_request.user, subid)
 
         else:
-            query = "DELETE FROM pubsubSubscribers WHERE node = ? AND jid = ?"
-            item = (target_node[NodeAttrib.NODE.value], jid_request.user)
+            query = delete(Model.PubsubSubscribers).where(
+                Model.PubsubSubscribers.c.node == target_node[NodeAttrib.NODE.value]
+                and Model.PubsubSubscribers.c.jid == jid_request.user
+            )
+            # query = "DELETE FROM pubsubSubscribers WHERE node = ? AND jid = ?"
+            # item = (target_node[NodeAttrib.NODE.value], jid_request.user)
 
-        with closing(self._db_connection_factory()) as con:
-            con.execute(query, item)
+        with DB.connection() as con:
+            con.execute(query)
             con.commit()
 
         self.update_memory_from_database()
@@ -342,14 +365,27 @@ class PubSub(metaclass=Singleton):
         subscriptions_res = ET.SubElement(pubsub, '{http://jabber.org/protocol/pubsub}subscriptions')
 
         if target_node is not None and target_node != '':
-            query = "SELECT node, subscription, subid FROM pubsubSubscribers WHERE jid = ? AND node = ?"
-            item = (str(jid.user), target_node)
+            query = select(
+                Model.PubsubSubscribers.c.node,
+                Model.PubsubSubscribers.c.subscription,
+                Model.PubsubSubscribers.c.subid
+            ).where(
+                Model.PubsubSubscribers.c.jid == str(jid.user)
+                and Model.PubsubSubscribers.c.node == target_node
+            )
+            # query = "SELECT node, subscription, subid FROM pubsubSubscribers WHERE jid = ? AND node = ?"
+            # item = (str(jid.user), target_node)
         else:
-            query = "SELECT node, subscription, subid FROM pubsubSubscribers WHERE jid = ?"
-            item = (str(jid.user),)
+            query = select(
+                Model.PubsubSubscribers.c.node,
+                Model.PubsubSubscribers.c.subscription,
+                Model.PubsubSubscribers.c.subid
+            ).where(Model.PubsubSubscribers.c.jid == str(jid.user))
+            # query = "SELECT node, subscription, subid FROM pubsubSubscribers WHERE jid = ?"
+            # item = (str(jid.user),)
 
-        with closing(self._db_connection_factory()) as con:
-            res = con.execute(query, item)
+        with DB.connection() as con:
+            res = con.execute(query)
             res = res.fetchall()
 
         for sub in res:
@@ -378,8 +414,10 @@ class PubSub(metaclass=Singleton):
         if target_node[NodeAttrib.OWNER.value] != jid.user:
             return error_response(element, jid, ErrorType.FORBIDDEN)
 
-        with closing(self._db_connection_factory()) as con:
-            res = con.execute("DELETE FROM pubsubItems WHERE node = ?", (node,))
+        with DB.connection() as con:
+            query = delete(Model.PubsubItems).where(Model.PubsubItems.c.node == node)
+            # res = con.execute("DELETE FROM pubsubItems WHERE node = ?", (node,))
+            con.execute(query)
             con.commit()
 
         iq_res, _ = success_response(element, True)
@@ -408,8 +446,13 @@ class PubSub(metaclass=Singleton):
             or (current_sub and current_sub[0][SubscribersAttrib.AFFILIATION.value] != Affiliation.PUBLISHER):
             return error_response(element, jid, ErrorType.FORBIDDEN)
 
-        with closing(self._db_connection_factory()) as con:
-            con.execute("DELETE FROM pubsubItems WHERE itemid = ? AND node = ?", (item_id, node))
+        with DB.connection() as con:
+            query = delete(Model.PubsubItems).where(
+                Model.PubsubItems.c.itemid == item_id
+                and Model.PubsubItems.c.node == node
+            )
+            con.execute(query)
+            # con.execute("DELETE FROM pubsubItems WHERE itemid = ? AND node = ?", (item_id, node))
             con.commit()
 
         iq_res, _ = success_response(element)
@@ -440,24 +483,46 @@ class PubSub(metaclass=Singleton):
             return error_response(element, jid, ErrorType.FORBIDDEN)
 
         if payload:
-            with closing(self._db_connection_factory()) as con:
+            with DB.connection() as con:
                 if item_id is not None:
-                    res = con.execute("SELECT itemid FROM pubsubItems WHERE itemid = ? AND node = ?", (item_id, node))
-                    if res.fetchone():
-                        con.execute("UPDATE pubsubItems "
-                                    "SET payload = ? "
-                                    "WHERE node = ? AND itemid = ?",
-                                    (target_node[NodeAttrib.NODE.value], item_id, ET.tostring(payload)))
+                    query = select(Model.PubsubItems.c.itemid).where(
+                        Model.PubsubItems.c.itemid == item_id
+                        and Model.PubsubItems.c.node == node
+                    )
+                    res = con.execute(query).fetchone()
+                    # res = con.execute("SELECT itemid FROM pubsubItems WHERE itemid = ? AND node = ?", (item_id, node))
+                    if res:
+                        query = update(Model.PubsubItems).where(
+                            Model.PubsubItems.c.node == target_node[NodeAttrib.NODE.value]
+                            and Model.PubsubItems.c.itemid == item_id
+                        ).values(payload=item_id)
+                        con.execute(query)
+                        # con.execute("UPDATE pubsubItems "
+                        #             "SET payload = ? "
+                        #             "WHERE node = ? AND itemid = ?",
+                        #             (target_node[NodeAttrib.NODE.value], item_id, item_id))
 
                     else:
-                        con.execute("INSERT INTO pubsubItems VALUES (?,?,?)",
-                                    (target_node[0][NodeAttrib.NODE.value], item_id, ET.tostring(payload)))
+                        query = insert(Model.PubsubItems).values({
+                            "node": target_node[0][NodeAttrib.NODE.value],
+                            "item_id": item_id,
+                            "payload": ET.tostring(payload)
+                        })
+                        con.execute(query)
+                        # con.execute("INSERT INTO pubsubItems VALUES (?,?,?)",
+                        #             (target_node[0][NodeAttrib.NODE.value], item_id, ET.tostring(payload)))
                         con.commit()
 
                 else:
                     item_id = str(uuid4())
-                    con.execute("INSERT INTO pubsubItems VALUES (?,?,?)",
-                                (target_node[0][NodeAttrib.NODE.value], item_id, ET.tostring(payload)))
+                    query = insert(Model.PubsubItems).values({
+                        "node": target_node[0][NodeAttrib.NODE.value],
+                        "item_id": item_id,
+                        "payload": ET.tostring(payload)
+                    })
+                    con.execute(query)
+                    # con.execute("INSERT INTO pubsubItems VALUES (?,?,?)",
+                    #             (target_node[0][NodeAttrib.NODE.value], item_id, ET.tostring(payload)))
                     con.commit()
 
         self.send_notification(node=target_node[0][NodeAttrib.NODE.value], payload=payload)
