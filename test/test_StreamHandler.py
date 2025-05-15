@@ -78,7 +78,7 @@ def test_handle_open_stream_ssl(setup):
     assert handler._stage == Stage.SASL
     handler._transport.write.assert_called_once()
 
-from pyjabber.features.SASLFeature import SASL, connection, SASLFeature
+from pyjabber.features.SASLFeature import SASL, SASLFeature
 
 
 def test_handle_open_stream_sasl_continue(setup):
