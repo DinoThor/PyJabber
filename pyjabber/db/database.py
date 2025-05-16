@@ -1,14 +1,10 @@
-import logging
 import os
-import sqlite3
-from contextlib import closing
-from sqlite3 import Connection
-from typing import Optional
 
 import sqlalchemy
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, Engine, BINARY
+from alembic.config import Config
+from alembic.script import ScriptDirectory
+from sqlalchemy import create_engine, MetaData, Engine, text
 
-from pyjabber import __version__
 from pyjabber import metadata
 from loguru import logger
 
@@ -27,7 +23,7 @@ class DB:
         return DB._engine.connect()
 
     @staticmethod
-    def setup_database() -> None:
+    def setup_database() -> Engine:
         if metadata.DATABASE_IN_MEMORY:
             logger.info("Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!")
             DB._engine = create_engine("sqlite:///:memory:")
@@ -47,7 +43,26 @@ class DB:
             DB._engine = create_engine(f"sqlite:///{metadata.DATABASE_PATH}")
             DB.init_metadata(DB._engine)
 
+        return DB._engine
+
     @staticmethod
     def init_metadata(engine: Engine):
         Model.server_metadata.create_all(engine)
+
+    @staticmethod
+    def needs_upgrade(engine):
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT version_num FROM alembic_version"))
+            current = result.scalar()
+        script = ScriptDirectory(os.path.join(metadata.ROOT_PATH, 'alembic'))
+        heads = script.get_heads()
+        return current not in heads
+
+    @staticmethod
+    def run_migrations_if_needed():
+        engine = create_engine(metadata.DATABASE_PATH)
+        cfg = Config(os.path.join(metadata.ROOT_PATH, '..', 'alembic.ini'))
+        if DB.needs_upgrade(engine):
+            from alembic import command
+            command.upgrade(cfg, 'head')
 

@@ -76,7 +76,9 @@ class Server:
         try:
             logger.info("Starting server...")
 
-            DB.setup_database()
+            engine = DB.setup_database()
+            if not self._database_in_memory and DB.needs_upgrade(engine):
+                DB.run_migrations_if_needed()
             self._public_ip = init_utils.setup_query_local_ip()
 
             loop = asyncio.get_running_loop()
