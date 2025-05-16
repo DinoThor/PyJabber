@@ -7,9 +7,13 @@ from typing import Dict, List, Tuple, Union
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
+from loguru import logger
+from sqlalchemy import select, insert
+
+from pyjabber.db.model import Model
 from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber.metadata import host
-from pyjabber.db.database import connection
+from pyjabber import metadata
+from pyjabber.db.database import DB
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
@@ -33,7 +37,7 @@ def iq_register_result(iq_id: str) -> bytes:
         attrib={
             "type": "result",
             "id": iq_id or str(uuid4()),
-            "from": host.get()})
+            "from": metadata.HOST})
     return ET.tostring(iq)
 
 
@@ -48,14 +52,13 @@ class SASL(metaclass=Singleton):
 
     """
 
-    def __init__(self, db_connection_factory=connection):
+    def __init__(self):
         self._handlers = {
             "iq": self.handleIQ,
             "auth": self.handleAuth
         }
         self._ns = "jabber:iq:register"
         self._connection_manager = ConnectionManager()
-        self._db_connection_factory = db_connection_factory
         self._peername = None
 
     def feed(self,
@@ -81,24 +84,26 @@ class SASL(metaclass=Singleton):
 
             new_jid = new_jid.text
 
-            with closing(self._db_connection_factory()) as con:
-                res = con.execute(
-                    "SELECT * FROM credentials WHERE jid = ?", (new_jid,))
-                credentials = res.fetchone()
+            with DB.connection() as con:
+                query_db = select(Model.Credentials).where(Model.Credentials.c.jid == new_jid)
+                credentials = con.execute(query_db).fetchone()
+                # res = con.execute(
+                #     "SELECT * FROM credentials WHERE jid = ?", (new_jid,))
+                # credentials = res.fetchone()
 
                 if credentials:
-                    return SE.conflict_error(
-                        element.attrib["id"])
+                    return SE.conflict_error(element.attrib["id"])
                 else:
                     pwd = query.find(CN.clarkFromTuple((self._ns, "password"))).text
                     hashed_pwd = bcrypt.hashpw(pwd.encode(), bcrypt.gensalt())
 
-                    con.execute(
-                        "INSERT INTO credentials(jid, hash_pwd) VALUES (?, ?)", (new_jid, hashed_pwd)
-                    )
+                    query_insert = insert(Model.Credentials).values({"jid": new_jid, "hash_pwd": hashed_pwd})
+                    con.execute(query_insert)
+                    # con.execute(
+                    #     "INSERT INTO credentials(jid, hash_pwd) VALUES (?, ?)", (new_jid, hashed_pwd)
+                    # )
                     con.commit()
-                    return iq_register_result(
-                        element.attrib["id"])
+                    return iq_register_result(element.attrib["id"])
 
         elif element.attrib.get("type") == IQ.TYPE.GET.value:
             iq = IQ(
@@ -118,19 +123,22 @@ class SASL(metaclass=Singleton):
             jid = data[1].decode()
             pwd = data[2]
 
-            with closing(self._db_connection_factory()) as con:
-                res = con.execute(
-                    "SELECT hash_pwd FROM credentials WHERE jid = ?", (jid,)
-                )
-                hashed_pwd = res.fetchone()
+            with DB.connection() as con:
+                query = select(Model.Credentials.c.hash_pwd).where(Model.Credentials.c.jid == jid)
+                hashed_pwd = con.execute(query).fetchone()
+                # res = con.execute(
+                #     "SELECT hash_pwd FROM credentials WHERE jid = ?", (jid,)
+                # )
+                # hashed_pwd = res.fetchone()
 
             if bcrypt.checkpw(pwd, hashed_pwd[0]):
-                self._connection_manager.set_jid(self._peername, JID(user=jid, domain=host.get()))
+                self._connection_manager.set_jid(self._peername, JID(user=jid, domain=metadata.HOST))
                 return Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>"
             else:
                 return SE.not_authorized()
 
-        except Exception:
+        except Exception as e:
+            logger.error(f"Exception during auth process for {element.attrib.get('from')}: {e}")
             return SE.not_authorized()
 
 

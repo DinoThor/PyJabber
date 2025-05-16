@@ -11,12 +11,12 @@ from pyjabber.stream.StreamHandler import Stage, Signal, StreamHandler
 
 @pytest.fixture
 def setup():
-    with patch('pyjabber.stream.StreamHandler.host') as mock_host:
-        with patch('pyjabber.features.SASLFeature.host') as mock_host_sasl:
+    with patch('pyjabber.stream.StreamHandler.metadata') as mock_meta_sh:
+        with patch('pyjabber.features.SASLFeature.metadata') as mock_meta_sasl:
             transport = Mock()
             starttls = Mock()
-            mock_host.get.return_value = 'localhost'
-            mock_host_sasl.get.return_value = 'localhost'
+            mock_meta_sh.HOST = 'localhost'
+            mock_meta_sasl.HOST = 'localhost'
             yield StreamHandler(transport, starttls)
 
 
@@ -78,7 +78,7 @@ def test_handle_open_stream_ssl(setup):
     assert handler._stage == Stage.SASL
     handler._transport.write.assert_called_once()
 
-from pyjabber.features.SASLFeature import SASL, connection, SASLFeature
+from pyjabber.features.SASLFeature import SASL, SASLFeature
 
 
 def test_handle_open_stream_sasl_continue(setup):

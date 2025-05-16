@@ -1,12 +1,9 @@
 import asyncio
 import os
-import queue
 import ssl
-from typing import Dict, List, Tuple
-from xml.etree.ElementTree import Element
+from typing import Dict, List
 
 from loguru import logger
-from xml.etree import ElementTree as ET
 
 from pyjabber import metadata
 from pyjabber.network import CertGenerator
@@ -24,8 +21,8 @@ async def tls_worker():
     different threads to handle a high number of new connections established within a very short period of time.
     """
     try:
-        if CertGenerator.check_hostname_cert_exists(metadata.host.get(), metadata.cert_path.get()) is False:
-            CertGenerator.generate_hostname_cert(metadata.host.get(), metadata.cert_path.get())
+        if CertGenerator.check_hostname_cert_exists(metadata.HOST, metadata.CERT_PATH) is False:
+            CertGenerator.generate_hostname_cert(metadata.HOST, metadata.CERT_PATH)
     except FileNotFoundError as e:
         logger.error(f"{e.__class__.__name__}: Pass an existing directory in your system to load the certs. "
                      f"Closing server")
@@ -35,11 +32,11 @@ async def tls_worker():
     ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
     ssl_context.maximum_version = ssl.TLSVersion.TLSv1_2
     ssl_context.load_cert_chain(
-        certfile=os.path.join(metadata.cert_path.get(), f"{metadata.host.get()}_cert.pem"),
-        keyfile=os.path.join(metadata.cert_path.get(), f"{metadata.host.get()}_key.pem"),
+        certfile=os.path.join(metadata.CERT_PATH, f"{metadata.HOST}_cert.pem"),
+        keyfile=os.path.join(metadata.CERT_PATH, f"{metadata.HOST}_key.pem"),
     )
     loop = asyncio.get_running_loop()
-    tls_queue = metadata.tls_queue.get()
+    tls_queue = metadata.TLS_QUEUE
     try:
         while True:
             transport, protocol, parser = await tls_queue.get()
@@ -82,8 +79,8 @@ async def queue_worker():
    """
     pending_stanzas: Dict[str, List[bytes]] = {}
     connection_manager = ConnectionManager()
-    connection_queue = metadata.connection_queue.get()
-    message_queue = metadata.message_queue.get()
+    connection_queue = metadata.CONNECTION_QUEUE
+    message_queue = metadata.MESSAGE_QUEUE
 
     try:
         while True:

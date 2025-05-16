@@ -1,5 +1,5 @@
 from xml.etree import ElementTree as ET
-from pyjabber.metadata import host
+from pyjabber import metadata
 """
 <stanza-kind from='intended-recipient' to='sender' type='error'>
     [OPTIONAL to include sender XML here]
@@ -33,7 +33,7 @@ def conflict_error(id: str) -> bytes:
         attrib={
             "id": id,
             "type": "error",
-            "from": host.get()})
+            "from": metadata.HOST})
     error = ET.SubElement(iq, "error", attrib={"type": "cancel"})
     ET.SubElement(
         error, "conflict", attrib={

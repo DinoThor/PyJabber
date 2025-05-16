@@ -12,16 +12,21 @@ import datetime
 
 def check_hostname_cert_exists(host: str, cert_path: os.path):
     previous_path = os.getcwd()
-    os.chdir(cert_path)
+    try:
+        os.chdir(cert_path)
 
-    res = True
-    for file in [f"{host}_key.pem", f"{host}_csr.pem", f"{host}_cert.pem"]:
-        if os.path.isfile(file) is False:
-            logger.debug("Missing hostname certificate")
-            res = False
+        res = True
+        for file in [f"{host}_key.pem", f"{host}_csr.pem", f"{host}_cert.pem"]:
+            if os.path.isfile(file) is False:
+                logger.debug("Missing hostname certificate")
+                res = False
 
-    os.chdir(os.path.join(previous_path))
-    return res
+        os.chdir(os.path.join(previous_path))
+        return res
+
+    except FileNotFoundError:
+        logger.warning("Bad format from cert path. Check it")
+        return False
 
 
 def generate_hostname_cert(host: str, cert_path: os.path):

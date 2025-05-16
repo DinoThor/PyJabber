@@ -15,12 +15,11 @@ from pyjabber.stanzas.IQ import IQ
 #          patch('pyjabber.plugins.xep_0060.xep_0060.update_memory_from_database') as mock_updater, \
 
 
-
 def test_success_response():
     payload = ET.Element('test', attrib={'id': str(uuid4())})
 
-    with patch('pyjabber.plugins.xep_0060.xep_0060.host') as mock_host:
-        mock_host.get.return_value = 'pubsub.demo'
+    with patch('pyjabber.plugins.xep_0060.xep_0060.metadata') as mock_meta:
+        mock_meta.HOST = 'pubsub.demo'
         iq_res, pubsub_res = success_response(payload)
         iq_res_own, pubsub_res_own = success_response(payload, True)
 

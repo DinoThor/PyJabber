@@ -9,62 +9,62 @@ import hashlib
 from xml.etree import ElementTree as ET
 from unittest.mock import patch
 
+from sqlalchemy import create_engine, insert
+
+from pyjabber.db.model import Model
 from pyjabber.features.SASLFeature import SASL, SASLFeature, Signal, MECHANISM, iq_register_result
 from pyjabber.stanzas.error import StanzaError as SE
 
-host = contextvars.ContextVar('host')
 
 @pytest.fixture(scope="function")
 def setup_database() -> Connection:
-    con = sqlite3.connect(':memory:')
-    cur = con.cursor()
-    cur.execute('''
-        CREATE TABLE credentials (
-            jid VARCHAR(255) NOT NULL PRIMARY KEY,
-            hash_pwd VARCHAR(255) NOT NULL
-        )
-    ''')
-    cur.execute('''
-        INSERT INTO credentials (jid, hash_pwd) VALUES
-        ('username', ?)
-    ''',  (bcrypt.hashpw(b'password', bcrypt.gensalt()),))
+    engine = create_engine("sqlite:///:memory:")
+    Model.server_metadata.create_all(engine)
+    con = engine.connect()
+    con.execute(insert(Model.Credentials).values({
+        "jid": "username",
+        "hash_pwd": bcrypt.hashpw(b'password', bcrypt.gensalt())
+    }))
     con.commit()
+
     yield con
+
     con.close()
 
 
-def test_handle_auth_success(setup_database):
-    sasl = SASL()
-    sasl._db_connection_factory = lambda : setup_database
+@pytest.fixture
+def sasl(setup_database):
+    with patch('pyjabber.features.SASLFeature.metadata') as mock_meta, \
+         patch('pyjabber.features.SASLFeature.DB') as mock_db, \
+         patch('pyjabber.features.SASLFeature.ConnectionManager') as mock_con, \
+         patch('pyjabber.stanzas.error.StanzaError.metadata') as mock_meta_se:
+        mock_db.connection.return_value = setup_database
+        mock_meta.HOST = 'localhost'
+        mock_meta_se.HOST = 'localhost'
+        yield SASL()
+
+
+def test_handle_auth_success(sasl):
     element = ET.Element("{urn:ietf:params:xml:ns:xmpp-sasl}auth")
     auth_text = base64.b64encode(b'\x00username\x00password').decode('ascii')
     element.text = auth_text
 
-    with patch('pyjabber.features.SASLFeature.host') as mock_host:
-        mock_host.get.return_value = 'localhost'
-        result = sasl.handleAuth(element)
+    result = sasl.handleAuth(element)
 
     assert result == (Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")
 
 
-@patch('pyjabber.network.ConnectionManager.ConnectionManager')
-def test_handle_auth_failure(setup_database):
-    sasl = SASL()
-    sasl._db_connection_factory = lambda : setup_database
+def test_handle_auth_failure(sasl):
     element = ET.Element("{urn:ietf:params:xml:ns:xmpp-sasl}auth")
     auth_text = base64.b64encode(b'\x00username\x00wrongpassword').decode('ascii')
     element.text = auth_text
 
-    with patch('pyjabber.features.SASLFeature.host') as mock_host:
-        mock_host.get.return_value = 'localhost'
-        result = sasl.handleAuth(element)
+    result = sasl.handleAuth(element)
 
     assert result == SE.not_authorized()
 
 
-def test_handle_iq_register_conflict(setup_database):
-    sasl = SASL()
-    sasl._db_connection_factory = lambda : setup_database
+def test_handle_iq_register_conflict(sasl):
     element = ET.Element("iq", attrib={"type": "set", "id": "123"})
     query = ET.SubElement(element, "{jabber:iq:register}query")
     username = ET.SubElement(query, "{jabber:iq:register}username")
@@ -72,16 +72,11 @@ def test_handle_iq_register_conflict(setup_database):
     password = ET.SubElement(query, "{jabber:iq:register}password")
     password.text = "password"
 
-    with patch('pyjabber.stanzas.error.StanzaError.host') as mock_host:
-        mock_host.get.return_value = 'localhost'
-        result = sasl.handleIQ(element)
+    result = sasl.handleIQ(element)
 
-        assert result == SE.conflict_error("123")
+    assert result == SE.conflict_error("123")
 
-def test_get_fields(setup_database):
-    sasl = SASL()
-    sasl._db_connection_factory = lambda : setup_database
-
+def test_get_fields(sasl):
     element = ET.Element("{jabber:iq:register}iq", attrib={"type": "get", "id": "1234"})
     ET.SubElement(element, "{jabber:iq:register}query")
 
@@ -96,9 +91,7 @@ def test_get_fields(setup_database):
     assert res_elem[0][0].tag == 'username'
     assert res_elem[0][1].tag == 'password'
 
-def test_handle_iq_register_success(setup_database):
-    sasl = SASL()
-    sasl._db_connection_factory = lambda : setup_database
+def test_handle_iq_register_success(sasl):
     element = ET.Element("iq", attrib={"type": "set", "id": "123"})
     query = ET.SubElement(element, "{jabber:iq:register}query")
     username = ET.SubElement(query, "{jabber:iq:register}username")
@@ -106,11 +99,9 @@ def test_handle_iq_register_success(setup_database):
     password = ET.SubElement(query, "{jabber:iq:register}password")
     password.text = "password"
 
-    with patch('pyjabber.features.SASLFeature.host') as mock_host:
-        mock_host.get.return_value = 'localhost'
-        result = sasl.handleIQ(element)
+    result = sasl.handleIQ(element)
 
-        assert result == iq_register_result("123")
+    assert result == iq_register_result("123")
 
 
 def test_sasl_feature():

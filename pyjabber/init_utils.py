@@ -1,14 +1,6 @@
-import os
 import socket
-import sqlite3
-from contextlib import closing
 
 from loguru import logger
-
-import pyjabber
-from . import metadata
-from pyjabber.db.database import connection
-from pyjabber.network import CertGenerator
 
 
 def setup_query_local_ip():

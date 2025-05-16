@@ -1,41 +1,35 @@
-import logging
 import os
-import sqlite3
 
 import pytest
 from unittest.mock import patch, MagicMock
 import xml.etree.ElementTree as ET
+
+from sqlalchemy import create_engine, MetaData, Table, Column, String
+
+from pyjabber.db.model import Model
 from pyjabber.features.presence.PresenceFeature import Presence, PresenceType
-from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.stream.JID import JID
+from test import Model_test
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
+
 @pytest.fixture
 def setup_database():
-    con = sqlite3.connect(':memory:')
-    cur = con.cursor()
-    cur.execute('''
-        CREATE TABLE pendingsub (
-            jid VARCHAR(255) NOT NULL,
-            item VARCHAR(255) NOT NULL
-        )
-    ''')
-    con.commit()
-    yield con
-    con.close()
+    engine = create_engine("sqlite:///:memory:")
+    Model.server_metadata.create_all(engine)
+    yield engine
 
 
 @pytest.fixture
-def setup_presence(setup_database):
-    with patch('pyjabber.features.presence.PresenceFeature.host') as mock_host, \
+def setup_presence(setup_database, model):
+    with patch('pyjabber.features.presence.PresenceFeature.metadata') as mock_meta, \
          patch('pyjabber.features.presence.PresenceFeature.ConnectionManager') as mock_connections_manager, \
-         patch('pyjabber.features.presence.PresenceFeature.connection') as mock_connection, \
-         patch('pyjabber.features.presence.PresenceFeature.Roster') as mock_roster, \
-        patch('pyjabber.features.presence.PresenceFeature.connection_queue') as mock_connectoin_queue:
-        con = setup_database
-        mock_connection.return_value = con
-        mock_host.get.return_value = 'localhost'
+         patch('pyjabber.features.presence.PresenceFeature.DB') as mock_DB, \
+         patch('pyjabber.features.presence.PresenceFeature.Roster') as mock_roster:
+
+        mock_DB.connection = lambda: setup_database.connect()
+        mock_meta.HOST = 'localhost'
         mock_roster.return_value = MagicMock()
         presence = Presence()
         yield presence, mock_connections_manager, mock_roster
@@ -216,7 +210,7 @@ def test_feed_handle_unsubscribed(setup_presence):
 
 @pytest.mark.skip
 def test_feed_handle_unavailable(setup_presence):
-    presence, _, _, _, _ = setup_presence
+    presence, _, _ = setup_presence
     element = ET.Element('presence', attrib={'type': 'unavailable', 'from': 'user2@localhost', 'id': '123'})
     presence._jid = JID('user2@localhost')
     result = presence.feed(element)
@@ -225,7 +219,7 @@ def test_feed_handle_unavailable(setup_presence):
 
 @pytest.mark.skip
 def test_handle_subscribed(setup_presence):
-    presence, mock_connections, mock_retrieve_roster, _, _ = setup_presence
+    presence, mock_connections, mock_retrieve_roster = setup_presence
     element = ET.Element('presence', attrib={'type': 'subscribed', 'to': 'user@localhost', 'id': '123'})
 
     presence._jid = JID('user2@localhost')
@@ -247,7 +241,7 @@ def test_handle_subscribed(setup_presence):
 
 @pytest.mark.skip
 def test_handle_unsubscribed(setup_presence):
-    presence, mock_connections, mock_retrieve_roster, _, _ = setup_presence
+    presence, mock_connections, mock_retrieve_roster = setup_presence
     element = ET.Element('presence', attrib={'type': 'unsubscribed', 'to': 'user@localhost', 'id': '123'})
 
     presence._jid = JID('user2@localhost')
@@ -265,7 +259,7 @@ def test_handle_unsubscribed(setup_presence):
 
 @pytest.mark.skip
 def test_handle_unavailable(setup_presence):
-    presence, mock_connections, mock_retrieve_roster, _, _ = setup_presence
+    presence, mock_connections, mock_retrieve_roster = setup_presence
     element = ET.Element('presence', attrib={'type': 'unavailable', 'from': 'user2@localhost', 'id': '123'})
 
     presence._jid = JID('user2@localhost')
@@ -283,7 +277,7 @@ def test_handle_unavailable(setup_presence):
 
 @pytest.mark.skip
 def test_feed_handle_global_presence(setup_presence):
-    presence, mock_connections, mock_retrieve_roster, _, _ = setup_presence
+    presence, mock_connections, mock_retrieve_roster = setup_presence
     element = ET.Element('presence', attrib={'id': '123'})
     presence._jid = JID('user2@localhost')
 
@@ -304,7 +298,7 @@ def test_feed_handle_global_presence(setup_presence):
 
 @pytest.mark.skip
 def test_handle_initial_presence(setup_presence):
-    presence, mock_connections, mock_retrieve_roster, mock_update, _ = setup_presence
+    presence, mock_connections, mock_retrieve_roster = setup_presence
     element = ET.Element('presence', attrib={'id': '123'})
     presence._jid = JID('user@localhost')
 

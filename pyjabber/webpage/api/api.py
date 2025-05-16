@@ -5,11 +5,11 @@ from contextlib import closing
 from aiohttp import web
 from loguru import logger
 
-from pyjabber.db.database import connection
+from pyjabber.db.database import DB
 
 
 async def handleUser(request):
-    with closing(connection()) as con:
+    with DB.connection() as con:
         res = con.execute("SELECT id, jid FROM credentials")
         res = res.fetchall()
 
@@ -21,7 +21,7 @@ async def handleRoster(request):
     try:
         user_id = int(request.match_info['id'])
 
-        with closing(connection()) as con:
+        with DB.connection() as con:
             res = con.execute("SELECT jid FROM credentials WHERE id = ?", (user_id,))
             user_jid = res.fetchone()[0]
 
@@ -50,7 +50,7 @@ async def handleDelete(request):
     try:
         user_id = int(request.match_info['id'])
 
-        with closing(connection()) as con:
+        with DB.connection() as con:
             res = con.execute("SELECT id FROM credentials")
             res = res.fetchall()
 
@@ -81,7 +81,7 @@ async def handleRegister(request):
     try:
         data = await request.json()
 
-        with closing(connection()) as con:
+        with DB.connection() as con:
             res = con.execute("SELECT jid FROM credentials")
             res = res.fetchall()
 
@@ -90,7 +90,7 @@ async def handleRegister(request):
 
         hash_pwd = hashlib.sha256(data["pwd"].encode()).hexdigest()
 
-        with closing(connection()) as con:
+        with DB.connection() as con:
             con.execute("INSERT INTO credentials (jid, hash_pwd) VALUES (?, ?)",
                         (data["jid"], hash_pwd))
             con.commit()

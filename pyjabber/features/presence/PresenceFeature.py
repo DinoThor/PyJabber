@@ -6,8 +6,11 @@ from typing import Any, Dict, Tuple, List, Union
 from uuid import uuid4
 from xml.etree.ElementTree import Element
 
-from pyjabber.metadata import host, connection_queue
-from pyjabber.db.database import connection
+from sqlalchemy import select, delete
+
+from pyjabber import metadata
+from pyjabber.db.database import DB
+from pyjabber.db.model import Model
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.features.feature_utils import RosterUtils as RU
 from pyjabber.plugins.roster.Roster import Roster
@@ -43,14 +46,16 @@ class Presence(metaclass=Singleton):
 
         self._pending = {}
         self._get_all_pending_presence()
-        self._connection_queue: asyncio.Queue = connection_queue.get()
+        self._connection_queue: asyncio.Queue = metadata.CONNECTION_QUEUE
 
         self._online_status = {}
 
     def _get_all_pending_presence(self):
-        with closing(connection()) as con:
-            res = con.execute("SELECT jid, item FROM pendingsub", ())
-            res = res.fetchall()
+        with DB.connection() as con:
+            query = select(Model.PendingSubs.c.jid, Model.PendingSubs.c.item)
+            res = con.execute(query).fetchall()
+            # res = con.execute("SELECT jid, item FROM pendingsub", ())
+            # res = res.fetchall()
         for jid_from, jid_to, item in res:
             if jid_to not in self._pending:
                 self._pending[jid_to] = [item]
@@ -61,8 +66,10 @@ class Presence(metaclass=Singleton):
         pass
 
     def _delete_pending_presence(self, jid: str):
-        with closing(connection()) as con:
-            con.execute("DELETE FROM pendingsub WHERE jid = ?", (jid,))
+        with DB.connection() as con:
+            query = delete(Model.PendingSubs).where(Model.PendingSubs.c.jid == jid)
+            con.execute()
+            # con.execute("DELETE FROM pendingsub WHERE jid = ?", (jid,))
             con.commit()
         self._pending[jid].pop()
 
@@ -108,7 +115,7 @@ class Presence(metaclass=Singleton):
             contact_jid = item.attrib.get("jid")
 
             if len(contact_jid.split("@")) < 2:
-                contact_jid = JID(contact_jid + f"@{host.get()}")
+                contact_jid = JID(contact_jid + f"@{metadata.HOST}")
             else:
                 contact_jid = JID(contact_jid)
 
@@ -180,7 +187,7 @@ class Presence(metaclass=Singleton):
             contact_jid = item.attrib.get("jid")
 
             if len(contact_jid.split("@")) < 2:
-                contact_jid = JID(contact_jid + f"@{host.get()}")
+                contact_jid = JID(contact_jid + f"@{metadata.HOST}")
             else:
                 contact_jid = JID(contact_jid)
 
@@ -233,7 +240,7 @@ class Presence(metaclass=Singleton):
             element.attrib["from"] = str(jid)
 
         # Handle local presence. Receiver client connected to the server
-        if to.domain == host.get():
+        if to.domain == metadata.HOST:
             roster = self._roster.roster_by_jid(jid)
 
             item = [item for item in roster
@@ -297,7 +304,7 @@ class Presence(metaclass=Singleton):
             element.attrib["from"] = str(jid)
 
         # Handle local presence. Receiver client connected to the server
-        if to.domain == host.get():
+        if to.domain == metadata.HOST:
             roster_sender = self._roster.roster_by_jid(to)
             roster_receiver = self._roster.roster_by_jid(jid)
 
@@ -334,7 +341,7 @@ class Presence(metaclass=Singleton):
                     new_item_sender.attrib["subscription"] = "to"
                     self._roster.update_item(new_item_sender, item_id)
 
-                    new_item_sender.attrib['jid'] = new_item_sender.attrib['jid'] + f"@{host.get()}"
+                    new_item_sender.attrib['jid'] = new_item_sender.attrib['jid'] + f"@{metadata.HOST}"
                     roster_push_sender = new_item_sender
 
                 elif et_item_sender.attrib.get("subscription") == "from":
@@ -345,7 +352,7 @@ class Presence(metaclass=Singleton):
                     new_item_sender.attrib["subscription"] = "both"
                     self._roster.update_item(new_item_sender, item_id)
 
-                    new_item_sender.attrib['jid'] = new_item_sender.attrib['jid'] + f"@{host.get()}"
+                    new_item_sender.attrib['jid'] = new_item_sender.attrib['jid'] + f"@{metadata.HOST}"
                     roster_push_sender = new_item_sender
 
                 else:
@@ -361,7 +368,7 @@ class Presence(metaclass=Singleton):
                     new_item_receiver.attrib["subscription"] = "from"
                     self._roster.update_item(new_item_receiver, item_id)
 
-                    new_item_receiver.attrib['jid'] = new_item_receiver.attrib['jid'] + f"@{host.get()}"
+                    new_item_receiver.attrib['jid'] = new_item_receiver.attrib['jid'] + f"@{metadata.HOST}"
                     roster_push_receiver = new_item_receiver
 
                 elif et_item_receiver.attrib["subscription"] == "to":
@@ -369,7 +376,7 @@ class Presence(metaclass=Singleton):
                     new_item_receiver.attrib["subscription"] = "both"
                     self._roster.update_item(new_item_receiver, item_id)
 
-                    new_item_receiver.attrib['jid'] = new_item_receiver.attrib['jid'] + f"@{host.get()}"
+                    new_item_receiver.attrib['jid'] = new_item_receiver.attrib['jid'] + f"@{metadata.HOST}"
                     roster_push_receiver = new_item_receiver
 
                 else:
@@ -413,7 +420,7 @@ class Presence(metaclass=Singleton):
             element.attrib["from"] = str(jid)
 
         # Handle locally
-        if to.domain == host.get():
+        if to.domain == metadata.HOST:
             roster = self._roster.roster_by_jid(jid)
             # buffer =
 
@@ -483,7 +490,7 @@ class Presence(metaclass=Singleton):
         for item in roster:
             to = ET.fromstring(item[-1]).attrib.get('jid')
 
-            if to.split("@")[1] == host.get():
+            if to.split("@")[1] == metadata.HOST:
                 presence = element.__copy__()
 
                 presence.attrib["to"] = to

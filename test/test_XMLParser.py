@@ -9,10 +9,10 @@ from pyjabber.network.XMLParser import XMLParser
 
 @pytest.fixture
 def setup():
-    with patch('pyjabber.stream.StreamHandler.host') as mock_host:
+    with patch('pyjabber.stream.StreamHandler.metadata') as mock_meta:
         transport = Mock()
         starttls = Mock()
-        mock_host.get.return_value = 'localhost'
+        mock_meta.HOST = 'localhost'
 
         return XMLParser(transport, starttls)
 
