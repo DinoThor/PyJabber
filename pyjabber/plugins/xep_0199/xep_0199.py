@@ -7,7 +7,7 @@ from pyjabber import metadata
 
 class Ping:
     @staticmethod
-    def feed(self, jid: JID, element: ET.Element):
+    def feed(jid: JID, element: ET.Element):
         if element.attrib.get('to') == metadata.HOST:
             return ET.tostring(
                 IQ(

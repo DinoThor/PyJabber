@@ -14,7 +14,8 @@ def setup():
         with patch('pyjabber.network.XMLProtocol.ConnectionManager') as mock_connection:
             with patch('pyjabber.network.XMLProtocol.StreamAlivenessMonitor') as mock_monitor:
                 with patch('pyjabber.network.XMLProtocol.Presence'):
-                    with patch('pyjabber.network.XMLProtocol.metadata.tls_queue') as mock_queue:
+                    with patch('pyjabber.network.XMLProtocol.metadata') as mock_meta:
+                        mock_meta.TLS_QUEUE = asyncio.Queue()
                         protocol = XMLProtocol(
                             host='localhost',
                             namespace='jabber:client',

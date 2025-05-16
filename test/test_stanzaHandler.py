@@ -25,7 +25,7 @@ def setup():
          patch('pyjabber.stream.StanzaHandler.logger') as mock_logger: \
 
         MockConnectionsManager.get_jid.return_value = 'user@localhost'
-        mock_metadata.host.get.return_value = 'localhost'
+        mock_metadata.HOST = 'localhost'
 
         handler = StanzaHandler(mock_buffer)
         handler._functions = {
@@ -35,7 +35,7 @@ def setup():
         }
 
     yield (handler, mock_buffer, MockConnectionsManager,
-           MockPresence, mock_logger, mock_metadata.message_queue.get.return_value)
+           MockPresence, mock_logger, mock_metadata.MESSAGE_QUEUE)
 
 
 def test_feed_valid_element(setup):

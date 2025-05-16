@@ -18,11 +18,7 @@ FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 def setup_database():
     engine = create_engine("sqlite:///:memory:")
     Model.server_metadata.create_all(engine)
-    con = engine.connect()
-
-    yield con
-
-    con.close()
+    yield engine
 
 
 @pytest.fixture
@@ -32,8 +28,7 @@ def setup_presence(setup_database, model):
          patch('pyjabber.features.presence.PresenceFeature.DB') as mock_DB, \
          patch('pyjabber.features.presence.PresenceFeature.Roster') as mock_roster:
 
-        con = setup_database
-        mock_DB.connection.return_value = con
+        mock_DB.connection = lambda: setup_database.connect()
         mock_meta.HOST = 'localhost'
         mock_roster.return_value = MagicMock()
         presence = Presence()
