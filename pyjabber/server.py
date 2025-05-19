@@ -78,7 +78,7 @@ class Server:
 
             engine = DB.setup_database()
             if not self._database_in_memory:
-                pass# DB.run_db_migrations()
+                DB.run_db_migrations()
             # if not self._database_in_memory and DB.needs_upgrade(engine):
             #     DB.run_migrations_if_needed()
             self._public_ip = init_utils.setup_query_local_ip()
