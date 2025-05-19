@@ -49,7 +49,7 @@ class Server:
         # Singletons
         self._connection_manager = ConnectionManager()
 
-        # Contextvar
+        # Global constants to use across the server modules/classes
         metadata.init_config(
             host=param.host,
             ip=[self._host_ip, self._public_ip],
@@ -77,8 +77,10 @@ class Server:
             logger.info("Starting server...")
 
             engine = DB.setup_database()
-            if not self._database_in_memory and DB.needs_upgrade(engine):
-                DB.run_migrations_if_needed()
+            if not self._database_in_memory:
+                pass# DB.run_db_migrations()
+            # if not self._database_in_memory and DB.needs_upgrade(engine):
+            #     DB.run_migrations_if_needed()
             self._public_ip = init_utils.setup_query_local_ip()
 
             loop = asyncio.get_running_loop()
@@ -131,8 +133,7 @@ class Server:
         except asyncio.CancelledError:
             logger.info("Stopping server...")
 
-            if self._database_in_memory:
-                self._database_in_memory.close()
+            DB.close_engine()
 
             if self._client_listener and self._client_listener.is_serving():
                 self._client_listener.close()
@@ -157,6 +158,8 @@ class Server:
         signal.signal(signal.SIGINT, self.raise_exit)
         signal.signal(signal.SIGABRT, self.raise_exit)
         signal.signal(signal.SIGTERM, self.raise_exit)
+
+        tasks = None
 
         try:
             tasks = [

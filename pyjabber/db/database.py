@@ -1,6 +1,7 @@
 import os
 
 import sqlalchemy
+from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, MetaData, Engine, text
@@ -21,6 +22,10 @@ class DB:
         It takes the parameters from the server class instance (i.e., DB path | DB in memory)
         """
         return DB._engine.connect()
+
+    @staticmethod
+    def close_engine():
+        DB._engine.dispose()
 
     @staticmethod
     def setup_database() -> Engine:
@@ -49,20 +54,31 @@ class DB:
     def init_metadata(engine: Engine):
         Model.server_metadata.create_all(engine)
 
-    @staticmethod
-    def needs_upgrade(engine):
-        with engine.connect() as conn:
-            result = conn.execute(text("SELECT version_num FROM alembic_version"))
-            current = result.scalar()
-        script = ScriptDirectory(os.path.join(metadata.ROOT_PATH, 'alembic'))
-        heads = script.get_heads()
-        return current not in heads
+    # @staticmethod
+    # def needs_upgrade(engine):
+    #     with engine.connect() as conn:
+    #         result = conn.execute(text("SELECT version_num FROM alembic_version"))
+    #         current = result.scalar()
+    #     script = ScriptDirectory(os.path.join(metadata.ROOT_PATH, 'alembic'))
+    #     heads = script.get_heads()
+    #     return current not in heads
+    #
+    # @staticmethod
+    # def run_migrations_if_needed():
+    #     engine = create_engine(metadata.DATABASE_PATH)
+    #     cfg = Config(os.path.join(metadata.ROOT_PATH, '..', 'alembic.ini'))
+    #     if DB.needs_upgrade(engine):
+    #         from alembic import command
+    #         command.upgrade(cfg, 'head')
 
     @staticmethod
-    def run_migrations_if_needed():
-        engine = create_engine(metadata.DATABASE_PATH)
-        cfg = Config(os.path.join(metadata.ROOT_PATH, '..', 'alembic.ini'))
-        if DB.needs_upgrade(engine):
-            from alembic import command
-            command.upgrade(cfg, 'head')
+    def run_db_migrations() -> None:
+        cfg = Config()
+        cfg.set_main_option("script_location", os.path.join(metadata.ROOT_PATH, '..', 'alembic'))
+        cfg.set_main_option("sqlalchemy.url", DB.get_database_url_sqlite())
+        command.upgrade(cfg, "head")
 
+    @staticmethod
+    def get_database_url_sqlite() -> str:
+        path = metadata.DATABASE_PATH
+        return f"sqlite:///{path}"

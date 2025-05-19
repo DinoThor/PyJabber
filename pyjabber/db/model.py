@@ -48,6 +48,4 @@ class Model:
         "pending_subs", server_metadata,
         Column("jid", String, primary_key=True),
         Column("item", String, primary_key=True)
-    )    @staticmethod
-    def get_metadata():
-        return Model.server_metadata
+    )
