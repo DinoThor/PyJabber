@@ -43,15 +43,12 @@ class PubSub(metaclass=Singleton):
         super().__init__()
 
         self._connections = ConnectionManager()
-
-        items = load(open(metadata.CONFIG_PATH), Loader=Loader)['items']
-        service_jid = next((s for s in list(items) if 'pubsub' in s), None)
-        if service_jid is None:
+        items = metadata.ITEMS
+        pubsub_item = next((var for var in items if [var[0] == 'pubsub']), None)
+        if pubsub_item is None:
             raise Exception  # TODO: Define missing config exception
 
-        self._jid = service_jid
-        self._category = items.get('type')
-        self._ver = items.get('var')
+        self._jid, self._category, self._var = pubsub_item
 
         self._host = metadata.HOST
 
@@ -65,6 +62,7 @@ class PubSub(metaclass=Singleton):
             'subscribe': self.subscribe,
             'unsubscribe': self.unsubscribe,
             'subscriptions': self.retrieve_subscriptions,
+            'items': self.retrieve_items_node,
             'publish': self.publish
         }
 
@@ -72,12 +70,9 @@ class PubSub(metaclass=Singleton):
         with DB.connection() as con:
             query = select(Model.Pubsub)
             self._nodes = con.execute(query).fetchall()
-            # res = con.execute("SELECT * FROM pubsub")
-            # self._nodes = res.fetchall()
+
             query = select(Model.PubsubSubscribers)
             self._subscribers = con.execute(query).fetchall()
-            # res = con.execute("SELECT * FROM pubsubSubscribers")
-            # self._subscribers = res.fetchall()
 
     def feed(self, jid: JID, element: ET.Element):
         try:
@@ -88,8 +83,9 @@ class PubSub(metaclass=Singleton):
 
             _, operation = CN.deglose(element[0][0].tag)
             return self._operations[operation](element, jid)
-        except (KeyError, TypeError) as e:
-            logger.error(e)  # TODO: Malformed request
+        except KeyError as e:
+            logger.error(f"Pubsub operation not supported: {e}")
+            return StanzaError.feature_not_implemented(feature=str(e), namespace="{http://jabber.org/protocol/pubsub}pubsub")
 
     def discover_items(self, element: ET.Element) -> List[tuple]:
         """
@@ -97,8 +93,10 @@ class PubSub(metaclass=Singleton):
         :return: A list of 3-tuples in the format (node, name, type)
         """
         query = element.find('{http://jabber.org/protocol/disco#items}query')
-        if query is not None and query.attrib.get('node') is None:  # Query to root
-            res = []
+        if query is None:
+            return []
+        res = []
+        if query.attrib.get('node') is None:  # Query to root
             for node in self._nodes:
                 _node = node[NodeAttrib.NODE.value]
                 _name = node[NodeAttrib.NAME.value]
@@ -107,7 +105,15 @@ class PubSub(metaclass=Singleton):
             return res
 
         else:  # Query to branch/leaf in the nodes tree
-            pass
+            target_node = query.attrib.get('node')
+            node_match = [node for node in self._nodes if node[NodeAttrib.NODE.value] == target_node]
+            if node_match:
+                for node in node_match:
+                    _node = node[NodeAttrib.NODE.value]
+                    _name = node[NodeAttrib.NAME.value]
+                    _type = node[NodeAttrib.TYPE.value]
+                    res.append((_node, _name, _type))
+            return res
 
     def discover_info(self, element: ET.Element):
         """
@@ -117,9 +123,10 @@ class PubSub(metaclass=Singleton):
         query = element.find('{http://jabber.org/protocol/disco#info}query')
         query_node = query.attrib.get('node')
         if query is not None and query_node is not None:
-            match_node = next((node for node in self._nodes if node[NodeAttrib.NODE] == query_node), None)
+            match_node = [node for node in self._nodes if node[NodeAttrib.NODE.value] == query_node]
             if match_node:
-                return match_node[NodeAttrib.NAME], match_node[NodeAttrib.TYPE]
+                match_node = match_node.pop()
+                return match_node[NodeAttrib.NAME.value], match_node[NodeAttrib.TYPE.value]
 
         return None
 
@@ -134,14 +141,14 @@ class PubSub(metaclass=Singleton):
         config = pubsub.find('{http://jabber.org/protocol/pubsub}config')
 
         new_node = create.attrib.get('node')
-        if new_node is None:
+        if not new_node:
             return error_response(element, jid, ErrorType.NOT_ACCEPTABLE)
 
         # Node already exists
         if [node for node in self._nodes if node[NodeAttrib.NODE.value] == new_node]:
             return error_response(element, jid, ErrorType.CONFLICT)
 
-        if config:
+        if config:  #pragma: no cover
             pass  # TODO: create node with given configuration
 
         """
@@ -160,8 +167,6 @@ class PubSub(metaclass=Singleton):
             query = insert(Model.Pubsub).values(item)
             con.execute(query)
             con.commit()
-            # con.execute("INSERT INTO pubsub VALUES (?,?,?,?,?)", item)
-            # con.commit()
 
         self.update_memory_from_database()
 
@@ -174,15 +179,18 @@ class PubSub(metaclass=Singleton):
         Deletes a specific node in the pubsub service.
         ONLY the owner has the permissions to delete.
         """
-        del_node = element[0][0].attrib.get('node')
-        if del_node is None:
+        pubsub = element.find('{http://jabber.org/protocol/pubsub}pubsub')
+        delete_stanza = pubsub.find('{http://jabber.org/protocol/pubsub}delete')
+        del_node = delete_stanza.attrib.get('node')
+
+        if not del_node:
             return error_response(element, jid, ErrorType.NOT_ACCEPTABLE)
 
-        try:
-            node_match = [node for node in self._nodes if node[NodeAttrib.NODE.value] == del_node][0]
-        except IndexError:
+        node_match = [node for node in self._nodes if node[NodeAttrib.NODE.value] == del_node]
+        if not node_match:
             return error_response(element, jid, ErrorType.ITEM_NOT_FOUND)
 
+        node_match = node_match.pop()
         if node_match[NodeAttrib.OWNER.value] != jid.user:
             return error_response(element, jid, ErrorType.FORBIDDEN)
 
@@ -190,11 +198,49 @@ class PubSub(metaclass=Singleton):
             query = delete(Model.Pubsub).where(Model.Pubsub.c.node == del_node)
             con.execute(query)
             con.commit()
-            # con.execute("DELETE FROM pubsub WHERE node = ?", (del_node,))
-            # con.commit()
 
         self.update_memory_from_database()
         iq_res, _ = success_response(element)
+        return ET.tostring(iq_res)
+
+    def retrieve_items_node(self, element: ET.Element, jid: JID):
+        pubsub = element.find('{http://jabber.org/protocol/pubsub}pubsub')
+        items = pubsub.find('{http://jabber.org/protocol/pubsub}items')
+        node = items.attrib.get('node')
+
+        if node is None:
+            return error_response(element, jid, ErrorType.NOT_ACCEPTABLE)
+
+        try:
+            target_node: str = [n for n in self._nodes if n[NodeAttrib.NODE.value] == node].pop()
+        except IndexError:
+            return error_response(element, jid, ErrorType.ITEM_NOT_FOUND)
+
+        is_owner = any(n[NodeAttrib.NODE.value] == target_node and n[NodeAttrib.OWNER.value] == jid.bare() for n in self._nodes)
+
+        if not is_owner:
+
+            subscribed = any(s[SubscribersAttrib.JID.value] == jid.user
+                                and s[SubscribersAttrib.NODE.value] == node
+                                and s[SubscribersAttrib.SUBSCRIPTION.value] in [Affiliation.MEMBER, Affiliation.PUBLISHER]
+                                for s in self._subscribers
+                             )
+
+            if not subscribed:
+                return error_response(element, jid, ErrorType.FORBIDDEN)
+
+        with DB.connection() as con:
+            query = select(Model.PubsubItems).where(Model.PubsubItems.c.node == target_node)
+            res = con.execute(query).fetchall()
+
+        iq_res, pubsub_res = success_response(element)
+
+        for i in res:
+            item = ET.SubElement(pubsub_res, '{http://jabber.org/protocol/pubsub}item', attrib={
+                'id': i[2]
+            })
+            item.append(ET.fromstring(i[3]))
+
         return ET.tostring(iq_res)
 
     def subscribe(self, element: ET.Element, jid: JID):
@@ -373,16 +419,12 @@ class PubSub(metaclass=Singleton):
                 Model.PubsubSubscribers.c.jid == str(jid.user)
                 and Model.PubsubSubscribers.c.node == target_node
             )
-            # query = "SELECT node, subscription, subid FROM pubsubSubscribers WHERE jid = ? AND node = ?"
-            # item = (str(jid.user), target_node)
         else:
             query = select(
                 Model.PubsubSubscribers.c.node,
                 Model.PubsubSubscribers.c.subscription,
                 Model.PubsubSubscribers.c.subid
             ).where(Model.PubsubSubscribers.c.jid == str(jid.user))
-            # query = "SELECT node, subscription, subid FROM pubsubSubscribers WHERE jid = ?"
-            # item = (str(jid.user),)
 
         with DB.connection() as con:
             res = con.execute(query)

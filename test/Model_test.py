@@ -1,20 +1,6 @@
 from sqlalchemy import Table, MetaData, Column, Integer, String
 
-# global Credentials: Table = None
-# global Roster: Table = None
-# global Pubsub: Table = None
-# global PubsubSubscribers: Table = None
-# global PubsubItems: Table = None
-# global PendingSubs: Table = None
-
 class ModelTest:
-    Credentials: Table = None
-    Roster: Table = None
-    Pubsub: Table = None
-    PubsubSubscribers: Table = None
-    PubsubItems: Table = None
-    PendingSubs: Table = None
-
     mock_meta = MetaData()
     Credentials = Table(
         "credentials", mock_meta,
