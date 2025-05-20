@@ -1,12 +1,11 @@
 import asyncio
-import contextvars
 import os
 import signal
 
 from loguru import logger
 
 from pyjabber import init_utils
-from pyjabber.db.database import setup_database
+from pyjabber.db.database import DB
 from pyjabber.network.XMLProtocol import XMLProtocol
 from pyjabber.network.server.incoming.XMLServerIncomingProtocol import XMLServerIncomingProtocol
 from pyjabber.network.ConnectionManager import ConnectionManager
@@ -41,11 +40,8 @@ class Server:
 
         # Database
         self._database_path = param.database_path
-        self._sql_init_script = os.path.join(SERVER_FILE_PATH, "db", "schema.sql")
-        self._sql_delete_script = os.path.join(SERVER_FILE_PATH, "db", "delete.sql")
         self._database_purge = param.database_purge
         self._database_in_memory = param.database_in_memory
-        self._db_in_memory_con = None
 
         # Certs
         self._cert_path = param.cert_path or os.path.join(SERVER_FILE_PATH, "network", "certs")
@@ -53,14 +49,20 @@ class Server:
         # Singletons
         self._connection_manager = ConnectionManager()
 
-        # Contextvar
-        metadata.host.set(param.host)
-        metadata.ip.set([self._host_ip, self._public_ip])
-        metadata.database_path.set(self._database_path)
-        metadata.config_path.set(os.path.join(os.path.dirname(os.path.abspath(__file__)), "config/config.yaml"))
-        metadata.cert_path.set(self._cert_path)
-        metadata.root_path.set(SERVER_FILE_PATH)
-        metadata.message_persistence.set(param.message_persistence or False)
+        # Global constants to use across the server modules/classes
+        metadata.init_config(
+            host=param.host,
+            ip=[self._host_ip, self._public_ip],
+            database_path=self._database_path,
+            database_purge=self._database_purge,
+            database_in_memory=self._database_in_memory,
+            config_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "config/config.yaml"),
+            cert_path=self._cert_path,
+            root_path=SERVER_FILE_PATH,
+            message_persistence=param.message_persistence or False,
+            plugins=param.plugins,
+            items=param.items
+        )
 
         # Flags
         self._ready = asyncio.Event()
@@ -76,12 +78,11 @@ class Server:
         try:
             logger.info("Starting server...")
 
-            setup_database(
-                database_in_memory=self._database_in_memory,
-                database_path=self._database_path,
-                database_purge=self._database_purge,
-                sql_init_script=self._sql_init_script,
-            )
+            engine = DB.setup_database()
+            if not self._database_in_memory:
+                DB.run_db_migrations()
+            # if not self._database_in_memory and DB.needs_upgrade(engine):
+            #     DB.run_migrations_if_needed()
             self._public_ip = init_utils.setup_query_local_ip()
 
             loop = asyncio.get_running_loop()
@@ -103,7 +104,8 @@ class Server:
                 self.raise_exit()
 
             logger.info(f"Client domain => {self._host}")
-            logger.info(f"Server is listening clients on {[s.getsockname() for s in self._client_listener.sockets if s]}")
+            logger.info(
+                f"Server is listening clients on {[s.getsockname() for s in self._client_listener.sockets if s]}")
 
             try:
                 self._server_listener = await loop.create_server(
@@ -121,7 +123,8 @@ class Server:
                 logger.error(e)
                 raise SystemExit
 
-            logger.info(f"Server is listening servers on {[s.getsockname() for s in self._server_listener.sockets if s]}")
+            logger.info(
+                f"Server is listening servers on {[s.getsockname() for s in self._server_listener.sockets if s]}")
             logger.success("Server started...")
             self._ready.set()
 
@@ -132,8 +135,7 @@ class Server:
         except asyncio.CancelledError:
             logger.info("Stopping server...")
 
-            if self._db_in_memory_con:
-                self._db_in_memory_con.close()
+            DB.close_engine()
 
             if self._client_listener and self._client_listener.is_serving():
                 self._client_listener.close()
@@ -145,38 +147,21 @@ class Server:
 
             logger.success("Server stopped...")
 
-    async def stop_server(self):
-        """
-        Safely stops the running server
-        """
-        logger.info("Stopping server...")
-
-        if self._db_in_memory_con:
-            self._db_in_memory_con.close()
-
-        if self._client_listener and self._client_listener.is_serving():
-            self._client_listener.close()
-            await self._client_listener.wait_closed()
-
-        if self._server_listener and self._server_listener.is_serving():
-            self._server_listener.close()
-            await self._server_listener.wait_closed()
-
-        logger.success("Server stopped...")
-
     def raise_exit(self, *args):
         """Exception used to signal the safe close of the server"""
         raise SystemExit(1)
 
     async def start(self):
         """Start the already created and configuration server"""
-        metadata.tls_queue.set(asyncio.Queue())
-        metadata.connection_queue.set(asyncio.Queue())
-        metadata.message_queue.set(asyncio.Queue())
+        metadata.TLS_QUEUE = asyncio.Queue()
+        metadata.CONNECTION_QUEUE = asyncio.Queue()
+        metadata.MESSAGE_QUEUE = asyncio.Queue()
 
         signal.signal(signal.SIGINT, self.raise_exit)
         signal.signal(signal.SIGABRT, self.raise_exit)
         signal.signal(signal.SIGTERM, self.raise_exit)
+
+        tasks = None
 
         try:
             tasks = [

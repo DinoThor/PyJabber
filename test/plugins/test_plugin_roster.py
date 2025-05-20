@@ -3,6 +3,10 @@ from unittest.mock import patch
 import pytest
 import sqlite3
 import xml.etree.ElementTree as ET
+
+from sqlalchemy import create_engine, insert
+
+from pyjabber.db.model import Model
 from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stream.JID import JID
@@ -10,31 +14,31 @@ from pyjabber.stream.JID import JID
 
 @pytest.fixture(scope='function')
 def setup_database():
-    con = sqlite3.connect(':memory:')
-    cur = con.cursor()
-    cur.execute('''
-        CREATE TABLE roster (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            jid VARCHAR(255) NOT NULL,
-            rosterItem VARCHAR(255) NOT NULL
-        )
-    ''')
-    cur.execute('''
-        INSERT INTO roster (jid, rosterItem) VALUES
-        ('jid1', '<item jid="jid1" name="name1" subscription="both"/>'),
-        ('jid2', '<item jid="jid2" name="name2" subscription="none"/>')
-    ''')
+    engine = create_engine("sqlite:///:memory:")
+    Model.server_metadata.create_all(engine)
+    con = engine.connect()
+    con.execute(insert(Model.Roster).values(
+        [
+            {
+                "jid": "jid1",
+                "roster_item": '<item jid="jid1" name="name1" subscription="both"/>'
+            }, {
+                "jid": "jid2",
+                "roster_item": '<item jid="jid2" name="name2" subscription="both"/>'
+            }
+        ]
+    ))
     con.commit()
-    yield con
+    yield engine
     con.close()
 
 
 @pytest.fixture
 def setup(setup_database):
-    with patch('pyjabber.plugins.roster.Roster.connection') as mock_con, \
-         patch('pyjabber.plugins.roster.Roster.host') as mock_host:
-        mock_con = setup_database
-        mock_host.return_value = 'localhost'
+    with patch('pyjabber.plugins.roster.Roster.DB') as mock_db, \
+         patch('pyjabber.plugins.roster.Roster.metadata') as mock_meta:
+        mock_db.connection = lambda: setup_database.connect()
+        mock_meta.HOST = 'localhost'
         yield Roster()
 
 
@@ -74,20 +78,18 @@ def test_handleGet_existing_jid(setup):
 
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'get'})
 
-    with patch('pyjabber.plugins.roster.Roster.host'):
-        result = roster.handle_get(JID('jid1@localhost'), element)
+    result = roster.handle_get(JID('jid1@localhost'), element)
 
-        assert b'<iq id="1234" type="result">' in result  # Verificamos que el resultado contiene la respuesta IQ correcta
+    assert b'<iq id="1234" type="result">' in result  # Verificamos que el resultado contiene la respuesta IQ correcta
 
 
 def test_handleGet_non_existing_jid(setup):
     roster = setup
     element = ET.Element('iq', attrib={'id': '1234', 'type': 'get'})
 
-    with patch('pyjabber.plugins.roster.Roster.host'):
-        result = roster.handle_get(JID('non_existing_jid@localhost'), element)
+    result = roster.handle_get(JID('non_existing_jid@localhost'), element)
 
-        assert b'<iq id="1234" type="result">' in result  # Verificamos que se maneja adecuadamente aunque el jid no exista
+    assert b'<iq id="1234" type="result">' in result  # Verificamos que se maneja adecuadamente aunque el jid no exista
 
 
 ###########
@@ -102,10 +104,9 @@ def test_handleSet_add_new_item(setup):
     ET.SubElement(query, '{jabber:iq:roster}item',
                          attrib={'jid': 'jid3', 'name': 'name3', 'subscription': 'both'})
 
-    with patch('pyjabber.plugins.roster.Roster.host'):
-        result = roster.handle_set(JID('jid3@localhost'), element)
+    result = roster.handle_set(JID('jid3@localhost'), element)
 
-        assert b'<iq id="1234" type="result" />' in result
+    assert b'<iq id="1234" type="result" />' in result
 
 
 def test_handleSet_update_existing_item(setup):
@@ -117,10 +118,9 @@ def test_handleSet_update_existing_item(setup):
     item = ET.SubElement(query, '{jabber:iq:roster}item',
                          attrib={'jid': 'jid3', 'name': 'name3', 'subscription': 'both'})
 
-    with patch('pyjabber.plugins.roster.Roster.host'):
-        result = roster.handle_set(JID('jid1@localhost'), element)
+    result = roster.handle_set(JID('jid1@localhost'), element)
 
-        assert b'<iq id="1234" type="result" />' in result
+    assert b'<iq id="1234" type="result" />' in result
 
 
 def test_handleSet_remove_item(setup):
@@ -132,10 +132,9 @@ def test_handleSet_remove_item(setup):
     item = ET.SubElement(query, '{jabber:iq:roster}item',
                          attrib={'jid': 'jid3', 'name': 'name3', 'subscription': 'both'})
 
-    with patch('pyjabber.plugins.roster.Roster.host'):
-        result = roster.handle_set(JID('jid1@localhost'), element)
+    result = roster.handle_set(JID('jid1@localhost'), element)
 
-        assert b'<iq id="1234" type="result" />' in result
+    assert b'<iq id="1234" type="result" />' in result
 
 
 def test_handleSet_invalid_xml(setup):

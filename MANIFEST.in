@@ -11,6 +11,10 @@ include pyjabber/network/certs/ca_cert.pem
 include pyjabber/network/certs/ca_key.pem
 recursive-include pyjabber/webpage/build *
 
+include alembic/env.py
+include alembic.ini
+recursive-include alembic/versions *
+
 recursive-include tests *
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]

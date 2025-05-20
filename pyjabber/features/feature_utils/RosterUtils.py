@@ -3,40 +3,43 @@ from contextlib import closing
 from typing import List
 from uuid import uuid4
 
-from pyjabber.db.database import connection
+from sqlalchemy import select
+
+from pyjabber.db.database import DB
+from pyjabber.db.model import Model
 from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.stream.JID import JID
 
 
 def retrieve_roster(jid: str) -> List[str]:  # pragma: no cover
-    with closing(connection()) as con:
-        res = con.execute("SELECT * FROM roster WHERE jid = ?", (jid,))
-        roster = res.fetchall()
+    with DB.connection() as con:
+        query = select(Model.Roster).where(Model.Roster.c.jid == jid)
+        roster = con.execute(query)
     return roster
 
 
 def update(id: int, item: ET) -> str:  # pragma: no cover
-    with closing(connection()) as con:
-        con.execute("UPDATE roster SET rosterItem = ? WHERE id = ?",
-                    (ET.tostring(item).decode(), id))
+    with DB.connection() as con:
+        query = Model.Roster.update().where(Model.Roster.c.id == id).values(rosterItem=ET.tostring(item).decode())
+        # con.execute("UPDATE roster SET rosterItem = ? WHERE id = ?",
+        #             (ET.tostring(item).decode(), id))
+        con.execute(query)
         con.commit()
-        res = con.execute("SELECT rosterItem from roster WHERE id = ?", (id,))
-        res = res.fetchone()
+        retrieve = select(Model.Roster.c.rosterItem).where(Model.Roster.c.id == id)
+        # res = con.execute("SELECT rosterItem from roster WHERE id = ?", (id,))
+        res = con.execute(retrieve).first()
 
-    if res:
-        return res[0]
-    else:
-        return ""
+    return res[0] if res else ""
 
 
 def store_pending_sub(from_: str, to_: str, item: ET.Element) -> None:
-    with closing(connection()) as con:
+    with DB.connection() as con:
         con.execute("INSERT INTO pendingsub values (?, ?, ?)", (from_, to_, ET.tostring(item).decode()))
         con.commit()
 
 
 def check_pending_sub() -> List[str]:
-    with closing(connection()) as con:
+    with DB.connection() as con:
         res = con.execute("SELECT * FROM pendingsub")
         pending = res.fetchall()
 
@@ -46,7 +49,7 @@ def check_pending_sub() -> List[str]:
 
 
 def check_pending_sub_to(jid: str, to: str) -> ET.Element:
-    with closing(connection()) as con:
+    with DB.connection() as con:
         res = con.execute("SELECT * FROM pendingsub WHERE jid_from = ? AND jid_to = ?", (jid, to))
         res = res.fetchone()
     if res:
