@@ -20,7 +20,7 @@ class PluginManager:
 
         self._plugins: Dict[str, object] = {
             'jabber:iq:roster': Roster(),
-            'urn:xmpp:ping': Ping(),
+            'urn:xmpp:ping': Ping,
             'http://jabber.org/protocol/disco*': Disco(),
             'http://jabber.org/protocol/pubsub*': PubSub()
         }

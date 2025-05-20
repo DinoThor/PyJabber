@@ -1,6 +1,11 @@
-========
-PyJabber
-========
+.. raw:: html
+
+    <h1 style="text-align: center">PyJabber</h1>
+
+.. image:: https://raw.githubusercontent.com/DinoThor/PyJabber/refs/heads/master/logo.png
+        :width: 300px
+        :alt: Logo
+        :align: center
 
 .. image:: https://img.shields.io/pypi/v/pyjabber.svg
         :target: https://pypi.org/project/pyjabber/
@@ -15,6 +20,9 @@ PyJabber
 .. image:: https://coveralls.io/repos/github/DinoThor/PyJabber/badge.svg?branch=master
         :target: https://coveralls.io/github/DinoThor/PyJabber?branch=master
         :alt: Coverage Status
+
+.. image:: https://tokei.rs/b1/github/dinothor/pyjabber
+        :alt: Code lines counter
 
 .. image:: https://readthedocs.org/projects/pyjabber/badge/?version=latest
         :target: https://pyjabber.readthedocs.io/en/latest/?version=latest

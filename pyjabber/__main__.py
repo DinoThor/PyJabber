@@ -1,3 +1,4 @@
+import logging
 import os
 import socket
 import sys
@@ -14,6 +15,24 @@ from loguru import logger
 from pyjabber.server import Server
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+
+
+class InterceptHandler(logging.Handler):
+    """
+    Redirects all logging from stdlib to loguru
+    """
+    def emit(self, record):
+        try:
+            lvl = logger.level(record.levelname).name
+        except ValueError:
+            lvl = record.levelno
+
+        frame, depth = logging.currentframe(), 2
+        while frame and frame.f_code.co_filename == logging.__file__:
+            frame = frame.f_back
+            depth += 1
+
+        logger.opt(depth=depth, exception=record.exc_info).log(lvl, record.getMessage())
 
 
 @click.command
@@ -64,6 +83,7 @@ def main(
         verbose,
         log_path,
         debug):
+    logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
 
     logger.remove()
 
@@ -76,12 +96,17 @@ def main(
             level=set_verbosity(verbose),
         )
 
+    level = set_verbosity(verbose)
+
     logger.add(
         sys.stderr,
         enqueue=True,
         format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> - <level>{level}: {message}</level>",
-        level=set_verbosity(verbose),
+        level=level,
     )
+
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.NOTSET)
+    logging.getLogger("alembic").setLevel(logging.NOTSET)
 
     param = Parameters(
         host=host,

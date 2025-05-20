@@ -22,8 +22,8 @@ def test_bad_request():
 
 def test_conflict_error():
     id = "123"
-    with patch('pyjabber.stanzas.error.StanzaError.host') as mock_host:
-        mock_host.get.return_value = 'localhost'
+    with patch('pyjabber.stanzas.error.StanzaError.metadata') as mock_meta:
+        mock_meta.HOST = 'localhost'
         result = conflict_error(id)
 
     root = ET.fromstring(result)

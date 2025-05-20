@@ -2,7 +2,7 @@ from typing import Literal, Dict, Callable
 from yaml import load, Loader
 from xml.etree import ElementTree as ET
 
-from pyjabber.metadata import host, config_path
+from pyjabber import metadata
 from pyjabber.plugins.xep_0060.xep_0060 import PubSub, NodeAttrib
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
@@ -19,14 +19,15 @@ def iq_skeleton(element: ET.Element, disco_type: Literal['info', 'items']):
     )
     return iq_res, ET.SubElement(iq_res, f'{{http://jabber.org/protocol/disco#{disco_type}}}query')
 
+
 class Disco(metaclass=Singleton):
     def __init__(self):
         self._handlers: Dict[str, Callable[[JID, ET.Element], bytes]] = {
             "info": self.handle_info,
             "items": self.handle_items
         }
-        self._host: str = host.get()
-        self._config_path: str = config_path.get()
+        self._host: str = metadata.HOST
+        self._config_path: str = metadata.CONFIG_PATH
         self._items = list(load(open(self._config_path), Loader=Loader).get('items'))
 
         # Search if any item has the substring pubsub, and replace the placeholder
@@ -120,7 +121,7 @@ class Disco(metaclass=Singleton):
         for i in items:
             [*keys], [*values] = zip(*i.items())
             if '$' in values[0][0]:
-                jid = values[0][0].replace('$', host.get())
+                jid = values[0][0].replace('$', metadata.HOST)
             else:
                 jid = values[0][0]
 

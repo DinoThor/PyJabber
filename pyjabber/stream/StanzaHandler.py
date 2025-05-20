@@ -15,12 +15,12 @@ class InternalServerError(Exception):
 
 class StanzaHandler:
     def __init__(self, buffer) -> None:
-        self._host = metadata.host.get()
-        self._ip = metadata.ip.get()
+        self._host = metadata.HOST
+        self._ip = metadata.IP
         self._buffer = buffer
         self._connections = ConnectionManager()
-        self._message_queue = metadata.message_queue.get()
-        self._message_persistence = metadata.message_persistence.get() or False
+        self._message_queue = metadata.MESSAGE_QUEUE
+        self._message_persistence = metadata.MESSAGE_PERSISTENCE
 
         self._peername = buffer.get_extra_info('peername')
         self._jid = self._connections.get_jid(self._peername)

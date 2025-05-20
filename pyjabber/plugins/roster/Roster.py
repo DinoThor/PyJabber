@@ -1,9 +1,9 @@
 import xml.etree.ElementTree as ET
-from contextlib import closing
-from uuid import uuid4
+from sqlalchemy import select, insert, update, delete
 
-from pyjabber.db.database import connection
-from pyjabber.metadata import host
+from pyjabber.db.database import DB
+from pyjabber import metadata
+from pyjabber.db.model import Model
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
@@ -20,8 +20,6 @@ class Roster(metaclass=Singleton):
     and subscription requests.
     It enables real-time presence updates, contact organization, and synchronization across devices,
     ensuring seamless and private communication.
-
-    :param db_connection_factory: The DB connection object
     """
 
     def __init__(self) -> None:
@@ -42,36 +40,48 @@ class Roster(metaclass=Singleton):
     def create_roster_entry(self, jid: JID,  to: JID):
         iq = IQ(from_=str(jid), type_=IQ.TYPE.SET)
         query = ET.SubElement(iq, "{jabber:iq:roster}query")
-        if to.domain == host.get():
+        if to.domain == metadata.HOST:
             ET.SubElement(query, "{jabber:iq:roster}item", attrib={"jid": to.user, "subscription": "none"})
         else:
             ET.SubElement(query, "{jabber:iq:roster}item", attrib={"jid": to.bare(), "subscription": "none"})
 
         return self.feed(jid, iq)
 
-    def check_pending_sub_to(self, jid: JID, to: str) -> ET.Element:
-        with closing(connection()) as con:
-            res = con.execute("SELECT * FROM pendingsub WHERE jid = ?", (jid,))
-            res = res.fetchone()
-        if res:
-            return res
+    # def check_pending_sub_to(self, jid: JID, to: str) -> ET.Element:
+    #     with DB.connection() as con:
+    #         res = con.execute("SELECT * FROM pendingsub WHERE jid = ?", (jid,))
+    #         res = res.fetchone()
+    #     if res:
+    #         return res
 
-    def store_pending_sub(self, to_: str, item: ET.Element) -> None:
-        with closing(connection()) as con:
-            con.execute("INSERT INTO pendingsub values (?, ?)", (to_, ET.tostring(item).decode()))
+    @staticmethod
+    def store_pending_sub(to_: str, item: ET.Element) -> None:
+        with DB.connection() as con:
+            query = insert(Model.PendingSubs).values({
+                "jid": to_,
+                "item":  ET.tostring(item).decode()
+            })
+            con.execute(query)
+            # con.execute("INSERT INTO pendingsub values (?, ?)", (to_, ET.tostring(item).decode()))
             con.commit()
 
     def update_item(self, item: ET.Element, id_: int):
-        with closing(connection()) as con:
-            con.execute("UPDATE roster SET rosterItem = ? WHERE id = ?",
-                        (ET.tostring(item).decode(), id_))
+        with DB.connection() as con:
+            query = update(Model.Roster).where(Model.Roster.c.id == id_).values({
+                "roster_item": ET.tostring(item).decode()
+            })
+            con.execute(query)
+            # con.execute("UPDATE roster SET rosterItem = ? WHERE id = ?",
+            #             (ET.tostring(item).decode(), id_))
             con.commit()
         self._update_roster()
 
     def _update_roster(self):
-        with closing(connection()) as con:
-            res = con.execute("SELECT id, jid, rosterItem FROM roster", ())
-            res = res.fetchall()
+        with DB.connection() as con:
+            query = select(Model.Roster.c.id, Model.Roster.c.jid, Model.Roster.c.roster_item)
+            res = con.execute(query).fetchall()
+            # res = con.execute("SELECT id, jid, rosterItem FROM roster", ())
+            # res = res.fetchall()
         self._roster_in_memory.clear()
         for id_, jid, item in res:
             if jid not in self._roster_in_memory:
@@ -79,7 +89,7 @@ class Roster(metaclass=Singleton):
             self._roster_in_memory[jid].append({"id": id_, "item": item})
 
     def roster_by_jid(self, jid: JID):
-        if jid.domain == host.get():
+        if jid.domain == metadata.HOST:
             return self._roster_in_memory.get(jid.user) or []
         return self._roster_in_memory.get(jid.bare()) or []
 
@@ -90,7 +100,7 @@ class Roster(metaclass=Singleton):
         return self._handlers[element.attrib.get("type")](jid, element)
 
     def handle_get(self, jid: JID, element: ET.Element):
-        if jid.domain == host.get():
+        if jid.domain == metadata.HOST:
             jid = jid.user
         else:
             jid = jid.bare()
@@ -107,7 +117,7 @@ class Roster(metaclass=Singleton):
 
     def handle_set(self, jid: JID, element: ET.Element):
         query = element.find("{jabber:iq:roster}query")
-        if jid.domain == host.get():
+        if jid.domain == metadata.HOST:
             jid = jid.user
         else:
             jid = jid.bare()
@@ -131,26 +141,46 @@ class Roster(metaclass=Singleton):
             if match_item:
                 match_item = match_item[0]
                 if new_item.attrib.get("remove") == "remove":
-                    with closing(connection()) as con:
-                        con.execute("DELETE FROM roster WHERE jid = ? AND rosterItem = ?",
-                                    (jid, ET.tostring(match_item.get("item")).decode()))
+                    with DB.connection() as con:
+                        query = delete(Model.Roster).where(
+                            Model.Roster.c.jid == jid
+                            and Model.Roster.c.roster_item == ET.tostring(match_item.get("item")).decode()
+                        )
+                        con.execute(query)
+                        # con.execute("DELETE FROM roster WHERE jid = ? AND rosterItem = ?",
+                        #             (jid, ET.tostring(match_item.get("item")).decode()))
                         con.commit()
                 else:
-                    with closing(connection()) as con:
-                        con.execute("UPDATE roster SET rosterItem = ? WHERE jid = ? AND rosterItem = ?",
-                                    (ET.tostring(new_item).decode(), jid, match_item.get("item")))
+                    with DB.connection() as con:
+                        query = update(Model.Roster).where(
+                            Model.Roster.c.jid == jid
+                            and Model.Roster.c.roster_item == match_item.get("item")
+                        ).values({"roster_item": ET.tostring(new_item).decode()})
+                        con.execute(query)
+                        # con.execute("UPDATE roster SET rosterItem = ? WHERE jid = ? AND rosterItem = ?",
+                        #             (ET.tostring(new_item).decode(), jid, match_item.get("item")))
                         con.commit()
             else:
                 if new_item.attrib.get("remove") != "remove":
-                    with closing(connection()) as con:
-                        con.execute("INSERT INTO roster(jid, rosterItem) VALUES (?, ?)",
-                                    (jid, ET.tostring(new_item).decode()))
+                    with DB.connection() as con:
+                        query = insert(Model.Roster).values({
+                            "jid": jid,
+                            "roster_item": ET.tostring(new_item).decode()
+                        })
+                        con.execute(query)
+                        # con.execute("INSERT INTO roster(jid, rosterItem) VALUES (?, ?)",
+                        #             (jid, ET.tostring(new_item).decode()))
                         con.commit()
 
         else:
-            with closing(connection()) as con:
-                con.execute("INSERT INTO roster(jid, rosterItem) VALUES (?, ?)",
-                            (jid, ET.tostring(new_item).decode()))
+            with DB.connection() as con:
+                query = insert(Model.Roster).values({
+                    "jid": jid,
+                    "roster_item": ET.tostring(new_item).decode()
+                })
+                con.execute(query)
+                # con.execute("INSERT INTO roster(jid, rosterItem) VALUES (?, ?)",
+                #             (jid, ET.tostring(new_item).decode()))
                 con.commit()
 
         self._update_roster()
