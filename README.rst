@@ -1,7 +1,3 @@
-.. raw:: html
-
-    <h1 style="text-align: center">PyJabber</h1>
-
 .. image:: https://raw.githubusercontent.com/DinoThor/PyJabber/refs/heads/master/logo.png
         :width: 300px
         :alt: Logo
