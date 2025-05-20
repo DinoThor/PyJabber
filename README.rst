@@ -1,7 +1,6 @@
-.. image:: https://raw.githubusercontent.com/DinoThor/PyJabber/refs/heads/master/logo.png
-        :width: 300px
-        :alt: Logo
-        :align: center
+========
+PyJabber
+========
 
 .. image:: https://img.shields.io/pypi/v/pyjabber.svg
         :target: https://pypi.org/project/pyjabber/
