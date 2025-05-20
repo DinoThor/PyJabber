@@ -38,6 +38,19 @@ def setup_database():
         "subscription": "subscribed",
         "affiliation": "publisher"
     })
+    query3 = insert(Model.PubsubItems).values([
+        {
+            "node": "TestNode",
+            "publisher": "demo",
+            "item_id": "123",
+            "payload": '<message from="juliet@example.com/balcony" id="ktx72v49" to="romeo@example.net" type="chat" xml:lang="en"><body>Art thou not Romeo, and a Montague?</body></message>'
+        }, {
+            "node": "TestNode",
+            "publisher": "demo",
+            "item_id": "124",
+            "payload": '<message from="juliet@example.com/balcony" id="ktx72v50" to="romeo@example.net" type="chat" xml:lang="en"><body>Neither, fair saint, if either thee dislike.</body></message>'
+        },
+    ])
     con = engine.connect()
     con.execute(query)
     con.execute(query2)
@@ -250,3 +263,19 @@ def test_delete_node_forbidden(pubsub):
     assert len(pubsub._nodes) == 2
     assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" id="items1" to="test@localhost" type="error"><error type="auth"><ns0:forbidden /></error></iq>'
 
+
+def test_retrieve_items_node(pubsub):
+    element = ET.fromstring(
+        "<iq type='get' from='demo@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><items node='TestNode'/></pubsub></iq>"
+    )
+    jid = JID("demo@localhost")
+    res = pubsub.retrieve_items_node(element, jid)
+    assert 1== 1
+
+
+def test_retrieve_items_node_forbidden(pubsub):
+    element = ET.fromstring(
+        "<iq type='get' from='fake@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><items node='TestNode'/></pubsub></iq>"
+    )
+    jid = JID("fake@localhost")
+    res = pubsub.retrieve_items_node(element, jid)

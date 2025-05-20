@@ -211,17 +211,17 @@ class PubSub(metaclass=Singleton):
         if node is None:
             return error_response(element, jid, ErrorType.NOT_ACCEPTABLE)
 
-        try:
-            target_node: str = [n for n in self._nodes if n[NodeAttrib.NODE.value] == node].pop()
-        except IndexError:
+        target_node = [n[NodeAttrib.NODE.value] for n in self._nodes if n[NodeAttrib.NODE.value] == node]
+        if not target_node:
             return error_response(element, jid, ErrorType.ITEM_NOT_FOUND)
 
-        is_owner = any(n[NodeAttrib.NODE.value] == target_node and n[NodeAttrib.OWNER.value] == jid.bare() for n in self._nodes)
+        target_node = target_node.pop()
+        is_owner = any(n[NodeAttrib.NODE.value] == target_node and n[NodeAttrib.OWNER.value] == jid.user for n in self._nodes)
 
         if not is_owner:
 
             subscribed = any(s[SubscribersAttrib.JID.value] == jid.user
-                                and s[SubscribersAttrib.NODE.value] == node
+                                and s[SubscribersAttrib.NODE.value] == target_node
                                 and s[SubscribersAttrib.SUBSCRIPTION.value] in [Affiliation.MEMBER, Affiliation.PUBLISHER]
                                 for s in self._subscribers
                              )
