@@ -1,26 +1,95 @@
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
 import pytest
+from sqlalchemy import create_engine, insert, delete, select, and_
 
-from pyjabber.plugins.xep_0060.xep_0060 import success_response
+from pyjabber.db.model import Model
+from pyjabber.plugins.xep_0060.xep_0060 import success_response, PubSub
 from pyjabber.stanzas.IQ import IQ
+from pyjabber.stream.JID import JID
+from pyjabber.utils import Singleton
 
-# @pytest.fixture
-# def pubsub():
-#     with patch('pyjabber.plugins.xep_0060.xep_0060.host') as mock_host, \
-#          patch('pyjabber.plugins.xep_0060.xep_0060.config_path') as mock_config_path, \
-#          patch('pyjabber.plugins.xep_0060.xep_0060.ConnectionManager') as mock_connection, \
-#          patch('pyjabber.plugins.xep_0060.xep_0060.update_memory_from_database') as mock_updater, \
 
+@pytest.fixture(scope='function')
+def setup_database():
+    engine = create_engine("sqlite:///:memory:")
+    Model.server_metadata.create_all(engine)
+    query = insert(Model.Pubsub).values([
+        {
+            "node": "TestNode",
+            "owner": "demo",
+            "name": "Sample",
+            "type": "leaf",
+            "max_items": 1024
+        }, {
+            "node": "TestNode2",
+            "owner": "test",
+            "name": "Sample",
+            "type": "leaf",
+            "max_items": 1024
+        }
+    ])
+    query2 = insert(Model.PubsubSubscribers).values([
+        {
+            "node": "TestNode",
+            "jid": "test",
+            "subid": "123456789",
+            "subscription": "subscribed",
+            "affiliation": "publisher"
+        }, {
+            "node": "TestNode",
+            "jid": "dump",
+            "subid": "123321123321",
+            "subscription": "pending",
+            "affiliation": "none"
+        }
+    ])
+    query3 = insert(Model.PubsubItems).values([
+        {
+            "node": "TestNode",
+            "publisher": "demo",
+            "item_id": "123",
+            "payload": '<message from="juliet@example.com/balcony" id="ktx72v49" to="romeo@example.net" type="chat" xml:lang="en"><body>Art thou not Romeo, and a Montague?</body></message>'
+        }, {
+            "node": "TestNode",
+            "publisher": "demo",
+            "item_id": "124",
+            "payload": '<message from="juliet@example.com/balcony" id="ktx72v50" to="romeo@example.net" type="chat" xml:lang="en"><body>Neither, fair saint, if either thee dislike.</body></message>'
+        },
+    ])
+    con = engine.connect()
+    con.execute(query)
+    con.execute(query2)
+    con.execute(query3)
+    con.commit()
+
+    yield engine
+
+    con.close()
+
+
+@pytest.fixture(scope='function')
+def pubsub(setup_database):
+    with patch('pyjabber.plugins.xep_0060.xep_0060.metadata') as mock_meta, \
+         patch('pyjabber.plugins.xep_0060.xep_0060.ConnectionManager') as mock_connection, \
+         patch('pyjabber.plugins.xep_0060.xep_0060.DB') as mock_db:
+        Singleton._instances = {}
+
+        engine = setup_database
+        mock_db.connection = lambda: engine.connect()
+        mock_meta.HOST = 'localhost'
+        mock_meta.ITEMS = [('pubsub', 'service', 'http://jabber.org/protocol/pubsub')]
+        pubsub = PubSub()
+        yield pubsub, engine
 
 
 def test_success_response():
     payload = ET.Element('test', attrib={'id': str(uuid4())})
 
-    with patch('pyjabber.plugins.xep_0060.xep_0060.host') as mock_host:
-        mock_host.get.return_value = 'pubsub.demo'
+    with patch('pyjabber.plugins.xep_0060.xep_0060.metadata') as mock_meta:
+        mock_meta.HOST = 'pubsub.demo'
         iq_res, pubsub_res = success_response(payload)
         iq_res_own, pubsub_res_own = success_response(payload, True)
 
@@ -34,3 +103,326 @@ def test_success_response():
 
     assert pubsub_res.tag == '{http://jabber.org/protocol/pubsub}pubsub'
     assert pubsub_res_own.tag == '{http://jabber.org/protocol/pubsub#owner}pubsub'
+
+
+def test_update_memory_from_database(pubsub):
+    pubsub, _ = pubsub
+    pubsub._nodes = []
+    pubsub._subscribers = []
+    pubsub.update_memory_from_database()
+
+    assert len(pubsub._nodes) > 0
+    assert len(pubsub._subscribers) > 0
+
+    assert pubsub._nodes == [
+        ('TestNode', 'demo', 'Sample', 'leaf', 1024), ('TestNode2', 'test', 'Sample', 'leaf', 1024)
+    ]
+    assert pubsub._subscribers == [
+        ('TestNode', 'test', '123456789', 'subscribed', 'publisher')
+    ]
+
+
+def test_feed(pubsub):
+    pubsub, _ = pubsub
+    mock_operation = MagicMock()
+    pubsub._operations = {
+        'create': mock_operation
+    }
+
+    element = ET.fromstring(
+        "<iq type='set' from='test@localhost' to='pubsub.localhost' id='create1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><create node='testNode'/></pubsub></iq>"
+    )
+    jid = JID("test@localhost")
+    with patch('pyjabber.plugins.xep_0060.xep_0060.StanzaError') as mock_se:
+        pubsub.feed(jid, element)
+        mock_operation.assert_called_with(element, jid)
+        mock_se.invalid_xml.assert_not_called()
+
+
+def test_feed_invalid(pubsub):
+    pubsub, _ = pubsub
+    mock_operation = MagicMock()
+    pubsub._operations = {
+        'create': mock_operation
+    }
+
+    element = ET.fromstring(
+        "<iq type='set' from='test@localhost' to='pubsub.localhost' id='create1'><subpub xmlns='http://jabber.org/protocol/pubsub'><create node='testNode'/></subpub></iq>"
+    )
+    jid = JID("test@localhost")
+    with patch('pyjabber.plugins.xep_0060.xep_0060.StanzaError') as mock_se:
+        pubsub.feed(jid, element)
+        mock_operation.assert_not_called()
+        mock_se.invalid_xml.assert_called()
+
+
+def test_feed_exception(pubsub):
+    pubsub, _ = pubsub
+    mock_operation = MagicMock()
+    pubsub._operations = {
+        'create': mock_operation
+    }
+
+    element = ET.fromstring(
+        "<iq type='set' from='test@localhost' to='pubsub.localhost' id='create1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><plunge node='testNode'/></pubsub></iq>"
+    )
+    jid = JID("test@localhost")
+    with patch('pyjabber.plugins.xep_0060.xep_0060.StanzaError') as mock_se, \
+         patch('pyjabber.plugins.xep_0060.xep_0060.logger') as mock_log:
+        pubsub.feed(jid, element)
+        mock_log.error.assert_called()
+        mock_operation.assert_not_called()
+        mock_se.feature_not_implemented.assert_called()
+
+
+def test_discovery_items_root(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='get' from='test@localhost' to='pubsub.localhost' id='items1'><query xmlns='http://jabber.org/protocol/disco#items'/></iq>"
+    )
+    res = pubsub.discover_items(element)
+    assert res == [('TestNode', 'Sample', 'leaf'), ('TestNode2', 'Sample', 'leaf')]
+
+
+def test_discovery_items(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='get' from='test@localhost' to='pubsub.localhost' id='items1'><query xmlns='http://jabber.org/protocol/disco#items' node='TestNode'/></iq>"
+    )
+    res = pubsub.discover_items(element)
+    assert res == [('TestNode', 'Sample', 'leaf')]
+
+
+def test_discover_info(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='get' from='test@localhost' to='pubsub.localhost' id='items1'><query xmlns='http://jabber.org/protocol/disco#info' node='TestNode'/></iq>"
+    )
+    res = pubsub.discover_info(element)
+    assert res == ("Sample", "leaf")
+
+
+def test_create_node(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='get' from='test@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><create node='TestNode3'/></pubsub></iq>"
+    )
+    jid = JID("test@localhost")
+    res = pubsub.create_node(element, jid)
+
+    assert ('TestNode3', 'test', None, 'leaf', 1024) in pubsub._nodes
+    assert res == b'<iq xmlns:ns0="http://jabber.org/protocol/pubsub" id="items1" from="localhost" type="result"><ns0:pubsub><create node="TestNode3" /></ns0:pubsub></iq>'
+
+
+def test_create_node_no_node(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='get' from='test@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><create/></pubsub></iq>"
+    )
+    jid = JID("test@localhost")
+    res = pubsub.create_node(element, jid)
+
+    assert ('TestNode3', 'test', None, 'leaf', 1024) not in pubsub._nodes
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" xmlns:ns1="http://jabber.org/protocol/pubsub#errors" id="items1" to="test@localhost" type="error"><error type="auth"><ns0:not-acceptable /><ns1:nodeid-required /></error></iq>'
+
+
+def test_create_node_conflict(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='get' from='test@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><create node='TestNode'/></pubsub></iq>"
+    )
+    jid = JID("test@localhost")
+    res = pubsub.create_node(element, jid)
+
+    assert len(pubsub._nodes) == 2
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" id="items1" to="test@localhost" type="error"><error type="auth"><ns0:conflict /></error></iq>'
+
+
+def test_delete_node(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='get' from='demo@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><delete node='TestNode'/></pubsub></iq>"
+    )
+    jid = JID("demo@localhost")
+    res = pubsub.delete_node(element, jid)
+
+    assert len(pubsub._nodes) == 1
+    assert ('TestNode', 'test', None, 'leaf', 1024) not in pubsub._nodes
+    assert res == b'<iq xmlns:ns0="http://jabber.org/protocol/pubsub" id="items1" from="localhost" type="result"><ns0:pubsub /></iq>'
+
+
+def test_delete_node_no_node(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='get' from='demo@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><delete/></pubsub></iq>"
+    )
+    jid = JID("demo@localhost")
+    res = pubsub.delete_node(element, jid)
+
+    assert len(pubsub._nodes) == 2
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" xmlns:ns1="http://jabber.org/protocol/pubsub#errors" id="items1" to="demo@localhost" type="error"><error type="auth"><ns0:not-acceptable /><ns1:nodeid-required /></error></iq>'
+
+
+def test_delete_node_not_found(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='get' from='demo@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><delete node='TestNode3'/></pubsub></iq>"
+    )
+    jid = JID("demo@localhost")
+    res = pubsub.delete_node(element, jid)
+
+    assert len(pubsub._nodes) == 2
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" id="items1" to="demo@localhost" type="error"><error type="cancel"><ns0:item-not-found /></error></iq>'
+
+
+def test_delete_node_forbidden(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='get' from='test@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><delete node='TestNode'/></pubsub></iq>"
+    )
+    jid = JID("test@localhost")
+    res = pubsub.delete_node(element, jid)
+
+    assert len(pubsub._nodes) == 2
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" id="items1" to="test@localhost" type="error"><error type="auth"><ns0:forbidden /></error></iq>'
+
+
+def test_retrieve_items_node(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='get' from='demo@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><items node='TestNode'/></pubsub></iq>"
+    )
+    jid = JID("demo@localhost")
+    res = pubsub.retrieve_items_node(element, jid)
+    res = ET.fromstring(res)
+    try:
+        first, second = res[0][0][0], res[0][1][0]
+    except IndexError:
+        pytest.fail()
+
+    assert first[0].text == 'Art thou not Romeo, and a Montague?'
+    assert second[0].text == 'Neither, fair saint, if either thee dislike.'
+
+
+def test_retrieve_items_node_forbidden(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='get' from='fake@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><items node='TestNode'/></pubsub></iq>"
+    )
+    jid = JID("fake@localhost")
+    res = pubsub.retrieve_items_node(element, jid)
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" id="items1" to="fake@localhost" type="error"><error type="auth"><ns0:forbidden /></error></iq>'
+
+
+def test_retrieve_items_node_not_found(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='get' from='fake@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><items node='NodeTest'/></pubsub></iq>"
+    )
+    jid = JID("fake@localhost")
+    res = pubsub.retrieve_items_node(element, jid)
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" id="items1" to="fake@localhost" type="error"><error type="cancel"><ns0:item-not-found /></error></iq>'
+
+
+def test_retrieve_items_node_no_node(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='get' from='fake@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><items/></pubsub></iq>"
+    )
+    jid = JID("fake@localhost")
+    res = pubsub.retrieve_items_node(element, jid)
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" xmlns:ns1="http://jabber.org/protocol/pubsub#errors" id="items1" to="fake@localhost" type="error"><error type="auth"><ns0:not-acceptable /><ns1:nodeid-required /></error></iq>'
+
+
+def test_subscribe(pubsub):
+    pubsub, engine = pubsub
+    with patch('pyjabber.plugins.xep_0060.xep_0060.uuid4') as mock_uuid:
+        mock_uuid.return_value = '987654321'
+        element = ET.fromstring(
+            "<iq type='set' from='fake@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><subscribe node='TestNode' jid='fake@localhost'/></pubsub></iq>"
+        )
+        jid = JID("fake@localhost")
+        res = pubsub.subscribe(element, jid)
+
+        assert any(s == ('TestNode', 'fake', '987654321', 'subscribed', 'publisher') for s in pubsub._subscribers)
+        with engine.connect() as con:
+            query = select(Model.PubsubSubscribers).where(
+                and_(
+                    Model.PubsubSubscribers.c.node == 'TestNode',
+                    Model.PubsubSubscribers.c.jid == 'fake'
+                )
+            )
+            res_query = con.execute(query).fetchall()
+        assert len(res_query) == 1
+        res_query = res_query.pop()
+        assert all(prop in res_query for prop in ['TestNode', 'fake', '987654321', 'subscribed', 'publisher'])
+        assert res == b'<iq xmlns:ns0="http://jabber.org/protocol/pubsub" id="sub" from="localhost" type="result"><ns0:pubsub><subscription node="TestNode" jid="fake@localhost" subid="987654321" subscription="subscribed" /></ns0:pubsub></iq>'
+
+
+def test_subscribe_no_node(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='fake@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><subscribe jid='fake@localhost'/></pubsub></iq>"
+    )
+    jid = JID("fake@localhost")
+    res = pubsub.subscribe(element, jid)
+
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" xmlns:ns1="http://jabber.org/protocol/pubsub#errors" id="sub" to="fake@localhost" type="error"><error type="auth"><ns0:not-acceptable /><ns1:nodeid-required /></error></iq>'
+
+
+def test_subscribe_no_jid(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='fake@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><subscribe node='TestNode'/></pubsub></iq>"
+    )
+    jid = JID("fake@localhost")
+    res = pubsub.subscribe(element, jid)
+
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" xmlns:ns1="http://jabber.org/protocol/pubsub#errors" id="sub" to="fake@localhost" type="error"><error type="modify"><ns0:bad-request /><ns1:invalid-jid /></error></iq>'
+
+
+def test_subscribe_jid_inconsistent(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='fake@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><subscribe node='TestNode' jid='unfake@localhost'/></pubsub></iq>"
+    )
+    jid = JID("fake@localhost")
+    res = pubsub.subscribe(element, jid)
+
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" xmlns:ns1="http://jabber.org/protocol/pubsub#errors" id="sub" to="fake@localhost" type="error"><error type="modify"><ns0:bad-request /><ns1:invalid-jid /></error></iq>'
+
+
+def test_subscribe_not_found(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='fake@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><subscribe node='NodeTest' jid='fake@localhost'/></pubsub></iq>"
+    )
+    jid = JID("fake@localhost")
+    res = pubsub.subscribe(element, jid)
+
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" id="sub" to="fake@localhost" type="error"><error type="cancel"><ns0:item-not-found /></error></iq>'
+
+
+def test_subscribe_subscribed_already(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='test@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><subscribe node='TestNode' jid='test@localhost'/></pubsub></iq>"
+    )
+    jid = JID("test@localhost")
+    res = pubsub.subscribe(element, jid)
+
+    assert res == b'<iq xmlns:ns0="http://jabber.org/protocol/pubsub" id="sub" from="localhost" type="result"><ns0:pubsub><subscription node="TestNode" jid="test@localhost" subid="123456789" subscription="subscribed" /></ns0:pubsub></iq>'
+
+
+def test_subscribe_subscribed_pending(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='dump@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><subscribe node='TestNode' jid='dump@localhost'/></pubsub></iq>"
+    )
+    jid = JID("dump@localhost")
+    res = pubsub.subscribe(element, jid)
+
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" xmlns:ns1="http://jabber.org/protocol/pubsub#errors" id="sub" to="dump@localhost" type="error"><error type="auth"><ns0:not-authorized /><ns1:pending-subscription /></error></iq>'
+
+
+
