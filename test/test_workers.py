@@ -1,4 +1,5 @@
 import asyncio
+import os.path
 import ssl
 from ssl import SSLContext
 from unittest.mock import patch, MagicMock, AsyncMock
@@ -12,12 +13,10 @@ from pyjabber.workers import tls_worker, queue_worker
 
 @pytest.mark.asyncio
 async def test_tls_worker():
-    with patch('pyjabber.workers.ConnectionManager') as mock_con, \
-         patch('pyjabber.workers.metadata') as mock_metadata, \
+    with patch('pyjabber.workers.metadata') as mock_metadata, \
          patch('pyjabber.workers.asyncio.get_running_loop') as mock_get_loop, \
          patch('pyjabber.workers.ssl') as mock_ssl, \
-         patch('pyjabber.workers.os') as mock_os:
-
+         patch('pyjabber.workers.CertGenerator') as mock_cert:
 
         mock_queue = MagicMock()
         mock_transport = MagicMock()
@@ -34,9 +33,9 @@ async def test_tls_worker():
         mock_queue.get = AsyncMock()
         mock_queue.get.side_effect = [(mock_transport, mock_protocol, mock_parser), asyncio.CancelledError()]
 
-        mock_metadata.tls_queue.get.return_value = mock_queue
-        mock_metadata.cert_path.get.return_value = ""
-        mock_metadata.host.get.return_value = "localhost"
+        mock_metadata.TLS_QUEUE = mock_queue
+        mock_metadata.CERT_PATH = os.path.dirname(os.path.abspath(__file__))
+        mock_metadata.HOST = "localhost"
 
         mock_new_transport = MagicMock()
         mock_loop.start_tls = AsyncMock(return_value=mock_new_transport)
@@ -65,7 +64,8 @@ async def test_tls_worker_connection_error():
          patch('pyjabber.workers.metadata') as mock_metadata, \
          patch('pyjabber.workers.asyncio.get_running_loop') as mock_get_loop, \
          patch('pyjabber.workers.ssl') as mock_ssl, \
-         patch('pyjabber.workers.logger') as mock_logger:
+         patch('pyjabber.workers.logger') as mock_logger, \
+         patch('pyjabber.workers.CertGenerator') as mock_cert:
 
         mock_queue = MagicMock()
         mock_transport = MagicMock()
@@ -84,9 +84,9 @@ async def test_tls_worker_connection_error():
         mock_queue.get = AsyncMock()
         mock_queue.get.side_effect = [(mock_transport, mock_protocol, mock_parser), asyncio.CancelledError()]
 
-        mock_metadata.tls_queue.get.return_value = mock_queue
-        mock_metadata.cert_path.get.return_value = ""
-        mock_metadata.host.get.return_value = "localhost"
+        mock_metadata.TLS_QUEUE = mock_queue
+        mock_metadata.CERT_PATJ = ""
+        mock_metadata.HOST = "localhost"
 
         mock_loop.start_tls = AsyncMock()
         mock_loop.start_tls.side_effect = ConnectionResetError()

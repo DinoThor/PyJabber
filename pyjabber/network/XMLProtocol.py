@@ -57,7 +57,7 @@ class XMLProtocol(asyncio.Protocol):
         self._connection_manager = ConnectionManager()
         self._presence_manager = Presence()
         self._cert_path = cert_path
-        self._tls_queue = metadata.tls_queue.get()
+        self._tls_queue = metadata.TLS_QUEUE
 
         self._transport = None
         self._peer = None

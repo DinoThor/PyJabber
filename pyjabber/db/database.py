@@ -1,78 +1,84 @@
 import os
-import sqlite3
-from contextlib import closing
-from sqlite3 import Connection
-from typing import Optional
 
-from pyjabber import __version__
+import sqlalchemy
+from alembic import command
+from alembic.config import Config
+from alembic.script import ScriptDirectory
+from sqlalchemy import create_engine, MetaData, Engine, text
+
 from pyjabber import metadata
 from loguru import logger
 
-
-def connection() -> sqlite3.Connection:
-    """
-    Returns an already crafted connection with the database.
-    It takes the parameters from the server class instance (i.e., DB path | DB in memory)
-    """
-    if metadata.database_in_memory.get() is not None:
-        return sqlite3.connect("file::memory:?cache=shared", uri=True)
-    return sqlite3.connect(metadata.database_path.get())
+from pyjabber.db.model import Model
 
 
-def setup_database(
-    sql_init_script: str,
-    database_in_memory: bool = False,
-    database_path: str = None,
-    database_purge: bool = False
-):
-    if database_in_memory:
-        logger.info("Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!")
-        db_in_memory_con = sqlite3.connect("file::memory:?cache=shared", uri=True)
-        if database_purge:
-            reset_memory_db(db_in_memory_con)
-        with open(sql_init_script, "r") as script_template:
-            script = script_template.read()
-            script = script.replace("{{version}}", f"'{__version__}'")
-            db_in_memory_con.cursor().executescript(script)
-            db_in_memory_con.commit()
-        metadata.database_in_memory.set(db_in_memory_con)
+class DB:
+    _engine: sqlalchemy.Engine = None
 
-    elif os.path.isfile(database_path) is False:
-        logger.info("No database found. Initializing one...")
-        if database_purge:
-            logger.info("Ignoring purge database flag. No DB to purge")
-        with closing(connection()) as con:
-            with open(sql_init_script, "r") as script_template:
-                script = script_template.read()
-                script = script.replace("{{version}}", f"'{__version__}'")
-                con.cursor().executescript(script)
-            con.commit()
-    else:
-        if database_purge:
-            logger.info("Resetting the database to default state...")
-            os.remove(database_path)
-            with closing(connection()) as con:
-                with open(sql_init_script, "r") as script_template:
-                    script = script_template.read()
-                    script = script.replace("{{version}}", f"'{__version__}'")
-                    con.cursor().executescript(script)
-                con.commit()
+    @staticmethod
+    def connection() -> sqlalchemy.Connection:  #pragma: no cover
+        """
+        Returns an already crafted connection with the database.
+        It takes the parameters from the server class instance (i.e., DB path | DB in memory)
+        """
+        return DB._engine.connect()
 
+    @staticmethod
+    def close_engine():
+        DB._engine.dispose()
 
-def migration(version: Optional[str]): # pragma: no cover
-    if not version: # pragma: no cover
-        return # pragma: no cover
+    @staticmethod
+    def setup_database() -> Engine:
+        if metadata.DATABASE_IN_MEMORY:
+            logger.info("Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!")
+            DB._engine = create_engine("sqlite:///:memory:")
+            DB.init_metadata(DB._engine)
 
-    # DB migration feature was added in v0.2.6
-    # Only changes in the db after v0.2.6 will be taken into account for migration
+        elif os.path.isfile(metadata.DATABASE_PATH):
+            DB._engine = create_engine(f"sqlite:///{metadata.DATABASE_PATH}")
+            if metadata.DATABASE_PURGE:
+                purge_md = MetaData()
+                purge_md.reflect(bind=DB._engine)
+                purge_md.drop_all(bind=DB._engine)
+                del purge_md
+                DB.init_metadata(DB._engine)
 
+        else:
+            logger.info("No database found. Initializing one...")
+            DB._engine = create_engine(f"sqlite:///{metadata.DATABASE_PATH}")
+            DB.init_metadata(DB._engine)
 
-def reset_memory_db(conn: Connection):
-    cursor = conn.cursor()
-    cursor.execute("PRAGMA foreign_keys = OFF;")
-    cursor.execute("BEGIN TRANSACTION;")
-    tables = cursor.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
-    for table_name, in tables:
-        cursor.execute(f'DROP TABLE IF EXISTS "{table_name}";')
-    conn.commit()
+        return DB._engine
 
+    @staticmethod
+    def init_metadata(engine: Engine):
+        Model.server_metadata.create_all(engine)
+
+    # @staticmethod
+    # def needs_upgrade(engine):
+    #     with engine.connect() as conn:
+    #         result = conn.execute(text("SELECT version_num FROM alembic_version"))
+    #         current = result.scalar()
+    #     script = ScriptDirectory(os.path.join(metadata.ROOT_PATH, 'alembic'))
+    #     heads = script.get_heads()
+    #     return current not in heads
+    #
+    # @staticmethod
+    # def run_migrations_if_needed():
+    #     engine = create_engine(metadata.DATABASE_PATH)
+    #     cfg = Config(os.path.join(metadata.ROOT_PATH, '..', 'alembic.ini'))
+    #     if DB.needs_upgrade(engine):
+    #         from alembic import command
+    #         command.upgrade(cfg, 'head')
+
+    @staticmethod
+    def run_db_migrations() -> None:
+        cfg = Config()
+        cfg.set_main_option("script_location", os.path.join(metadata.ROOT_PATH, '..', 'alembic'))
+        cfg.set_main_option("sqlalchemy.url", DB.get_database_url_sqlite())
+        command.upgrade(cfg, "head")
+
+    @staticmethod
+    def get_database_url_sqlite() -> str:
+        path = metadata.DATABASE_PATH
+        return f"sqlite:///{path}"
