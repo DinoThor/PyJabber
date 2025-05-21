@@ -118,7 +118,7 @@ def test_update_memory_from_database(pubsub):
         ('TestNode', 'demo', 'Sample', 'leaf', 1024), ('TestNode2', 'test', 'Sample', 'leaf', 1024)
     ]
     assert pubsub._subscribers == [
-        ('TestNode', 'test', '123456789', 'subscribed', 'publisher')
+        ('TestNode', 'test', '123456789', 'subscribed', 'publisher'), ("TestNode", "dump", "123321123321", "pending", "none")
     ]
 
 
