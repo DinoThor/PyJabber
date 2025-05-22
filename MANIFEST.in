@@ -15,7 +15,7 @@ include alembic/env.py
 include alembic.ini
 recursive-include alembic/versions *
 
-recursive-include tests *
+recursive-exclude test *
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]
 
