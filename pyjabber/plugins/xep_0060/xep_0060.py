@@ -211,11 +211,11 @@ class PubSub(metaclass=Singleton):
         if node is None:
             return error_response(element, jid, ErrorType.NOT_ACCEPTABLE)
 
-        target_node = [n[NodeAttrib.NODE.value] for n in self._nodes if n[NodeAttrib.NODE.value] == node]
-        if not target_node:
+        match_node = [n[NodeAttrib.NODE.value] for n in self._nodes if n[NodeAttrib.NODE.value] == node]
+        if not match_node:
             return error_response(element, jid, ErrorType.ITEM_NOT_FOUND)
 
-        target_node = target_node.pop()
+        target_node: str = match_node.pop()
         is_owner = any(n[NodeAttrib.NODE.value] == target_node and n[NodeAttrib.OWNER.value] == jid.user for n in self._nodes)
 
         if not is_owner:
@@ -273,7 +273,7 @@ class PubSub(metaclass=Singleton):
             if s[SubscribersAttrib.JID.value] == jid_request.user and s[SubscribersAttrib.NODE.value] == node
         ]
         if len(current_state) >= 1:
-            current_state = current_state[0]
+            current_state = current_state.pop()
             if (current_state[SubscribersAttrib.SUBSCRIPTION.value]
                in [Subscription.SUBSCRIBED.value, Subscription.UNCONFIGURED.value]):
 
@@ -308,8 +308,6 @@ class PubSub(metaclass=Singleton):
             query = insert(Model.PubsubSubscribers).values(item)
             con.execute(query)
             con.commit()
-            # con.execute("INSERT INTO pubsubSubscribers VALUES (?,?,?,?,?)", item)
-            # con.commit()
 
         self.update_memory_from_database()
 
