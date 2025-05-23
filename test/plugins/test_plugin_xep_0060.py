@@ -130,7 +130,10 @@ def test_update_memory_from_database(pubsub):
         ('TestNode', 'demo', 'Sample', 'leaf', 1024), ('TestNode2', 'test', 'Sample', 'leaf', 1024)
     ]
     assert pubsub._subscribers == [
-        ('TestNode', 'test', '123456789', 'subscribed', 'publisher'), ("TestNode", "dump", "123321123321", "pending", "none")
+        ('TestNode', 'test', '123456789', 'subscribed', 'publisher'),
+        ("TestNode", "dump", "123321123321", "pending", "none"),
+        ('TestNode', 'unsub', '123321', 'pending', 'none'),
+        ("TestNode", "unsub", "123322", "pending", "none")
     ]
 
 
@@ -545,9 +548,10 @@ def test_unsubscribe_with_subid(pubsub):
 def test_retrieve_subscriptions(pubsub):
     pubsub, _ = pubsub
     element = ET.fromstring(
-        "<iq type='get' from='test@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/potocol/pubsub'><subscriptions node='TestNode'/></pubsub></iq>")
+        "<iq type='get' from='test@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><subscriptions node='TestNode'/></pubsub></iq>")
     jid = JID("test@localhost")
 
     res = pubsub.retrieve_subscriptions(element, jid)
-    assert res == b'<iq xmlns:ns0="http://jabber.org/protocol/pubsub" id="sub" from="localhost" type="result"><ns0:pubsub><subscription node="TestNode" jid="test@localhost" subscription="none" /></ns0:pubsub></iq>'
+    assert res == b'<iq xmlns:ns0="http://jabber.org/protocol/pubsub" id="sub" from="localhost" type="result"><ns0:pubsub><ns0:subscriptions><ns0:subscription node="TestNode" jid="test@localhost" subscription="subscribed" subid="123456789" /></ns0:subscriptions></ns0:pubsub></iq>'
+
 
