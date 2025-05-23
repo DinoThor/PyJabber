@@ -555,3 +555,186 @@ def test_retrieve_subscriptions(pubsub):
     assert res == b'<iq xmlns:ns0="http://jabber.org/protocol/pubsub" id="sub" from="localhost" type="result"><ns0:pubsub><ns0:subscriptions><ns0:subscription node="TestNode" jid="test@localhost" subscription="subscribed" subid="123456789" /></ns0:subscriptions></ns0:pubsub></iq>'
 
 
+def test_retrieve_subscriptions_forbidden(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='get' from='mark@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><subscriptions node='TestNode'/></pubsub></iq>")
+    jid = JID("test@localhost")
+
+    res = pubsub.retrieve_subscriptions(element, jid)
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" id="sub" to="test@localhost" type="error"><error type="auth"><ns0:forbidden /></error></iq>'
+
+
+def test_retrieve_subscriptions_all_nodes(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='get' from='test@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><subscriptions/></pubsub></iq>")
+    jid = JID("test@localhost")
+
+    res = pubsub.retrieve_subscriptions(element, jid)
+    res_et = ET.fromstring(res)
+    subs_et_atr = res_et[0][0][0].attrib
+    assert subs_et_atr == {
+        'node': 'TestNode',
+        'jid': 'test@localhost',
+        'subscription': 'subscribed',
+        'subid': '123456789'
+    }
+    assert len(res_et[0][0]) == 1
+
+
+def test_purge(pubsub):
+    pubsub, engine = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='demo@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub#owner'><purge node='TestNode'/></pubsub></iq>")
+    jid = JID("demo@localhost")
+
+    with engine.connect() as con:
+        query = select(Model.PubsubItems)
+        res_query = con.execute(query).fetchall()
+    assert len(res_query) == 2
+
+    res = pubsub.purge(element, jid)
+    with engine.connect() as con:
+        query = select(Model.PubsubItems)
+        res_query = con.execute(query).fetchall()
+    assert len(res_query) == 0
+    assert res == b'<iq xmlns:ns0="http://jabber.org/protocol/pubsub#owner" id="sub" from="localhost" type="result"><ns0:pubsub /></iq>'
+
+
+def test_purge_not_found(pubsub):
+    pubsub, engine = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='demo@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub#owner'><purge node='TestNode9'/></pubsub></iq>")
+    jid = JID("demo@localhost")
+
+    res = pubsub.purge(element, jid)
+
+    with engine.connect() as con:
+        query = select(Model.PubsubItems)
+        assert len(con.execute(query).fetchall()) > 0
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" id="sub" to="demo@localhost" type="error"><error type="cancel"><ns0:item-not-found /></error></iq>'
+
+
+def test_purge_not_forbidden(pubsub):
+    pubsub, engine = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='test@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub#owner'><purge node='TestNode'/></pubsub></iq>")
+    jid = JID("test@localhost")
+
+    res = pubsub.purge(element, jid)
+
+    with engine.connect() as con:
+        query = select(Model.PubsubItems)
+        assert len(con.execute(query).fetchall()) > 0
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" id="sub" to="test@localhost" type="error"><error type="auth"><ns0:forbidden /></error></iq>'
+
+
+def test_retract(pubsub):
+    pubsub, engine = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='demo@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><retract node='TestNode'/><item id='123'/></pubsub></iq>")
+    jid = JID("demo@localhost")
+    query = select(Model.PubsubItems).where(
+        and_(
+            Model.PubsubItems.c.item_id == '123',
+            Model.PubsubItems.c.node == "TestNode"
+        )
+    )
+    with engine.connect() as con:
+        assert len(con.execute(query).fetchall()) == 1
+
+    res = pubsub.retract(element, jid)
+
+    with engine.connect() as con:
+        assert len(con.execute(query).fetchall()) == 0
+    assert res == b'<iq id="sub" from="localhost" type="result" />'
+
+
+def test_retract_no_node(pubsub):
+    pubsub, engine = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='demo@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><retract/><item id='123'/></pubsub></iq>")
+    jid = JID("demo@localhost")
+    query = select(Model.PubsubItems).where(
+        and_(
+            Model.PubsubItems.c.item_id == '123',
+            Model.PubsubItems.c.node == "TestNode"
+        )
+    )
+    with engine.connect() as con:
+        assert len(con.execute(query).fetchall()) == 1
+
+    res = pubsub.retract(element, jid)
+
+    with engine.connect() as con:
+        assert len(con.execute(query).fetchall()) == 1
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" xmlns:ns1="http://jabber.org/protocol/pubsub#errors" id="sub" to="demo@localhost" type="error"><error type="modify"><ns0:bad-request /><ns1:nodeid-required /></error></iq>'
+
+
+def test_retract_no_item(pubsub):
+    pubsub, engine = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='demo@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><retract node='TestNode'/></pubsub></iq>")
+    jid = JID("demo@localhost")
+    query = select(Model.PubsubItems).where(
+        and_(
+            Model.PubsubItems.c.item_id == '123',
+            Model.PubsubItems.c.node == "TestNode"
+        )
+    )
+    with engine.connect() as con:
+        assert len(con.execute(query).fetchall()) == 1
+
+    res = pubsub.retract(element, jid)
+
+    with engine.connect() as con:
+        assert len(con.execute(query).fetchall()) == 1
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" xmlns:ns1="http://jabber.org/protocol/pubsub#errors" id="sub" to="demo@localhost" type="error"><error type="modify"><ns0:bad-request /><ns1:item-required /></error></iq>'
+
+
+def test_retract_not_found(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='demo@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><retract node='TestNode12'/><item id='123'/></pubsub></iq>")
+    jid = JID("demo@localhost")
+
+    res = pubsub.retract(element, jid)
+
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" id="sub" to="demo@localhost" type="error"><error type="cancel"><ns0:item-not-found /></error></iq>'
+
+
+def test_retract_forbidden(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='lac@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><retract node='TestNode'/><item id='123'/></pubsub></iq>")
+    jid = JID("lac@localhost")
+
+    res = pubsub.retract(element, jid)
+
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" id="sub" to="lac@localhost" type="error"><error type="auth"><ns0:forbidden /></error></iq>'
+
+
+def test_retract_publisher(pubsub):
+    pubsub, engine = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='test@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><retract node='TestNode'/><item id='123'/></pubsub></iq>")
+    jid = JID("test@localhost")
+    query = select(Model.PubsubItems).where(
+        and_(
+            Model.PubsubItems.c.item_id == '123',
+            Model.PubsubItems.c.node == "TestNode"
+        )
+    )
+    with engine.connect() as con:
+        assert len(con.execute(query).fetchall()) == 1
+
+    res = pubsub.retract(element, jid)
+
+    with engine.connect() as con:
+        assert len(con.execute(query).fetchall()) == 0
+
+    assert res == b'<iq id="sub" from="localhost" type="result" />'
+
+
+

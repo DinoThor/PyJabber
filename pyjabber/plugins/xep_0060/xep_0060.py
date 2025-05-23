@@ -414,8 +414,10 @@ class PubSub(metaclass=Singleton):
                 Model.PubsubSubscribers.c.subscription,
                 Model.PubsubSubscribers.c.subid
             ).where(
-                Model.PubsubSubscribers.c.jid == str(jid.user)
-                and Model.PubsubSubscribers.c.node == target_node
+                and_(
+                    Model.PubsubSubscribers.c.jid == str(jid.user),
+                    Model.PubsubSubscribers.c.node == target_node
+                )
             )
         else:
             query = select(
@@ -438,7 +440,7 @@ class PubSub(metaclass=Singleton):
 
         return ET.tostring(iq_res)
 
-    def retrieve_affiliations(self, element: ET.Element, jid: str):
+    def retrieve_affiliations(self, element: ET.Element, jid: str): #pragma: no cover
         pass
 
     def purge(self, element: ET.Element, jid: JID):
@@ -446,33 +448,34 @@ class PubSub(metaclass=Singleton):
         purge = pubsub.find('{http://jabber.org/protocol/pubsub#owner}purge')
         node = purge.attrib.get('node')
 
+        if node is None:
+            return error_response(element, jid, ErrorType.NODEID_REQUIRED)
+
         target_node = [n for n in self._nodes if n[NodeAttrib.NODE.value] == node]
         if len(target_node) == 0:
             return error_response(element, jid, ErrorType.ITEM_NOT_FOUND)
 
-        target_node = target_node[0]
+        target_node = target_node.pop()
         if target_node[NodeAttrib.OWNER.value] != jid.user:
             return error_response(element, jid, ErrorType.FORBIDDEN)
 
         with DB.connection() as con:
             query = delete(Model.PubsubItems).where(Model.PubsubItems.c.node == node)
-            # res = con.execute("DELETE FROM pubsubItems WHERE node = ?", (node,))
             con.execute(query)
             con.commit()
 
         iq_res, _ = success_response(element, True)
-        return iq_res
+        return ET.tostring(iq_res)
 
     def retract(self, element: ET.Element, jid: JID):
         pubsub = element.find('{http://jabber.org/protocol/pubsub}pubsub')
         retract = pubsub.find('{http://jabber.org/protocol/pubsub}retract')
         node = retract.attrib.get('node')
+        item = pubsub.find('{http://jabber.org/protocol/pubsub}item')
+        item_id = item.attrib.get('id') if item is not None else None
 
         if node is None:
             return error_response(element, jid, ErrorType.NODEID_REQUIRED)
-
-        item = pubsub.find('{http://jabber.org/protocol/pubsub}item')
-        item_id = item.attrib.get('id')
 
         if item is None or item_id is None:
             return error_response(element, jid, ErrorType.ITEM_REQUIRED)
@@ -480,24 +483,37 @@ class PubSub(metaclass=Singleton):
         target_node = [n for n in self._nodes if n[NodeAttrib.NODE.value] == node]
         if len(target_node) == 0:
             return error_response(element, jid, ErrorType.ITEM_NOT_FOUND)
+        target_node = target_node.pop()
 
-        current_sub = [s for s in self._subscribers if s[SubscribersAttrib.AFFILIATION.value] == jid.user]
-        if jid.user != target_node[0][NodeAttrib.OWNER.value] \
-            or (current_sub and current_sub[0][SubscribersAttrib.AFFILIATION.value] != Affiliation.PUBLISHER):
+        current_sub = any(s for s in self._subscribers
+                          if s[SubscribersAttrib.JID.value] == jid.user
+                          and s[SubscribersAttrib.AFFILIATION.value] == Affiliation.PUBLISHER
+                         )
+
+        if jid.user != target_node[NodeAttrib.OWNER.value] and not current_sub:
             return error_response(element, jid, ErrorType.FORBIDDEN)
 
         with DB.connection() as con:
             query = delete(Model.PubsubItems).where(
-                Model.PubsubItems.c.itemid == item_id
-                and Model.PubsubItems.c.node == node
+                and_(
+                    Model.PubsubItems.c.item_id == item_id,
+                    Model.PubsubItems.c.node == node
+                )
             )
             con.execute(query)
-            # con.execute("DELETE FROM pubsubItems WHERE itemid = ? AND node = ?", (item_id, node))
             con.commit()
 
-        iq_res, _ = success_response(element)
+        iq_res, pubsub_iq = success_response(element)
 
-        self.send_notification(node=target_node[0][NodeAttrib.NODE.value], retract=True, item_id=item_id)
+        self.send_notification(
+            node=target_node[NodeAttrib.NODE.value],
+            retract=True,
+            item_id=item_id,
+            payload=None
+        )
+
+        iq_res.remove(pubsub_iq)
+        return ET.tostring(iq_res)
 
     def publish(self, element: ET.Element, jid: JID):
         pubsub = element.find('{http://jabber.org/protocol/pubsub}pubsub')
