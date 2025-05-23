@@ -86,5 +86,7 @@ def test_setup_database_new_file():
             assert os.path.isfile(new_file)
 
     finally:
+        db._engine.dispose()
+        del db
         if os.path.isfile(new_file):
             os.remove(new_file)
