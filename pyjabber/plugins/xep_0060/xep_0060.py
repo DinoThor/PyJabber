@@ -1,13 +1,11 @@
 from asyncio import Transport
-from contextlib import closing
 from itertools import chain
 from typing import List, Tuple, Optional
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
 from loguru import logger
-from sqlalchemy import select, insert, delete, update
-from yaml import load, Loader
+from sqlalchemy import select, insert, delete, update, and_
 
 from pyjabber import metadata
 from pyjabber.db.database import DB
@@ -332,7 +330,7 @@ class PubSub(metaclass=Singleton):
         unsubscribe = pubsub.find('{http://jabber.org/protocol/pubsub}unsubscribe')
         node = unsubscribe.attrib.get('node')
         jid_request = unsubscribe.attrib.get('jid')
-        subid = unsubscribe.attrib.get('subid')
+        subid = None
 
         if node is None:
             return error_response(element, jid, ErrorType.NOT_ACCEPTABLE)
@@ -344,38 +342,39 @@ class PubSub(metaclass=Singleton):
         if jid_request.bare() != jid.bare():
             return error_response(element, jid, ErrorType.INVALID_JID)
 
-        try:
-            target_node = [n for n in self._nodes if n[NodeAttrib.NODE.value] == node][0]
-        except KeyError:
+        target_node = [n for n in self._nodes if n[NodeAttrib.NODE.value] == node]
+        if not target_node:
             return error_response(element, jid, ErrorType.ITEM_NOT_FOUND)
+        target_node = target_node.pop()
 
-        current_state = [s for s in self._subscribers if s[SubscribersAttrib.JID.value] == jid_request.user]
+        number_subscriptions = sum(s[SubscribersAttrib.JID.value] == jid_request.user for s in self._subscribers)
 
-        if len(current_state) == 0:
+        if number_subscriptions == 0:
             return error_response(element, jid, ErrorType.NOT_SUBSCRIBED)
 
-        if len(current_state) > 1:
+        if number_subscriptions > 1:
+            subid = unsubscribe.attrib.get('subid')
             if subid is None:
                 return error_response(element, jid, ErrorType.SUBID_REQUIRED)
 
-            if len([s for s in self._subscribers if s[SubscribersAttrib.SUBID.value] == subid]) == 0:
+            if not any(s[SubscribersAttrib.SUBID.value] == subid for s in self._subscribers):
                 return error_response(element, jid, ErrorType.INVALID_SUBID)
 
             query = delete(Model.PubsubSubscribers).where(
-                Model.PubsubSubscribers.c.node == target_node[NodeAttrib.NODE.value]
-                and Model.PubsubSubscribers.c.jid == jid_request.user
-                and Model.PubsubSubscribers.c.subid == subid
+                and_(
+                    Model.PubsubSubscribers.c.node == target_node[NodeAttrib.NODE.value],
+                    Model.PubsubSubscribers.c.jid == jid_request.user,
+                    Model.PubsubSubscribers.c.subid == subid
+                )
             )
-            # query = "DELETE FROM pubsubSubscribers WHERE node = ? AND jid = ? AND subid = ?"
-            # item = (target_node[NodeAttrib.NODE.value], jid_request.user, subid)
 
         else:
             query = delete(Model.PubsubSubscribers).where(
-                Model.PubsubSubscribers.c.node == target_node[NodeAttrib.NODE.value]
-                and Model.PubsubSubscribers.c.jid == jid_request.user
+                and_(
+                    Model.PubsubSubscribers.c.node == target_node[NodeAttrib.NODE.value],
+                    Model.PubsubSubscribers.c.jid == jid_request.user
+                )
             )
-            # query = "DELETE FROM pubsubSubscribers WHERE node = ? AND jid = ?"
-            # item = (target_node[NodeAttrib.NODE.value], jid_request.user)
 
         with DB.connection() as con:
             con.execute(query)
@@ -393,7 +392,8 @@ class PubSub(metaclass=Singleton):
                 'subscription': 'none'
             }
         )
-        if subid: sub.attrib['subid'] = subid
+        if subid:
+            sub.attrib['subid'] = subid
         return ET.tostring(iq_res)
 
     def retrieve_subscriptions(self, element: ET.Element, jid: JID):

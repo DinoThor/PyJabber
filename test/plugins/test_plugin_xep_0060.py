@@ -44,6 +44,18 @@ def setup_database():
             "subid": "123321123321",
             "subscription": "pending",
             "affiliation": "none"
+        }, {
+            "node": "TestNode",
+            "jid": "unsub",
+            "subid": "123321",
+            "subscription": "pending",
+            "affiliation": "none"
+        }, {
+            "node": "TestNode",
+            "jid": "unsub",
+            "subid": "123322",
+            "subscription": "pending",
+            "affiliation": "none"
         }
     ])
     query3 = insert(Model.PubsubItems).values([
@@ -425,4 +437,117 @@ def test_subscribe_subscribed_pending(pubsub):
     assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" xmlns:ns1="http://jabber.org/protocol/pubsub#errors" id="sub" to="dump@localhost" type="error"><error type="auth"><ns0:not-authorized /><ns1:pending-subscription /></error></iq>'
 
 
+def test_unsubscribe(pubsub):
+    pubsub, engine = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='test@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><unsubscribe node='TestNode' jid='test@localhost'/></pubsub></iq>"
+    )
+    jid = JID("test@localhost")
+
+    assert ('TestNode', 'test', '123456789', 'subscribed', 'publisher') in pubsub._subscribers
+
+    res = pubsub.unsubscribe(element, jid)
+
+    assert ('TestNode', 'test', '123456789', 'subscribed', 'publisher') not in pubsub._subscribers
+    with engine.connect() as con:
+        query = select(Model.PubsubSubscribers)
+        res_query = con.execute(query).fetchall()
+    assert ('TestNode', 'test', '123456789', 'subscribed', 'publisher') not in res_query
+    assert res == b'<iq xmlns:ns0="http://jabber.org/protocol/pubsub" id="sub" from="localhost" type="result"><ns0:pubsub><subscription node="TestNode" jid="test@localhost" subscription="none" /></ns0:pubsub></iq>'
+
+
+def test_unsubscribe_no_node(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='test@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><unsubscribe jid='test@localhost'/></pubsub></iq>"
+    )
+    jid = JID("test@localhost")
+
+    res = pubsub.unsubscribe(element, jid)
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" xmlns:ns1="http://jabber.org/protocol/pubsub#errors" id="sub" to="test@localhost" type="error"><error type="auth"><ns0:not-acceptable /><ns1:nodeid-required /></error></iq>'
+
+
+def test_unsubscribe_no_jid(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='test@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><unsubscribe node='TestNode'/></pubsub></iq>"
+    )
+    jid = JID("test@localhost")
+
+    res = pubsub.unsubscribe(element, jid)
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" xmlns:ns1="http://jabber.org/protocol/pubsub#errors" id="sub" to="test@localhost" type="error"><error type="modify"><ns0:bad-request /><ns1:invalid-jid /></error></iq>'
+
+
+def test_unsubscribe_invalid_jid(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='test@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><unsubscribe node='TestNode' jid='test@localhost'/></pubsub></iq>"
+    )
+    jid = JID("tset@localhost")
+
+    res = pubsub.unsubscribe(element, jid)
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" xmlns:ns1="http://jabber.org/protocol/pubsub#errors" id="sub" to="tset@localhost" type="error"><error type="modify"><ns0:bad-request /><ns1:invalid-jid /></error></iq>'
+
+
+def test_unsubscribe_item_not_found(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='test@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><unsubscribe node='TestNode6' jid='test@localhost'/></pubsub></iq>"
+    )
+    jid = JID("test@localhost")
+
+    res = pubsub.unsubscribe(element, jid)
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" id="sub" to="test@localhost" type="error"><error type="cancel"><ns0:item-not-found /></error></iq>'
+
+
+def test_unsubscribe_not_subscribed(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='dummy@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><unsubscribe node='TestNode' jid='dummy@localhost'/></pubsub></iq>"
+    )
+    jid = JID("dummy@localhost")
+
+    res = pubsub.unsubscribe(element, jid)
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" xmlns:ns1="http://jabber.org/protocol/pubsub#errors" id="sub" to="dummy@localhost" type="error"><error type="cancel"><ns0:unexpected-request /><ns1:not-subscribed /></error></iq>'
+
+
+def test_unsubscribe_need_subid(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='unsub@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><unsubscribe node='TestNode' jid='unsub@localhost'/></pubsub></iq>"
+    )
+    jid = JID("unsub@localhost")
+
+    res = pubsub.unsubscribe(element, jid)
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" xmlns:ns1="http://jabber.org/protocol/pubsub#errors" id="sub" to="unsub@localhost" type="error"><error type="modify"><ns0:bad-request /><ns1:subid-required /></error></iq>'
+
+
+def test_unsubscribe_invalid_subid(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='unsub@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><unsubscribe node='TestNode' jid='unsub@localhost' subid='123320'/></pubsub></iq>")
+    jid = JID("unsub@localhost")
+
+    res = pubsub.unsubscribe(element, jid)
+    assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" xmlns:ns1="http://jabber.org/protocol/pubsub#errors" id="sub" to="unsub@localhost" type="error"><error type="modify"><ns0:not-acceptable /><ns1:invalid-subid /></error></iq>'
+
+
+def test_unsubscribe_with_subid(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='set' from='test@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><unsubscribe node='TestNode' jid='test@localhost'/></pubsub></iq>")
+    jid = JID("test@localhost")
+
+    res = pubsub.unsubscribe(element, jid)
+    assert res == b'<iq xmlns:ns0="http://jabber.org/protocol/pubsub" id="sub" from="localhost" type="result"><ns0:pubsub><subscription node="TestNode" jid="test@localhost" subscription="none" /></ns0:pubsub></iq>'
+
+
+def test_retrieve_subscriptions(pubsub):
+    pubsub, _ = pubsub
+    element = ET.fromstring(
+        "<iq type='get' from='test@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/potocol/pubsub'><subscriptions node='TestNode'/></pubsub></iq>")
+    jid = JID("test@localhost")
+
+    res = pubsub.retrieve_subscriptions(element, jid)
+    assert res == b'<iq xmlns:ns0="http://jabber.org/protocol/pubsub" id="sub" from="localhost" type="result"><ns0:pubsub><subscription node="TestNode" jid="test@localhost" subscription="none" /></ns0:pubsub></iq>'
 
