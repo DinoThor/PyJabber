@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import create_engine, insert, delete, select, and_
 
 from pyjabber.db.model import Model
-from pyjabber.plugins.xep_0060.xep_0060 import success_response, PubSub
+from pyjabber.plugins.xep_0060.xep_0060 import PubSub
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
 from pyjabber.utils import Singleton
@@ -102,8 +102,8 @@ def test_success_response():
 
     with patch('pyjabber.plugins.xep_0060.xep_0060.metadata') as mock_meta:
         mock_meta.HOST = 'pubsub.demo'
-        iq_res, pubsub_res = success_response(payload)
-        iq_res_own, pubsub_res_own = success_response(payload, True)
+        iq_res, pubsub_res = PubSub.success_response(payload)
+        iq_res_own, pubsub_res_own = PubSub.success_response(payload, True)
 
     assert iq_res.tag == 'iq'
     assert iq_res.attrib.get('type') == IQ.TYPE.RESULT.value
