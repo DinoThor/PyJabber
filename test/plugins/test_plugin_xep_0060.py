@@ -256,7 +256,7 @@ def test_create_node_conflict(pubsub):
 def test_delete_node(pubsub):
     pubsub, _ = pubsub
     element = ET.fromstring(
-        "<iq type='get' from='demo@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><delete node='TestNode'/></pubsub></iq>"
+        "<iq type='get' from='demo@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub#owner'><delete node='TestNode'/></pubsub></iq>"
     )
     jid = JID("demo@localhost")
     res = pubsub.delete_node(element, jid)
@@ -269,7 +269,7 @@ def test_delete_node(pubsub):
 def test_delete_node_no_node(pubsub):
     pubsub, _ = pubsub
     element = ET.fromstring(
-        "<iq type='get' from='demo@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><delete/></pubsub></iq>"
+        "<iq type='get' from='demo@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub#owner'><delete/></pubsub></iq>"
     )
     jid = JID("demo@localhost")
     res = pubsub.delete_node(element, jid)
@@ -281,7 +281,7 @@ def test_delete_node_no_node(pubsub):
 def test_delete_node_not_found(pubsub):
     pubsub, _ = pubsub
     element = ET.fromstring(
-        "<iq type='get' from='demo@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><delete node='TestNode3'/></pubsub></iq>"
+        "<iq type='get' from='demo@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub#owner'><delete node='TestNode3'/></pubsub></iq>"
     )
     jid = JID("demo@localhost")
     res = pubsub.delete_node(element, jid)
@@ -293,7 +293,7 @@ def test_delete_node_not_found(pubsub):
 def test_delete_node_forbidden(pubsub):
     pubsub, _ = pubsub
     element = ET.fromstring(
-        "<iq type='get' from='test@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub'><delete node='TestNode'/></pubsub></iq>"
+        "<iq type='get' from='test@localhost' to='pubsub.localhost' id='items1'><pubsub xmlns='http://jabber.org/protocol/pubsub#owner'><delete node='TestNode'/></pubsub></iq>"
     )
     jid = JID("test@localhost")
     res = pubsub.delete_node(element, jid)
@@ -311,12 +311,12 @@ def test_retrieve_items_node(pubsub):
     res = pubsub.retrieve_items_node(element, jid)
     res = ET.fromstring(res)
     try:
-        first, second = res[0][0][0], res[0][1][0]
+        first, second = res[0][0][0][0][0], res[0][0][1][0][0]
     except IndexError:
         pytest.fail()
 
-    assert first[0].text == 'Art thou not Romeo, and a Montague?'
-    assert second[0].text == 'Neither, fair saint, if either thee dislike.'
+    assert first.text == 'Art thou not Romeo, and a Montague?'
+    assert second.text == 'Neither, fair saint, if either thee dislike.'
 
 
 def test_retrieve_items_node_forbidden(pubsub):
@@ -633,7 +633,7 @@ def test_purge_not_forbidden(pubsub):
 def test_retract(pubsub):
     pubsub, engine = pubsub
     element = ET.fromstring(
-        "<iq type='set' from='demo@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><retract node='TestNode'/><item id='123'/></pubsub></iq>")
+        "<iq type='set' from='demo@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><retract node='TestNode'><item id='123'/></retract></pubsub></iq>")
     jid = JID("demo@localhost")
     query = select(Model.PubsubItems).where(
         and_(
@@ -696,7 +696,7 @@ def test_retract_no_item(pubsub):
 def test_retract_not_found(pubsub):
     pubsub, _ = pubsub
     element = ET.fromstring(
-        "<iq type='set' from='demo@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><retract node='TestNode12'/><item id='123'/></pubsub></iq>")
+        "<iq type='set' from='demo@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><retract node='TestNode12'><item id='123'/></retract></pubsub></iq>")
     jid = JID("demo@localhost")
 
     res = pubsub.retract(element, jid)
@@ -707,7 +707,7 @@ def test_retract_not_found(pubsub):
 def test_retract_forbidden(pubsub):
     pubsub, _ = pubsub
     element = ET.fromstring(
-        "<iq type='set' from='lac@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><retract node='TestNode'/><item id='123'/></pubsub></iq>")
+        "<iq type='set' from='lac@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><retract node='TestNode'><item id='123'/></retract></pubsub></iq>")
     jid = JID("lac@localhost")
 
     res = pubsub.retract(element, jid)
@@ -715,10 +715,11 @@ def test_retract_forbidden(pubsub):
     assert res == b'<iq xmlns:ns0="urn:ietf:params:xml:ns:xmpp-stanzas" id="sub" to="lac@localhost" type="error"><error type="auth"><ns0:forbidden /></error></iq>'
 
 
+
 def test_retract_publisher(pubsub):
     pubsub, engine = pubsub
     element = ET.fromstring(
-        "<iq type='set' from='test@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><retract node='TestNode'/><item id='123'/></pubsub></iq>")
+        "<iq type='set' from='test@localhost' to='pubsub.localhost' id='sub'><pubsub xmlns='http://jabber.org/protocol/pubsub'><retract node='TestNode'><item id='123'/></retract></pubsub></iq>")
     jid = JID("test@localhost")
     query = select(Model.PubsubItems).where(
         and_(
