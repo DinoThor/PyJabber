@@ -16,8 +16,8 @@ PeerList = Dict[
 
 # EXAMPLE
 # peerKeys = {
-#     ("0.0.0.0", "50000"): ("demo@localhost/12341234", <asyncio.Transport>, <Online: Bool>),
-#     ("0.0.0.0", "50001"): ("test@localhos/43214321", <asyncio.Transport>, <Online: Bool>)
+#     ("0.0.0.0", "50000"): (<JID(demo@localhost/12341234)>, <asyncio.Transport>, <Online: Bool>),
+#     ("0.0.0.0", "50001"): (<JID(test@localhos/43214321)>, <asyncio.Transport>, <Online: Bool>)
 # }
 
 
@@ -27,9 +27,9 @@ class ConnectionManager(metaclass=Singleton):
         self._peerList: PeerList = {}
         self._remoteList = {}
 
-    ###################
-    ### LOCAL BOUND ###
-    ###################
+    ###########################################################################
+    ############################## LOCAL BOUND ################################
+    ###########################################################################
 
     def connection(self, peer: Tuple[str, int], transport: Transport = None) -> None:
         """
@@ -44,7 +44,7 @@ class ConnectionManager(metaclass=Singleton):
 
     def disconnection(self, peer: Tuple[str, int]) -> None:
         """
-            Remove a stored connection, and fires the DisconnectEvent
+            Remove a stored connection
 
             :param peer: The peer value in the tuple format ({IP}, {PORT})
         """
@@ -96,10 +96,6 @@ class ConnectionManager(metaclass=Singleton):
             :param jid: The jid to get the buffers for. It can be a full jid or a bare jid
             :return: (JID, TRANSPORT) tuple
         """
-        if jid.domain is None:
-            logger.error("JID must have, at least, user and domain")
-            return []
-
         if jid.resource:
             return [(jid_stored, buffer, online[0])
                     for jid_stored, buffer, online in self._peerList.values()
@@ -123,10 +119,6 @@ class ConnectionManager(metaclass=Singleton):
             :param jid: The jid to get the buffers for. It can be a full jid or a bare jid
             :return: (JID, TRANSPORT) tuple
         """
-        if jid.domain is None:
-            logger.error("JID must have, at least, user and domain")
-            return []
-
         if jid.resource:
             return [(jid_stored, buffer, online[0])
                     for jid_stored, buffer, online in self._peerList.values()
@@ -178,83 +170,51 @@ class ConnectionManager(metaclass=Singleton):
     ###########################################################################
     ############################# REMOTE SERVER ###############################
     ###########################################################################
-
-    def connection_server(self, peer, host, transport) -> None:
+    def connection_server(self, peer: Tuple[str, int], transport: Transport = None) -> None:
         """
-            Store a new connection, without jid or transport.
+            Store a new server connection incoming.
+
+            :param peer: The peer value in the tuple format ({IP}, {PORT})
+            :param host: The host value of the incoming server connection
+            :param transport: The transport object associated to the connection
         """
         if peer not in self._remoteList:
-            self._remoteList[peer] = {
-                peerKeys.JID: host,
-                peerKeys.TRANSPORT: None
-            }
+            self._remoteList[peer] = (None, transport)
 
-    def disconnection_server(self, peer) -> None:
+    def disconnection_server(self, peer: Tuple[str, int]) -> None:
         """
-        Remove a present server connection in the list
-        i.e. EOF recived, or TCP connection lost
+            Remove a stored connection, and fires the DisconnectEvent
+
+            :param peer: The peer value in the tuple format ({IP}, {PORT})
         """
+
         try:
             self._remoteList.pop(peer)
         except KeyError:
-            logger.error(f"{peer} not present in the online list")
+            logger.warning(f"Server {peer} not present in the online list")
 
-    def get_server_buffer(self, host: str) -> Union[Tuple[str, Transport], None]:
+    def set_host_server(self, peer: Tuple[str, int], host: str):
+        entry = self._peerList.get(peer)
+        if entry:
+            self._remoteList[peer] = (host, entry[1])
+
+    def get_server_buffer(self, peer: Tuple[str, str], host: str) -> Union[Tuple[str, Transport], None]:
         """
             Return the buffer associated with the given host
             :return: (<HOST>, <TRANSPORT>) tuple
         """
-        if self.check_server_stream_available(host):
-            key = next((k for k, v in self._remoteList.items() if v.get(peerKeys.JID) == host), None)
-            return self._remoteList[key][peerKeys.JID], self._remoteList[key][peerKeys.TRANSPORT]
+        if peer:
+            return self._remoteList.get(peer)
 
-        if self.check_server_present_in_list(host):
-            return
-
-        self._task_s2s(host)
+        if host:
+            try:
+                [buffer for buffer in self._remoteList.values() if buffer[0] == host].pop()
+            except IndexError:
+                return None
 
     def get_server_host(self, peer: Tuple[str, int]):
         """
             Return the host associated with the given peer.
             :return: Hostname
         """
-        try:
-            return self._remoteList[peer]["host"]
-        except KeyError:
-            return None
-
-    def set_server_transport(self, peer: Tuple[str, int], transport: Transport) -> Union[None, bool]:
-        """
-            Set/update the transport of a registered server connection.
-
-            :param peer: The peer value in the tuple format ({IP}, {PORT})
-            :param transport: Transport to use
-        """
-        try:
-            self._remoteList[peer][peerKeys.TRANSPORT] = transport
-        except KeyError:
-            return False
-
-    def set_server_host(self, peer: Tuple[str, int], host: str):
-        """
-            Set/update the host of a registered server connection.
-
-            :param peer: The peer value in the tuple format ({IP}, {PORT})
-            :param host: New host name
-        """
-        try:
-            self._remoteList[peer]["host"] = host
-        except KeyError:
-            return False
-
-    def check_server_stream_available(self, host) -> bool:
-        for k, v in self._remoteList.items():
-            if v[peerKeys.JID] == host:
-                return v[peerKeys.TRANSPORT] is not None
-
-    def check_server_present_in_list(self, host) -> bool:
-        try:
-            if [v for v in self._remoteList.values() if v[self.JID] == host]:
-                return True
-        except KeyError:
-            return False
+        return self._remoteList.get(peer)[0] if self._remoteList.get(peer) else None

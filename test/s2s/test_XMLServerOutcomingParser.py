@@ -1,8 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from xml.etree.ElementTree import Element
-from pyjabber.network.server.outcoming.XMLServerOutcomingParser import XMLServerOutcomingParser
-from pyjabber.stream.StanzaHandler import StanzaHandler
+from pyjabber.network.server.XMLServerOutcomingParser import XMLServerOutcomingParser
 from pyjabber.stream.StreamHandler import Signal
 from pyjabber.stream.server.outcoming.StreamServerOutcomingHandler import StreamServerOutcomingHandler
 from pyjabber.utils import ClarkNotation as CN

@@ -1,18 +1,15 @@
-import contextvars
 from sqlite3 import Connection
 
 import bcrypt
 import pytest
-import sqlite3
 import base64
-import hashlib
 from xml.etree import ElementTree as ET
 from unittest.mock import patch
 
 from sqlalchemy import create_engine, insert
 
 from pyjabber.db.model import Model
-from pyjabber.features.SASLFeature import SASL, SASLFeature, Signal, MECHANISM, iq_register_result
+from pyjabber.features.SASLFeature import SASL, SASLFeature, Signal, MECHANISM
 from pyjabber.stanzas.error import StanzaError as SE
 
 
@@ -76,6 +73,7 @@ def test_handle_iq_register_conflict(sasl):
 
     assert result == SE.conflict_error("123")
 
+
 def test_get_fields(sasl):
     element = ET.Element("{jabber:iq:register}iq", attrib={"type": "get", "id": "1234"})
     ET.SubElement(element, "{jabber:iq:register}query")
@@ -91,6 +89,7 @@ def test_get_fields(sasl):
     assert res_elem[0][0].tag == 'username'
     assert res_elem[0][1].tag == 'password'
 
+
 def test_handle_iq_register_success(sasl):
     element = ET.Element("iq", attrib={"type": "set", "id": "123"})
     query = ET.SubElement(element, "{jabber:iq:register}query")
@@ -101,7 +100,7 @@ def test_handle_iq_register_success(sasl):
 
     result = sasl.handleIQ(element)
 
-    assert result == iq_register_result("123")
+    assert result == SASL.iq_register_result("123")
 
 
 def test_sasl_feature():

@@ -115,6 +115,12 @@ def not_authorized() -> bytes: # pragma: no cover
     return "<failure xmlns='urn:ietf:params:xml:ns:xmpp-sasl'><not-authorized/></failure>".encode()
 
 
+def not_well_formed() -> bytes:
+    """
+    Implicit closes the connection
+    """
+    return "<stream:error><xml-not-well-formed xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error></stream:stream>"
+
 def service_unavaliable(): # pragma: no cover
     """
     <error type='cancel'>

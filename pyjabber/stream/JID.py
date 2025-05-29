@@ -1,8 +1,5 @@
 class JID:
     def __init__(self, jid: str = None, user: str = None, domain: str = None, resource: str = None):
-        if jid and (user or domain or resource):
-            raise ValueError('You cannot pass user/domain/resource if a full jid is specified')
-
         if jid:
             try:
                 self._user, domain = jid.split('@')

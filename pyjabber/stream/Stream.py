@@ -52,22 +52,24 @@ class Stream(ET.Element):
         tag += '>'
         return tag.encode()
 
+    @staticmethod
+    def responseStream(attrs, server: bool = False):
+        attrs = dict(attrs)
 
-def responseStream(attrs):
-    attrs = dict(attrs)
+        id = str(uuid4())
+        from_ = attrs.get((None, "from"))
+        to = attrs.get((None, "to"))
+        version = attrs.get((None, "version"), "1.0")
+        lang = attrs.get(("http://www.w3.org/XML/1998/namespace", "lang"))
 
-    id = str(uuid4())
-    from_ = attrs.pop((None, "from"), None)
-    to = attrs.pop((None, "to"), None)
-    version = attrs.pop((None, "version"), "1.0")
-    lang = attrs.pop(("http://www.w3.org/XML/1998/namespace", "lang"), None)
+        stream = Stream(
+            id=id,
+            from_=to,
+            to=from_,
+            version=version,
+            xml_lang=lang,
+            xmlns=Namespaces.SERVER.value if server else Namespaces.CLIENT.value
+        )
 
-    stream = Stream(
-        id=id,
-        from_=to,
-        to=from_,
-        version=version,
-        xml_lang=lang
-    )
+        return stream.open_tag()
 
-    return stream.open_tag()

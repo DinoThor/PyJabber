@@ -1,12 +1,10 @@
 import asyncio
-from unittest.mock import MagicMock, patch, AsyncMock
 import pytest
+from unittest.mock import MagicMock, patch
 from xml import sax
-import ssl
 
-from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
-from pyjabber.network.XMLProtocol import XMLProtocol, FILE_AUTH
-import os
+from pyjabber.network.XMLProtocol import XMLProtocol
+from pyjabber.network.ServerConnectionType import ServerConnectionType as SCT
 
 @pytest.fixture
 def setup():
@@ -21,6 +19,7 @@ def setup():
                             namespace='jabber:client',
                             connection_timeout=30,
                             cert_path='cert_path',
+                            connection_type=SCT.CLIENT
                         )
                         protocol._timeout_monitor = mock_monitor
                         yield protocol, mock_parser, mock_connection, mock_monitor

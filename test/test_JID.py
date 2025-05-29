@@ -55,10 +55,12 @@ def test_eq():
 
 def test_bad_arguments():
     with pytest.raises(ValueError):
-        JID(jid='demo@host', user='demo')
+        JID(jid='demo')
     with pytest.raises(ValueError):
-        JID(jid='demo@host', domain='demo')
-    with pytest.raises(ValueError):
-        JID(jid='demo@host', resource='demo')
+        JID(jid='demo/test')
     with pytest.raises(ValueError):
         JID(jid='demo')
+    with pytest.raises(ValueError):
+        JID(domain='host', resource='1234')
+    with pytest.raises(ValueError):
+        JID(user='host', resource='1234')

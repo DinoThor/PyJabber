@@ -1,44 +1,25 @@
 from asyncio import Transport
-from enum import Enum
-from typing import Union
+from typing import Union, List
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
 from pyjabber.features import InBandRegistration as IBR
 from pyjabber.features.StartTLSFeature import StartTLSFeature, proceed_response
 from pyjabber.features.StreamFeature import StreamFeature
-from pyjabber.features.SASLFeature import SASLFeature, SASL
+from pyjabber.features.SASLFeature import SASLFeature, SASL, MECHANISM
 from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber import metadata
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stanzas.error import StanzaError as SE
-
-class Stage(Enum):
-    """
-    Stream connection states.
-    """
-    CONNECTED = 0
-    OPENED = 1
-    SSL = 2
-    SASL = 3
-    AUTH = 4
-    BIND = 5
-    READY = 6
-
-
-class Signal(Enum):
-    RESET = 0
-    DONE = 1
-    FORCE_CLOSE = 2
-
-    def __eq__(self, other):
-        if not isinstance(other, Signal):
-            return False
-        return self.value == other.value
+from pyjabber.stream.Stage import Stage
+from pyjabber.stream.Signal import Signal
 
 
 class StreamHandler:
+    sasl_mechanisms: List[MECHANISM] = None
+    ibr_feature: bool = True
+
     def __init__(self, transport, starttls) -> None:
         self._host = metadata.HOST
         self._transport = transport
@@ -91,8 +72,9 @@ class StreamHandler:
     def _handle_init_ssl(self, _):
         self._streamFeature.reset()
 
-        self._streamFeature.register(IBR.InBandRegistration())
-        self._streamFeature.register(SASLFeature())
+        if self.ibr_feature:
+            self._streamFeature.register(IBR.InBandRegistration())
+        self._streamFeature.register(SASLFeature(mechanism_list=self.sasl_mechanisms))
         self._transport.write(self._streamFeature.to_bytes())
 
         self._stage = Stage.SASL

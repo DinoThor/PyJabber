@@ -31,27 +31,13 @@ class Signal(Enum):
     DONE = 1
 
 
-def iq_register_result(iq_id: str) -> bytes:
-    iq = ET.Element(
-        "iq",
-        attrib={
-            "type": "result",
-            "id": iq_id or str(uuid4()),
-            "from": metadata.HOST})
-    return ET.tostring(iq)
-
-
 class SASL(metaclass=Singleton):
     """
         SASL Class.
 
         An instance of this class will manage the authentication from new connections,
         during the stream negotiation process.
-
-        :param db_connection_factory: The DB connection object used to look up the credentials
-
     """
-
     def __init__(self):
         self._handlers = {
             "iq": self.handleIQ,
@@ -70,6 +56,16 @@ class SASL(metaclass=Singleton):
         _, tag = CN.deglose(element.tag)
         return self._handlers[tag](element)
 
+    @staticmethod
+    def iq_register_result(iq_id: str) -> bytes:
+        iq = ET.Element(
+            "iq",
+            attrib={
+                "type": "result",
+                "id": iq_id or str(uuid4()),
+                "from": metadata.HOST})
+        return ET.tostring(iq)
+
     def handleIQ(self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
         query = element.find("{jabber:iq:register}query")
 
@@ -87,9 +83,6 @@ class SASL(metaclass=Singleton):
             with DB.connection() as con:
                 query_db = select(Model.Credentials).where(Model.Credentials.c.jid == new_jid)
                 credentials = con.execute(query_db).fetchone()
-                # res = con.execute(
-                #     "SELECT * FROM credentials WHERE jid = ?", (new_jid,))
-                # credentials = res.fetchone()
 
                 if credentials:
                     return SE.conflict_error(element.attrib["id"])
@@ -99,11 +92,9 @@ class SASL(metaclass=Singleton):
 
                     query_insert = insert(Model.Credentials).values({"jid": new_jid, "hash_pwd": hashed_pwd})
                     con.execute(query_insert)
-                    # con.execute(
-                    #     "INSERT INTO credentials(jid, hash_pwd) VALUES (?, ?)", (new_jid, hashed_pwd)
-                    # )
                     con.commit()
-                    return iq_register_result(element.attrib["id"])
+
+            return self.iq_register_result(element.attrib["id"])
 
         elif element.attrib.get("type") == IQ.TYPE.GET.value:
             iq = IQ(
@@ -126,10 +117,6 @@ class SASL(metaclass=Singleton):
             with DB.connection() as con:
                 query = select(Model.Credentials.c.hash_pwd).where(Model.Credentials.c.jid == jid)
                 hashed_pwd = con.execute(query).fetchone()
-                # res = con.execute(
-                #     "SELECT hash_pwd FROM credentials WHERE jid = ?", (jid,)
-                # )
-                # hashed_pwd = res.fetchone()
 
             if bcrypt.checkpw(pwd, hashed_pwd[0]):
                 self._connection_manager.set_jid(self._peername, JID(user=jid, domain=metadata.HOST))
