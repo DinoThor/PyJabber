@@ -1,25 +1,26 @@
 from loguru import logger
 from xml.etree import ElementTree as ET
 
+from pyjabber import metadata
 from pyjabber.network.parsers.XMLParser import XMLParser
 from pyjabber.stream import Stream
 from pyjabber.stream.StanzaHandler import StanzaHandler
 from pyjabber.stream.StreamHandler import Signal
 from pyjabber.stanzas.error import StanzaError as SE
-from pyjabber.stream.server.outcoming.StreamServerOutcomingHandler import StreamServerOutcomingHandler
+from pyjabber.stream.server.outgoing.StreamServerOutcomingHandler import StreamServerOutcomingHandler
 from pyjabber.utils import ClarkNotation as CN
 
 
-class XMLServerOutcomingParser(XMLParser):
+class XMLServerOutgoingParser(XMLParser):
     """
     Manages the stream data and process the XML objects.
     Inheriting from sax.ContentHandler
     """
+    stream_handler_constructor = StreamServerOutcomingHandler
 
     def __init__(self, transport, starttls):
         super().__init__(transport, starttls)
-
-        self._streamHandler = StreamServerOutcomingHandler(public_host, buffer, starttls)
+        # self._receiver_host = transport.get_extra_info("")
         self.initial_stream()
 
     def startElementNS(self, name, qname, attrs):
@@ -64,7 +65,7 @@ class XMLServerOutcomingParser(XMLParser):
 
     def initial_stream(self):
         initial_stream = Stream.Stream(
-            from_=self._public_host,
+            from_=metadata.HOST,
             to=self._host,
             xmlns=Stream.Namespaces.SERVER.value
         )

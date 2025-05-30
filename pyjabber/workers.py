@@ -8,7 +8,8 @@ from loguru import logger
 from pyjabber import metadata
 from pyjabber.network import CertGenerator
 from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber.network.XMLProtocol import TransportProxy
+from pyjabber.network.ServerConnectionType import ServerConnectionType as SCT
+from pyjabber.network.XMLProtocol import TransportProxy, XMLProtocol
 from pyjabber.stream.JID import JID
 
 
@@ -20,14 +21,6 @@ async def tls_worker():
     The worker is global for all the server components, and it can be duplicated across multiple workers in
     different threads to handle a high number of new connections established within a very short period of time.
     """
-    try:
-        if CertGenerator.check_hostname_cert_exists(metadata.HOST, metadata.CERT_PATH) is False:
-            CertGenerator.generate_hostname_cert(metadata.HOST, metadata.CERT_PATH)
-    except FileNotFoundError as e:
-        logger.error(f"{e.__class__.__name__}: Pass an existing directory in your system to load the certs. "
-                     f"Closing server")
-        raise SystemExit
-
     connection_manager = ConnectionManager()
     ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
     ssl_context.maximum_version = ssl.TLSVersion.TLSv1_2
@@ -79,8 +72,10 @@ async def queue_worker():
    """
     pending_stanzas: Dict[str, List[bytes]] = {}
     connection_manager = ConnectionManager()
-    connection_queue = metadata.CONNECTION_QUEUE
-    message_queue = metadata.MESSAGE_QUEUE
+
+    connection_queue: asyncio.Queue = metadata.CONNECTION_QUEUE
+    message_queue: asyncio.Queue = metadata.MESSAGE_QUEUE
+    server_queue: asyncio.Queue = metadata.S2S_OUTGOING_QUEUE
 
     try:
         while True:
@@ -107,24 +102,75 @@ async def queue_worker():
             if result[0] == 'CONNECTION':
                 _, jid = result
 
-                if str(jid) in pending_stanzas:
-                    jid = str(jid)
-                elif jid.bare() in pending_stanzas:
-                    jid = jid.bare()
-                else:
-                    jid = None
+                if isinstance(jid, JID):
+                    if str(jid) in pending_stanzas:
+                        jid = str(jid)
+                    elif jid.bare() in pending_stanzas:
+                        jid = jid.bare()
+                    else:
+                        return
 
-                while jid and pending_stanzas[jid]:
-                    stanza_bytes = pending_stanzas[jid].pop()
-                    buffer = connection_manager.get_buffer_online(JID(jid))
-                    for b in buffer:
-                        b[1].write(stanza_bytes)
+                    if jid in pending_stanzas:
+                        while pending_stanzas[jid]:
+                            stanza_bytes = pending_stanzas[jid].pop()
+                            buffer = connection_manager.get_buffer_online(JID(jid))
+                            for b in buffer:
+                                b[1].write(stanza_bytes)
+                        pending_stanzas.pop(jid, None)
+
+                else:
+                    host = jid
+                    if host in pending_stanzas:
+                        while pending_stanzas[host]:
+                            stanza_bytes = pending_stanzas[host].pop()
+                            buffer = connection_manager.get_server_buffer(host=host)
+                            buffer.write(stanza_bytes)
+                        pending_stanzas.pop(host, None)
+                    else:
+                        server_queue.put_nowait(jid.domain)
+
 
             else:
                 _, jid, stanza_bytes = result
-                if str(jid) not in pending_stanzas:
-                    pending_stanzas[str(jid)] = []
-                pending_stanzas[str(jid)].append(stanza_bytes)
+                if jid.domain != metadata.HOST:
+                    if jid.domain not in pending_stanzas:
+                        pending_stanzas[jid.domain] = []
+                    pending_stanzas[jid.domain].append(stanza_bytes)
+
+                else:
+                    if str(jid) not in pending_stanzas:
+                        pending_stanzas[str(jid)] = []
+                    pending_stanzas[str(jid)].append(stanza_bytes)
+
+    except asyncio.CancelledError:
+        pass
+
+
+async def s2s_outgoing_connection():
+    connection_manager = ConnectionManager()
+    s2s_queue: asyncio.Queue = metadata.S2S_OUTGOING_QUEUE
+    connection_queue: asyncio.Queue = metadata.CONNECTION_QUEUE
+    loop = asyncio.get_running_loop()
+
+    try:
+        while True:
+            host = await s2s_queue.get()
+
+            transport, _ = await loop.create_connection(
+                lambda: XMLProtocol(
+                    namespace="jabber:server",
+                    host=host,
+                    connection_timeout=60,
+                    cert_path=metadata.CERT_PATH,
+                    connection_type=SCT.TO_SERVER
+                ),
+                host=host,
+                port=5269,
+                family=metadata.FAMILY
+            )
+
+            connection_manager.connection_server(transport.get_extra_info("peername"),  transport)
+            connection_queue.put_nowait(('CONNECTION', host))
 
     except asyncio.CancelledError:
         pass

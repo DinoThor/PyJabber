@@ -1,8 +1,10 @@
-import os.path
+from socket import AddressFamily
 from typing import List
 
 HOST = None
 IP = None
+SERVER_PORT = None
+FAMILY = None
 CONFIG_PATH = None
 CERT_PATH = None
 ROOT_PATH = None
@@ -15,12 +17,15 @@ ITEMS =None
 
 TLS_QUEUE = None
 CONNECTION_QUEUE = None
+S2S_OUTGOING_QUEUE = None
 MESSAGE_QUEUE = None
 
 
 def init_config(
     host: str,
     ip: List[str],
+    server_port: int,
+    family: AddressFamily,
     config_path: str,
     cert_path: str,
     root_path:str,
@@ -31,9 +36,11 @@ def init_config(
     plugins: List[str],
     items: List[tuple]
 ):
-    global HOST, IP, CONFIG_PATH, CERT_PATH, ROOT_PATH, DATABASE_PATH, DATABASE_IN_MEMORY, DATABASE_PURGE, MESSAGE_QUEUE, MESSAGE_PERSISTENCE, PLUGINS, ITEMS
+    global HOST, IP, SERVER_PORT, FAMILY, CONFIG_PATH, CERT_PATH, ROOT_PATH, DATABASE_PATH, DATABASE_IN_MEMORY, DATABASE_PURGE, MESSAGE_PERSISTENCE, PLUGINS, ITEMS
     HOST = host
     IP = ip
+    SERVER_PORT = server_port
+    FAMILY = family
     CONFIG_PATH = config_path
     CERT_PATH = cert_path
     ROOT_PATH = root_path
@@ -43,6 +50,3 @@ def init_config(
     MESSAGE_PERSISTENCE = message_persistence
     PLUGINS = plugins
     ITEMS = items
-
-    global TLS_QUEUE, CONNECTION_QUEUE, MESSAGE_QUEUE
-

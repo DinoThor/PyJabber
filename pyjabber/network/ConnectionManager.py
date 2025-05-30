@@ -172,10 +172,9 @@ class ConnectionManager(metaclass=Singleton):
     ###########################################################################
     def connection_server(self, peer: Tuple[str, int], transport: Transport = None) -> None:
         """
-            Store a new server connection incoming.
+            Store a new server connection.
 
             :param peer: The peer value in the tuple format ({IP}, {PORT})
-            :param host: The host value of the incoming server connection
             :param transport: The transport object associated to the connection
         """
         if peer not in self._remoteList:
@@ -198,7 +197,7 @@ class ConnectionManager(metaclass=Singleton):
         if entry:
             self._remoteList[peer] = (host, entry[1])
 
-    def get_server_buffer(self, peer: Tuple[str, str], host: str) -> Union[Tuple[str, Transport], None]:
+    def get_server_buffer(self, peer: Optional[Tuple[str, str]] = None, host: Optional[str] = None) -> Union[Transport, None]:
         """
             Return the buffer associated with the given host
             :return: (<HOST>, <TRANSPORT>) tuple
@@ -211,6 +210,8 @@ class ConnectionManager(metaclass=Singleton):
                 [buffer for buffer in self._remoteList.values() if buffer[0] == host].pop()
             except IndexError:
                 return None
+
+        return None
 
     def get_server_host(self, peer: Tuple[str, int]):
         """

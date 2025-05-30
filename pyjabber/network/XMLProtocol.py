@@ -14,23 +14,24 @@ from pyjabber.network.ServerConnectionType import ServerConnectionType as SCT
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.parsers.XMLParser import XMLParser
 from pyjabber.network.parsers.XMLServerIncomingParser import XMLServerIncomingParser
-from pyjabber.network.parsers.XMLServerOutcomingParser import XMLServerOutcomingParser
+from pyjabber.network.parsers.XMLServerOutgoingParser import XMLServerOutgoingParser
 from pyjabber.stream.StanzaHandler import InternalServerError
 
 FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
 
 
 class TransportProxy:
-    def __init__(self, transport, peer):
+    def __init__(self, transport, peer, server = False):
         self._transport = transport
         self._peer = peer
+        self._server = server
 
     @property
     def originalTransport(self):
         return self._transport
 
     def write(self, data):
-        logger.trace(f"Sending to {'server' if self.from_to_server else ''} {self._peer}: {data}")
+        logger.trace(f"Sending to {'server' if self._server else ''} {self._peer}: {data}")
         return self._transport.write(data)
 
     def __getattr__(self, name):
@@ -99,7 +100,7 @@ class XMLProtocol(asyncio.Protocol):
                 )
             elif self._connection_type == SCT.TO_SERVER:
                 self._xml_parser.setContentHandler(
-                    XMLServerOutcomingParser(self._transport, self.task_tls)
+                    XMLServerOutgoingParser(self._transport, self.task_tls)
                 )
             else:
                 self._xml_parser.setContentHandler(

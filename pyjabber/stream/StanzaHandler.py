@@ -15,7 +15,6 @@ class InternalServerError(Exception):
 
 class StanzaHandler:
     def __init__(self, buffer) -> None:
-        self._host = metadata.HOST
         self._ip = metadata.IP
         self._buffer = buffer
         self._connections = ConnectionManager()
@@ -65,9 +64,10 @@ class StanzaHandler:
         """
         jid = JID(element.attrib["to"])
 
-        if jid.domain == self._host or jid.domain in self._ip:
+        # Local bound
+        if jid.domain == metadata.HOST or jid.domain in self._ip:
             if jid.domain in self._ip:
-                jid.domain = self._host
+                jid.domain = metadata.HOST
             if not jid.resource:
                 priority = self._presenceManager.most_priority(jid)
                 if not priority and self._message_persistence:
@@ -87,17 +87,13 @@ class StanzaHandler:
                     for buffer in resource_online:
                         buffer[1].write(ET.tostring(element))
 
+        # Remote server
         else:
-            pass
-            # the s2s feature is currently disabled due to bad implementation
-            # Future version of the server will fix that
-
-            # server_buffer = self._connections.get_server_buffer(jid.bare())
-            # if server_buffer:
-            #     server_buffer[1].write(ET.tostring(element))
-            #
-            # else:
-            #     self._queue_message.enqueue(jid.domain, ET.tostring(element))
+            buffer = self._connections.get_server_buffer(host=jid.domain)
+            if buffer:
+                buffer.write(ET.tostring(element))
+            else:
+                self._message_queue.put_nowait(('MESSAGE', jid.domain, ET.tostring(element)))
 
     def handle_pre(self, element: ET.Element):
         """

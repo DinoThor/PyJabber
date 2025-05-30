@@ -14,7 +14,7 @@ class XMLParser(ContentHandler):
         Manages the stream data and process the XML objects.
         Inheriting from sax.ContentHandler
 
-        :param buffer: Transport instance of the connected client. Used to send replays
+        :param transport: Transport instance of the connected client. Used to send replays
         :param starttls: Coroutine launched when server and client start the connection upgrade process to TLS
     """
     stanza_handler_constructor = StanzaHandler

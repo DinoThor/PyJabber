@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 import asyncio
 import ssl
-from pyjabber.network.server.outcoming.XMLServerOutcomingProtocol import XMLServerOutcomingProtocol
+from pyjabber.network.server.outgoing.XMLServerOutcomingProtocol import XMLServerOutcomingProtocol
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 
 @pytest.fixture
@@ -49,7 +49,7 @@ def test_connection_made_without_transport(mock_make_parser, setup_protocol):
     protocol, _ = setup_protocol
     transport = None
 
-    with patch('pyjabber.network.server.outcoming.XMLServerOutcomingProtocol.logger') as mock_logger:
+    with patch('pyjabber.network.server.outgoing.XMLServerOutcomingProtocol.logger') as mock_logger:
         protocol.connection_made(transport)
         mock_logger.error.assert_called_with("Invalid transport")
 
