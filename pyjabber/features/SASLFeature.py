@@ -118,7 +118,7 @@ class SASL(metaclass=Singleton):
                 query = select(Model.Credentials.c.hash_pwd).where(Model.Credentials.c.jid == jid)
                 hashed_pwd = con.execute(query).fetchone()
 
-            if bcrypt.checkpw(pwd, hashed_pwd[0]):
+            if hashed_pwd and bcrypt.checkpw(pwd, hashed_pwd[0]):
                 self._connection_manager.set_jid(self._peername, JID(user=jid, domain=metadata.HOST))
                 return Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>"
             else:

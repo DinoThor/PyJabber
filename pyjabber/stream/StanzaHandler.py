@@ -1,3 +1,4 @@
+import asyncio
 import xml.etree.ElementTree as ET
 
 from loguru import logger
@@ -5,6 +6,7 @@ from loguru import logger
 from pyjabber import metadata
 from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.utils import ClarkNotation as CN
 from pyjabber.stream.JID import JID
 from pyjabber.plugins.PluginManager import PluginManager
 
@@ -26,6 +28,8 @@ class StanzaHandler:
 
         self._pluginManager = PluginManager(self._jid)
         self._presenceManager = Presence()
+
+        self._connection_queue: asyncio.Queue = metadata.CONNECTION_QUEUE
 
         self._functions = {
             "{jabber:client}iq": self.handle_iq,
@@ -89,6 +93,10 @@ class StanzaHandler:
 
         # Remote server
         else:
+            ns, tag = CN.deglose(element.tag)
+            if ns == 'jabber:client':
+                CN.update_namespace('jabber:server', element)
+
             buffer = self._connections.get_server_buffer(host=jid.domain)
             if buffer:
                 buffer.write(ET.tostring(element))

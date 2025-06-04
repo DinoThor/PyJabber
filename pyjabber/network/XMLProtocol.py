@@ -31,7 +31,7 @@ class TransportProxy:
         return self._transport
 
     def write(self, data):
-        logger.trace(f"Sending to {'server' if self._server else ''} {self._peer}: {data}")
+        logger.trace(f"Sending to {'server ' if self._server else ''}{self._peer}: {data}")
         return self._transport.write(data)
 
     def __getattr__(self, name):
@@ -89,7 +89,9 @@ class XMLProtocol(asyncio.Protocol):
         """
         if transport:
             self._peer = transport.get_extra_info('peername')
-            self._transport = TransportProxy(transport, self._peer)
+            logger.info(f"Connection {'to server ' if self._connection_type != SCT.CLIENT else 'from '}{self._peer}")
+
+            self._transport = TransportProxy(transport, self._peer, self._connection_type != SCT.CLIENT)
 
             self._xml_parser = sax.make_parser()
             self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
@@ -100,7 +102,7 @@ class XMLProtocol(asyncio.Protocol):
                 )
             elif self._connection_type == SCT.TO_SERVER:
                 self._xml_parser.setContentHandler(
-                    XMLServerOutgoingParser(self._transport, self.task_tls)
+                    XMLServerOutgoingParser(self._host, self._transport, self.task_tls)
                 )
             else:
                 self._xml_parser.setContentHandler(
@@ -116,9 +118,8 @@ class XMLProtocol(asyncio.Protocol):
             if self._connection_type == SCT.CLIENT:
                 self._connection_manager.connection(self._peer, self._transport)
             else:
-                self._connection_manager.connection_server(self._peer, self._transport)
+                self._connection_manager.connection_server(self._peer, self._transport, self._host)
 
-            logger.info(f"Connection from {self._peer}")
         else:
             logger.error("Invalid transport")
 
@@ -198,4 +199,12 @@ class XMLProtocol(asyncio.Protocol):
         """
             Sync function to call the STARTTLS coroutine
         """
-        self._tls_queue.put_nowait((self._transport, self, self._xml_parser.getContentHandler()))
+        if self._connection_type == SCT.CLIENT:
+            self._tls_queue.put_nowait(
+                (self._transport, self, self._xml_parser.getContentHandler())
+            )
+
+        else:
+            self._tls_queue.put_nowait(
+                (self._transport, self, self._xml_parser.getContentHandler(), self._host)
+            )

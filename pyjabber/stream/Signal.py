@@ -3,8 +3,9 @@ from enum import Enum
 
 class Signal(Enum):
     RESET = 0
-    DONE = 1
-    FORCE_CLOSE = 2
+    CLEAR = 1
+    DONE = 2
+    FORCE_CLOSE = 3
 
     def __eq__(self, other):
         if not isinstance(other, Signal):

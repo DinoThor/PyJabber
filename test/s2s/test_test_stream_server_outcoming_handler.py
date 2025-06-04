@@ -3,7 +3,7 @@ from unittest.mock import Mock
 from xml.etree import ElementTree as ET
 
 # Ensure this path is correct
-from pyjabber.stream.server.outgoing.StreamServerOutcomingHandler import StreamServerOutcomingHandler, Signal, Stage
+from pyjabber.stream.server.outgoing.StreamServerOutgoingHandler import StreamServerOutcomingHandler, Signal, Stage
 
 @pytest.fixture
 def mock_buffer():

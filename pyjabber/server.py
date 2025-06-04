@@ -3,6 +3,8 @@ import os
 import signal
 
 from loguru import logger
+import ssl
+
 
 from pyjabber import init_utils
 from pyjabber.db.database import DB
@@ -13,7 +15,7 @@ from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.server_parameters import Parameters
 from pyjabber.webpage.adminPage import AdminPage
 from pyjabber import metadata
-from pyjabber.workers import tls_worker, queue_worker
+from pyjabber.workers import tls_worker, queue_worker, s2s_outgoing_connection_worker
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -97,6 +99,9 @@ class Server:
 
             loop = asyncio.get_running_loop()
 
+            ssl_con = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            ssl_con.minimum_version = ssl.TLSVersion.TLSv1_3
+
             try:
                 self._client_listener = await loop.create_server(
                     lambda: XMLProtocol(
@@ -108,7 +113,7 @@ class Server:
                     ),
                     host=[self._host, self._public_ip] if self._public_ip else [self._host],
                     port=self._client_port,
-                    family=self._family
+                    family=self._family,
                 )
             except OSError as e:
                 logger.error(e)
@@ -127,9 +132,9 @@ class Server:
                         cert_path=self._cert_path,
                         connection_type=SCT.FROM_SERVER
                     ),
-                    host=["0.0.0.0"],
+                    host=["127.0.0.1"],
                     port=self._server_port,
-                    family=self._family
+                    family=self._family,
                 )
             except OSError as e:
                 logger.error(e)
@@ -182,6 +187,7 @@ class Server:
                 asyncio.create_task(self._adminServer.start()),
                 asyncio.create_task(tls_worker()),
                 asyncio.create_task(queue_worker()),
+                asyncio.create_task(s2s_outgoing_connection_worker()),
                 asyncio.create_task(self.run_server())
             ]
             await asyncio.gather(*tasks)

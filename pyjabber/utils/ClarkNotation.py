@@ -1,5 +1,6 @@
 # https://sabre.io/xml/clark-notation/
 import re
+from xml.etree.ElementTree import Element
 from typing import Tuple
 
 
@@ -22,6 +23,12 @@ def clarkFromTuple(tuple: Tuple[str, str]):
         return f"{tuple[1]}"
     return f"{{{tuple[0]}}}{tuple[1]}"
 
+def update_namespace(ns: str, element: Element):
+    _, tag = deglose(element.tag)
+    element.tag = f'{{{ns}}}{tag}'
+
+    for child in element:
+        update_namespace(ns, child)
 
 def isClark(tag: str) -> bool:
     """

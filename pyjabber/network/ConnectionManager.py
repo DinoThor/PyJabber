@@ -15,10 +15,18 @@ PeerList = Dict[
 
 
 # EXAMPLE
-# peerKeys = {
+# peerList = {
 #     ("0.0.0.0", "50000"): (<JID(demo@localhost/12341234)>, <asyncio.Transport>, <Online: Bool>),
 #     ("0.0.0.0", "50001"): (<JID(test@localhos/43214321)>, <asyncio.Transport>, <Online: Bool>)
 # }
+#
+# remoteList = {
+#   ("0.0.0.0", "50000"): ("domain.es", <asyncio.Transport>),
+#   ("0.0.0.0", "50001"): ("host.com", <asyncio.Transport>)
+# }
+#
+#
+
 
 
 class ConnectionManager(metaclass=Singleton):
@@ -129,6 +137,33 @@ class ConnectionManager(metaclass=Singleton):
                     if re.match(f"{str(jid)}/*", str(jid_stored))
                     and online[0] is True]
 
+    def update_buffer(self, new_transport: Transport, peer: Tuple[str, int] = None, jid: JID = None):
+        if not peer and not jid:
+            logger.warning("Missing peer OR jid parameter to update transport in client connection. No action will be performed")
+            return
+
+        if peer:
+            try:
+                jid, old_transport, online = self._peerList[peer]
+                self._peerList[peer] = (jid, new_transport, online)
+                return
+            except KeyError:
+                logger.warning("Unable to find client with given peer. Check this inconsistency")
+                return
+
+        if jid.resource is None:
+            logger.warning("JID must have a resource to update transport")
+            return
+
+        match = next(((k, v) for k, v in self._peerList.items() if v[0] == jid), None)
+        if match:
+            jid, _, online = match[1]
+            self._peerList[match[0]] = (jid, new_transport, online)
+        else:
+            logger.warning("Unable to find client with given JID. Check this inconsistency")
+
+
+
     ###########
     ### JID ###
     ###########
@@ -165,12 +200,12 @@ class ConnectionManager(metaclass=Singleton):
         try:
             self._peerList[peer][0].resource = resource
         except KeyError:
-            logger.warning(f"Unable to find {peer} during resource update")
+            logger.error(f"Unable to find {peer} during resource update")
 
     ###########################################################################
     ############################# REMOTE SERVER ###############################
     ###########################################################################
-    def connection_server(self, peer: Tuple[str, int], transport: Transport = None) -> None:
+    def connection_server(self, peer: Tuple[str, int], transport: Transport = None, host: str = None) -> None:
         """
             Store a new server connection.
 
@@ -178,7 +213,7 @@ class ConnectionManager(metaclass=Singleton):
             :param transport: The transport object associated to the connection
         """
         if peer not in self._remoteList:
-            self._remoteList[peer] = (None, transport)
+            self._remoteList[peer] = (host, transport)
 
     def disconnection_server(self, peer: Tuple[str, int]) -> None:
         """
@@ -192,10 +227,32 @@ class ConnectionManager(metaclass=Singleton):
         except KeyError:
             logger.warning(f"Server {peer} not present in the online list")
 
-    def set_host_server(self, peer: Tuple[str, int], host: str):
-        entry = self._peerList.get(peer)
-        if entry:
-            self._remoteList[peer] = (host, entry[1])
+    def update_host(self, peer: Tuple[str, int], host: str) -> None:
+        if not peer:
+            logger.warning("Need peer to update host on server connection")
+            return
+
+        try:
+            _, transport = self._remoteList[peer]
+            self._remoteList[peer] = (host, transport)
+            return
+        except KeyError:
+            logger.warning("Unable to find server with given peer during host update. Check this inconsistency")
+            return
+
+    def close_server(self, peer: Tuple[str, int]) -> None:
+        """
+            Closes a connection by sending a '</stream:stream> message' and
+            deletes it from the remote list
+
+            :param peer: The peer value in the tuple format ({IP}, {PORT})
+        """
+        try:
+            _, buffer = self._remoteList.pop(peer)
+            buffer.write('</stream:stream>'.encode())
+            self.disconnection(peer)
+        except KeyError as e:
+            logger.error(f"{peer} not present in the online list")
 
     def get_server_buffer(self, peer: Optional[Tuple[str, str]] = None, host: Optional[str] = None) -> Union[Transport, None]:
         """
@@ -207,11 +264,32 @@ class ConnectionManager(metaclass=Singleton):
 
         if host:
             try:
-                [buffer for buffer in self._remoteList.values() if buffer[0] == host].pop()
+                return [buffer for buffer in self._remoteList.values() if buffer[0] == host].pop()
             except IndexError:
-                return None
+                pass
 
         return None
+
+    def update_transport_server(self, new_transport: Transport, peer: Tuple[str, int] = None, host: str = None):
+        if not peer and not host:
+            logger.warning("Missing peer OR jid parameter to update transport in server connection. No action will be performed")
+            return
+
+        if peer:
+            try:
+                host, _ = self._remoteList[peer]
+                self._remoteList[peer] = (host, new_transport)
+                return
+            except KeyError:
+                logger.warning("Unable to find server with given peer. Check this inconsistency")
+                return
+
+        match = next(((k, v) for k, v in self._remoteList.items() if v[0] == host), None)
+        if match:
+            host, _ = match[1]
+            self._remoteList[match[0]] = (host, new_transport)
+        else:
+            logger.warning("Unable to find server with given host. Check this inconsistency")
 
     def get_server_host(self, peer: Tuple[str, int]):
         """
@@ -219,3 +297,8 @@ class ConnectionManager(metaclass=Singleton):
             :return: Hostname
         """
         return self._remoteList.get(peer)[0] if self._remoteList.get(peer) else None
+
+    def set_host_server(self, peer: Tuple[str, int], host: str):
+        entry = self._peerList.get(peer)
+        if entry:
+            self._remoteList[peer] = (host, entry[1])
