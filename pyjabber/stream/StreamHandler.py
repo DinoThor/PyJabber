@@ -20,13 +20,14 @@ class StreamHandler:
     sasl_mechanisms: List[MECHANISM] = None
     ibr_feature: bool = True
 
-    def __init__(self, transport, starttls) -> None:
+    def __init__(self, transport, starttls, parser_ref) -> None:
         self._host = metadata.HOST
         self._transport = transport
         self._starttls = starttls
         self._streamFeature = StreamFeature()
         self._connection_manager: ConnectionManager = ConnectionManager()
         self._stage = Stage.CONNECTED
+        self._parser_ref = parser_ref
 
         self._stages_handlers = {
             Stage.CONNECTED: self._handle_init,
@@ -80,7 +81,10 @@ class StreamHandler:
         self._stage = Stage.SASL
 
     def _handle_ssl(self, element: ET.Element):
-        res = SASL().feed(element, {"peername": self._transport.get_extra_info('peername')})
+        res = SASL(
+            self._parser_ref.from_claim,
+        ).feed(element, {"peername": self._transport.get_extra_info('peername')})
+
         if type(res) is tuple:
             if res[0].value == Signal.RESET.value:
                 self._transport.write(res[1])

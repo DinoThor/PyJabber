@@ -26,8 +26,9 @@ class XMLParser(ContentHandler):
         self._transport = transport
         self._state = self.StreamState.CONNECTED
         self._stanzaHandler = None
+        self._from_claim = None
         self._stack = []
-        self._streamHandler = self.stream_handler_constructor(self._transport, starttls)
+        self._streamHandler = self.stream_handler_constructor(self._transport, starttls, self)
 
     class StreamState(Enum):
         """
@@ -45,6 +46,10 @@ class XMLParser(ContentHandler):
         self._transport = transport
         self._streamHandler.transport = transport
 
+    @property
+    def from_claim(self):
+        return self._from_claim
+
     def startElementNS(self, name, qname, attrs):
         if self._stack:  # "<stream:stream>" tag already present in the data stack
             elem = ET.Element(
@@ -55,15 +60,15 @@ class XMLParser(ContentHandler):
             self._stack.append(elem)
 
         elif name[1] == "stream" and name[0] == "http://etherx.jabber.org/streams":
-            self._transport.write(Stream.responseStream(attrs, self.server))
-
             elem = ET.Element(
                 CN.clarkFromTuple(name),
                 attrib={
                     CN.clarkFromTuple(key): item for key,
                     item in dict(attrs).items()})
-
+            self._from_claim = elem.attrib.get("from")
             self._stack.append(elem)
+
+            self._transport.write(Stream.responseStream(attrs, self.server))
             self._streamHandler.handle_open_stream()
 
         else:

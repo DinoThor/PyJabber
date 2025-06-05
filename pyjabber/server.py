@@ -99,9 +99,6 @@ class Server:
 
             loop = asyncio.get_running_loop()
 
-            ssl_con = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-            ssl_con.minimum_version = ssl.TLSVersion.TLSv1_3
-
             try:
                 self._client_listener = await loop.create_server(
                     lambda: XMLProtocol(
@@ -132,7 +129,7 @@ class Server:
                         cert_path=self._cert_path,
                         connection_type=SCT.FROM_SERVER
                     ),
-                    host=["127.0.0.1"],
+                    host=["0.0.0.0"],
                     port=self._server_port,
                     family=self._family,
                 )

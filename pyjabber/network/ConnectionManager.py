@@ -39,7 +39,7 @@ class ConnectionManager(metaclass=Singleton):
     ############################## LOCAL BOUND ################################
     ###########################################################################
 
-    def connection(self, peer: Tuple[str, int], transport: Transport = None) -> None:
+    def connection(self, peer: Tuple[str, int], transport = None) -> None:
         """
             Store a new connection, without jid or transport.
             Those will be added in the future with the set_jid method.
@@ -162,7 +162,12 @@ class ConnectionManager(metaclass=Singleton):
         else:
             logger.warning("Unable to find client with given JID. Check this inconsistency")
 
-
+    def get_connection_certificate(self, peer: Tuple[str, int]):
+        """
+            Return the SSL certificate used in the STARTTLS process
+            If no certificated is bounded with the connection, returns None
+        """
+        return next(self._peerList.get(peer)[1].get_extra_info("ssl_object"), None)
 
     ###########
     ### JID ###
@@ -205,7 +210,7 @@ class ConnectionManager(metaclass=Singleton):
     ###########################################################################
     ############################# REMOTE SERVER ###############################
     ###########################################################################
-    def connection_server(self, peer: Tuple[str, int], transport: Transport = None, host: str = None) -> None:
+    def connection_server(self, peer: Tuple[str, int], transport = None, host: str = None) -> None:
         """
             Store a new server connection.
 
@@ -302,3 +307,12 @@ class ConnectionManager(metaclass=Singleton):
         entry = self._peerList.get(peer)
         if entry:
             self._remoteList[peer] = (host, entry[1])
+
+    def get_connection_certificate_server(self, peer: Tuple[str, int]):
+        """
+            Return the SSL certificate used in the STARTTLS process
+            If no certificated is bounded with the connection, returns None
+        """
+        if peer not in self._remoteList:
+            return None
+        return self._remoteList.get(peer)[1].get_extra_info("ssl_object")

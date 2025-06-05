@@ -93,7 +93,10 @@ async def tls_worker():
                     new_transport = TransportProxy(new_transport, peer, False)
                     protocol.transport = new_transport
                     parser.transport = new_transport
-                    connection_manager.update_buffer(new_transport=new_transport, peer=peer)
+                    if protocol.namespace == 'jabber:client':
+                        connection_manager.update_buffer(new_transport=new_transport, peer=peer)
+                    else:
+                        connection_manager.update_transport_server(new_transport=new_transport, peer=peer)
 
                     logger.debug(f"Done TLS for <{peer}>")
 

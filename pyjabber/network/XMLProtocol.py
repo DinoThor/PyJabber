@@ -17,8 +17,6 @@ from pyjabber.network.parsers.XMLServerIncomingParser import XMLServerIncomingPa
 from pyjabber.network.parsers.XMLServerOutgoingParser import XMLServerOutgoingParser
 from pyjabber.stream.StanzaHandler import InternalServerError
 
-FILE_AUTH = os.path.dirname(os.path.abspath(__file__))
-
 
 class TransportProxy:
     def __init__(self, transport, peer, server = False):
@@ -58,9 +56,11 @@ class XMLProtocol(asyncio.Protocol):
         self._xmlns = namespace
         self._host = host
         self._connection_timeout = connection_timeout
+        self._cert_path = cert_path
+
         self._connection_manager = ConnectionManager()
         self._presence_manager = Presence()
-        self._cert_path = cert_path
+
         self._tls_queue = metadata.TLS_QUEUE
 
         self._transport = None
@@ -72,6 +72,13 @@ class XMLProtocol(asyncio.Protocol):
         self._connection_type = connection_type or SCT.CLIENT
         self._server_log = self._connection_type != SCT.CLIENT
 
+        if self._connection_type == SCT.CLIENT:
+            self._logger_tag = "from"
+        elif self._connection_type == SCT.FROM_SERVER:
+            self._logger_tag = "from server"
+        else:
+            self._logger_tag = "to server"
+
     @property
     def transport(self):
         return self._transport
@@ -79,6 +86,10 @@ class XMLProtocol(asyncio.Protocol):
     @transport.setter
     def transport(self, transport: Union[Transport, TransportProxy]):
         self._transport = transport
+
+    @property
+    def namespace(self):
+        return self._xmlns
 
     def connection_made(self, transport):
         """
@@ -89,7 +100,7 @@ class XMLProtocol(asyncio.Protocol):
         """
         if transport:
             self._peer = transport.get_extra_info('peername')
-            logger.info(f"Connection {'to server ' if self._connection_type != SCT.CLIENT else 'from '}{self._peer}")
+            logger.info(f"Connection {self._logger_tag} {self._peer}")
 
             self._transport = TransportProxy(transport, self._peer, self._connection_type != SCT.CLIENT)
 
@@ -133,7 +144,7 @@ class XMLProtocol(asyncio.Protocol):
         if self._timeout_flag:
             return
 
-        logger.info(f"Connection lost from {'server' if self._server_log else ''} {self._peer}: Reason {exc}")
+        logger.info(f"Connection lost {self._logger_tag} {self._peer}: Reason {exc}")
         if self._connection_type == SCT.CLIENT:
             jid = self._connection_manager.get_jid(self._peer)
             if jid and jid.user and jid.domain:
@@ -154,7 +165,7 @@ class XMLProtocol(asyncio.Protocol):
         :param data: Chunk of data received
         :type data: Byte array
         """
-        logger.debug(f"Data received from <{self._peer}>: {data.decode()}")
+        logger.debug(f"Data received {self._logger_tag} {self._peer}: {data.decode()}")
 
         if self._timeout_monitor:
             self._timeout_monitor.reset()
@@ -172,19 +183,19 @@ class XMLProtocol(asyncio.Protocol):
         Called when the client or another server sends an EOF
         """
         if self._transport:
-            logger.debug(f"EOF received from {'server' if self._server_log else ''}{self._peer}")
+            logger.debug(f"EOF {self._logger_tag} {self._peer}")
 
     def connection_timeout(self):
         """
         Called when the stream is not responding for a long tikem
         """
-        logger.info(f"Connection timeout from {'server' if self._server_log else ''}{self._peer}")
+        logger.info(f"Connection timeout {self._logger_tag} {self._peer}")
 
         try:
             self._transport.write("<connection-timeout/>".encode())
             self._transport.close()
         except:
-            logger.warning(f"Connection with {'server' if self._server_log else ''} {self._peer} is already closed. Removing from online list")
+            logger.warning(f"Connection {self._logger_tag} {self._peer} is already closed. Removing from online list")
 
         if self._connection_type == SCT.CLIENT:
             self._connection_manager.disconnection(self._peer)
@@ -199,7 +210,7 @@ class XMLProtocol(asyncio.Protocol):
         """
             Sync function to call the STARTTLS coroutine
         """
-        if self._connection_type == SCT.CLIENT:
+        if self._connection_type in [SCT.CLIENT, SCT.FROM_SERVER]:
             self._tls_queue.put_nowait(
                 (self._transport, self, self._xml_parser.getContentHandler())
             )

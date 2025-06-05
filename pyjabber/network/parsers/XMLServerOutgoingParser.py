@@ -2,7 +2,6 @@ import asyncio
 from xml.etree import ElementTree as ET
 
 from pyjabber import metadata
-from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.parsers.XMLParser import XMLParser
 from pyjabber.stream import Stream
 from pyjabber.stream.StreamHandler import Signal

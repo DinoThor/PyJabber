@@ -38,7 +38,7 @@ class SASL(metaclass=Singleton):
         An instance of this class will manage the authentication from new connections,
         during the stream negotiation process.
     """
-    def __init__(self):
+    def __init__(self, from_claim = None):
         self._handlers = {
             "iq": self.handleIQ,
             "auth": self.handleAuth
@@ -46,6 +46,7 @@ class SASL(metaclass=Singleton):
         self._ns = "jabber:iq:register"
         self._connection_manager = ConnectionManager()
         self._peername = None
+        self._from_claim = from_claim
 
     def feed(self,
              element: ET,
@@ -109,6 +110,21 @@ class SASL(metaclass=Singleton):
             return ET.tostring(iq)
 
     def handleAuth(self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
+        mechanism = element.attrib.get("mechanism")
+
+        if mechanism == MECHANISM.EXTERNAL.value:
+            if not self._from_claim:
+                raise Exception() # TODO: handler error properly
+
+            cert = self._connection_manager.get_connection_certificate_server(self._peername)
+            if not cert:
+                raise Exception() # TODO: missing cert
+            #
+            # if not self.validate_cert(self._from_claim, cert):
+            #     raise Exception() # TODO: from_claim != cert domain
+
+            return Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>"
+
         try:
             data = base64.b64decode(element.text).split("\x00".encode())
             jid = data[1].decode()
@@ -127,6 +143,23 @@ class SASL(metaclass=Singleton):
         except Exception as e:
             logger.error(f"Exception during auth process for {element.attrib.get('from')}: {e}")
             return SE.not_authorized()
+
+    @staticmethod
+    def validate_cert(from_claim, cert):
+        peer_cert = cert.getpeercert()
+        cert_names = []
+
+        subject = peer_cert.get("subject", [])
+        for attr in subject:
+            for (key, value) in attr:
+                if key == "commonName":
+                    cert_names.append(value)
+
+        for typ, value in peer_cert.get("subjectAltName", []):
+            if typ == "DNS":
+                cert_names.append(value)
+
+        return from_claim in cert_names
 
 
 def SASLFeature(mechanism_list: List[MECHANISM] = None) -> ET.Element:
