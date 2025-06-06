@@ -13,15 +13,16 @@ def connections_manager():
     with patch('pyjabber.network.ConnectionManager.logger') as mock_logger:
         yield ConnectionManager(), mock_logger
 
+
 @pytest.fixture(autouse=True)
 def cleanup(connections_manager):
-    connections_manager[0]._peerList.clear()
+    connections_manager, _ = connections_manager
+    connections_manager.peerList.clear()
+
 
 @pytest.fixture(autouse=True)
 def setup_logging(caplog):
-    # Remover todos los handlers para evitar duplicados
     logger.remove()
-    # Configurar loguru para trabajar con caplog
     logger.add(caplog.handler, level="ERROR")
 
 
@@ -45,7 +46,7 @@ def test_get_users_connected(connections_manager):
     connections_manager, _ = connections_manager
     peer = ("127.0.0.1", 12345)
     connections_manager.connection(peer)
-    users_connected = connections_manager.get_users_connected()
+    users_connected = connections_manager.peerList
     assert users_connected == {peer: (None, None, [False])}
 
 
