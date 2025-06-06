@@ -1,6 +1,5 @@
 import asyncio
 import xml.etree.ElementTree as ET
-from contextlib import closing
 from enum import Enum
 from typing import Any, Dict, Tuple, List, Union
 from uuid import uuid4
@@ -12,7 +11,6 @@ from pyjabber import metadata
 from pyjabber.db.database import DB
 from pyjabber.db.model import Model
 from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber.features.feature_utils import RosterUtils as RU
 from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
@@ -54,8 +52,6 @@ class Presence(metaclass=Singleton):
         with DB.connection() as con:
             query = select(Model.PendingSubs.c.jid, Model.PendingSubs.c.item)
             res = con.execute(query).fetchall()
-            # res = con.execute("SELECT jid, item FROM pendingsub", ())
-            # res = res.fetchall()
         for jid_from, jid_to, item in res:
             if jid_to not in self._pending:
                 self._pending[jid_to] = [item]
@@ -68,8 +64,7 @@ class Presence(metaclass=Singleton):
     def _delete_pending_presence(self, jid: str):
         with DB.connection() as con:
             query = delete(Model.PendingSubs).where(Model.PendingSubs.c.jid == jid)
-            con.execute()
-            # con.execute("DELETE FROM pendingsub WHERE jid = ?", (jid,))
+            con.execute(query)
             con.commit()
         self._pending[jid].pop()
 
@@ -414,7 +409,6 @@ class Presence(metaclass=Singleton):
 
     def handle_unsubscribed(self, jid: JID, element: ET.Element):
         to = JID(element.attrib["to"])
-        # bare_jid = self._jid.bare()
 
         if "from" not in element.attrib:
             element.attrib["from"] = str(jid)
@@ -422,8 +416,6 @@ class Presence(metaclass=Singleton):
         # Handle locally
         if to.domain == metadata.HOST:
             roster = self._roster.roster_by_jid(jid)
-            # buffer =
-
             item = [item for item in roster
                     if ET.fromstring(item.get("item")).attrib.get("jid") in [to.bare(), to.user]]
 
@@ -463,36 +455,17 @@ class Presence(metaclass=Singleton):
                 )
                 for buffer in self._connections.get_buffer(to):
                     buffer[1].write(ET.tostring(presence))
-                # roster_push = ET.Element(
-                #     "iq",
-                #     attrib={
-                #         "id": id_iq,
-                #         "to": b[0],
-                #         "type": "set"
-                #     }
-                # )
-                #
-                # query = ET.Element("{jabber:iq:roster}query")
-                # query.append(new_item)
-                # roster_push.append(query)
-                #
-                # b[1].write(ET.tostring(presence))
-                # b[1].write(ET.tostring(roster_push))
 
     def handle_unavailable(self, jid: JID, element: ET.Element):
-        # bare_jid = self._jid.bare()
-
         if "from" not in element.attrib:
             element.attrib["from"] = str(jid)
 
-        roster = RU.retrieve_roster(jid.bare())
-
+        roster = self._roster.roster_by_jid(jid)
         for item in roster:
             to = ET.fromstring(item[-1]).attrib.get('jid')
 
             if to.split("@")[1] == metadata.HOST:
                 presence = element.__copy__()
-
                 presence.attrib["to"] = to
 
                 buffer = self._connections.get_buffer(JID(to))

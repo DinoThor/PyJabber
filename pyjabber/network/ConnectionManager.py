@@ -8,32 +8,39 @@ from loguru import logger
 from pyjabber.stream.JID import JID
 from pyjabber.utils import Singleton
 
-PeerList = Dict[
-    Tuple[str, int],
-    Tuple[Optional[JID], Transport, List[bool]]
-]
-
-
-# EXAMPLE
-# peerList = {
-#     ("0.0.0.0", "50000"): (<JID(demo@localhost/12341234)>, <asyncio.Transport>, <Online: Bool>),
-#     ("0.0.0.0", "50001"): (<JID(test@localhos/43214321)>, <asyncio.Transport>, <Online: Bool>)
-# }
-#
-# remoteList = {
-#   ("0.0.0.0", "50000"): ("domain.es", <asyncio.Transport>),
-#   ("0.0.0.0", "50001"): ("host.com", <asyncio.Transport>)
-# }
-#
-#
-
+Peer = Tuple[str, int]
+PeerList = Dict[Peer, Tuple[Optional[JID], Transport, List[bool]]]
+RemoteList = Dict[Peer, Tuple[Optional[str], Transport]]
 
 
 class ConnectionManager(metaclass=Singleton):
+    """
+    A singleton class used as a repository of connections during the server's lifecycle.
+
+    It keeps track of both client and server connections using the following data structures:
+
+        peerList = {
+            ("0.0.0.0", "50000"): (<JID(demo@localhost/12341234)>, <asyncio.Transport>, <Online: bool>),
+            ("0.0.0.0", "50001"): (<JID(test@localhost/43214321)>, <asyncio.Transport>, <Online: bool>)
+        }
+
+        remoteList = {
+            ("0.0.0.0", "50000"): ("domain.es", <asyncio.Transport>),
+            ("0.0.0.0", "50001"): ("host.com", <asyncio.Transport>)
+        }
+    """
     def __init__(self) -> None:
 
         self._peerList: PeerList = {}
         self._remoteList = {}
+
+    @property
+    def peerList(self):
+        return self._peerList
+
+    @property
+    def remoteList(self):
+        return self._remoteList
 
     ###########################################################################
     ############################## LOCAL BOUND ################################
@@ -63,6 +70,14 @@ class ConnectionManager(metaclass=Singleton):
             logger.warning(f"{peer} not present in the online list")
 
     def online(self, jid: JID, online: bool = True):
+        """
+            Set a client connection status to Online.
+
+            Useful for presence behaviour
+
+        :param jid: JID of the client to update status
+        :param online: New status. True by default
+        """
         for k, v in self._peerList.items():
             if v[0] == jid and v[2][0] != online:
                 self._peerList[k] = (v[0], v[1], [online])
@@ -72,7 +87,7 @@ class ConnectionManager(metaclass=Singleton):
             Closes a connection by sending a '</stream:stream> message' and
             deletes it from the peers list
 
-            :param peer: The peer value in the tuple format ({IP}, {PORT})
+            :param peer: The peer value in the tuple format (<IP>, <PORT>)
         """
         try:
             _, buffer, _ = self._peerList.pop(peer)
@@ -81,23 +96,12 @@ class ConnectionManager(metaclass=Singleton):
         except KeyError as e:
             logger.error(f"{peer} not present in the online list")
 
-    def get_users_connected(self) -> PeerList:
-        """
-            Return all the users connected
-
-            :return: peerList
-        """
-        return self._peerList
-
     def get_buffer(self, jid: JID) -> List[Tuple[JID, Transport, bool]]:
         """
-            Get all the available buffers associated with a jid.
+            Get all the available buffers associated with a JID.
 
-            If the jid is in the format username@domain/resource, the function
-            will only return one buffer or none.
-
-            If the jid is in the format username@domain, the fun<Online: Bool>ction
-            will return a list of the buffers for each resource available.
+                - If the JID is in the full format <username@domain/resource>, it will only return one buffer or none
+                - If the JID is in the bare format <username@domain>, it will return a list of the buffers for each resource available.
 
             Both cases return a list.
 
@@ -115,12 +119,11 @@ class ConnectionManager(metaclass=Singleton):
 
     def get_buffer_online(self, jid: JID) -> List[Tuple[JID, Transport, bool]]:
         """
-            Get all the available buffers associated with a jid
+            Get all the available buffers associated with a JID
             that are ready to receive messages (online).
 
-            - If the jid is in the format username@domain/resource, the function will only return one buffer or none.
-
-            - If the jid is in the format username@domain, the function will return a list of the buffers for each resource available.
+            - If the JID is in the full format <username@domain/resource>, it will only return one buffer or none.
+            - If the JID is in the bare format <username@domain>, it will return a list of the buffers for each resource available.
 
             Both cases return a list.
 
@@ -188,8 +191,7 @@ class ConnectionManager(metaclass=Singleton):
         """
             Set/update the jid of a registered connection.
 
-            An optional transport argument can be provided, in order to
-            set/update the stored buffer
+            An optional transport argument can be provided, in order to set/update the stored buffer
 
             :param peer: The peer value in the tuple format ({IP}, {PORT})
             :param jid: The jid to set/update
@@ -216,6 +218,7 @@ class ConnectionManager(metaclass=Singleton):
 
             :param peer: The peer value in the tuple format ({IP}, {PORT})
             :param transport: The transport object associated to the connection
+            :param host: The host bound to the connection
         """
         if peer not in self._remoteList:
             self._remoteList[peer] = (host, transport)

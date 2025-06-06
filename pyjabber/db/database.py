@@ -24,14 +24,23 @@ class DB:
 
     @staticmethod
     def close_engine():
+        """
+        Safely dispose the global engine instance used across the server
+        """
         DB._engine.dispose()
 
     @staticmethod
     def setup_database() -> Engine:
+        """
+        Initialize the database that will be used in the server session.
+        It can be adjusted by the parameters passed in the Server constructor, as it will be
+        read via the metadata class
+        :return: SQLAlchemy Engine
+        """
         if metadata.DATABASE_IN_MEMORY:
             logger.info("Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!")
             DB._engine = create_engine("sqlite:///:memory:")
-            DB.init_metadata(DB._engine)
+            DB._init_metadata(DB._engine)
 
         elif os.path.isfile(metadata.DATABASE_PATH):
             DB._engine = create_engine(f"sqlite:///{metadata.DATABASE_PATH}")
@@ -40,27 +49,22 @@ class DB:
                 purge_md.reflect(bind=DB._engine)
                 purge_md.drop_all(bind=DB._engine)
                 del purge_md
-                DB.init_metadata(DB._engine)
+                DB._init_metadata(DB._engine)
 
         else:
             logger.info("No database found. Initializing one...")
             DB._engine = create_engine(f"sqlite:///{metadata.DATABASE_PATH}")
-            DB.init_metadata(DB._engine)
+            DB._init_metadata(DB._engine)
 
         return DB._engine
 
     @staticmethod
-    def init_metadata(engine: Engine):
+    def _init_metadata(engine: Engine):
         Model.server_metadata.create_all(engine)
 
     @staticmethod
     def run_db_migrations() -> None:
         cfg = Config()
         cfg.set_main_option("script_location", os.path.join(metadata.ROOT_PATH, '..', 'alembic_local'))
-        cfg.set_main_option("sqlalchemy.url", DB.get_database_url_sqlite())
+        cfg.set_main_option("sqlalchemy.url", f"sqlite:///{metadata.DATABASE_PATH}")
         command.upgrade(cfg, "head")
-
-    @staticmethod
-    def get_database_url_sqlite() -> str:
-        path = metadata.DATABASE_PATH
-        return f"sqlite:///{path}"

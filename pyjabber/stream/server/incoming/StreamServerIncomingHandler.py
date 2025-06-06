@@ -1,10 +1,7 @@
-from typing import List
 from xml.etree import ElementTree as ET
 
-from pyjabber import metadata
 from pyjabber.features.SASLFeature import MECHANISM
-from pyjabber.stream.StreamHandler import StreamHandler, Signal, Stage
-from pyjabber.stanzas.error import StanzaError as SE
+from pyjabber.stream.StreamHandler import StreamHandler, Stage
 
 try:
     from typing import override
@@ -13,21 +10,19 @@ except ImportError:
 
 
 class StreamServerIncomingHandler(StreamHandler):
-    sasl_mechanisms: List[MECHANISM] = [MECHANISM.EXTERNAL]
-    ibr_feature: bool = False
-
     def __init__(self, transport, starttls, parser_ref) -> None:
         super().__init__(transport, starttls, parser_ref)
+        self._ibr_feature = False
+        self._sasl_mechanisms = [MECHANISM.EXTERNAL]
 
+        self._stages_handlers = {
+            Stage.AUTH: self._handle_empty_feautres,
+        }
+        self._stages_handlers.pop(Stage.BIND)
 
+    def _handle_empty_feautres(self, element: ET.Element):
+        self._streamFeature.reset()
+        self._transport.write(self._streamFeature.to_bytes())
 
-    @staticmethod
-    def validate_domain_in_cert(cert: dict, expected_domain: str) -> bool:
-        alt_names = [
-            v for (k, v) in cert.get("subjectAltName", []) if k == "DNS"
-        ]
-        common_names = [
-            v for s in cert.get("subject", [])
-            for (k, v) in s if k == "commonName"
-        ]
-        return expected_domain in alt_names or expected_domain in common_names
+        self._stage = Stage.READY
+

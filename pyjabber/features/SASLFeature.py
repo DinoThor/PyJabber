@@ -1,22 +1,22 @@
 import base64
 import bcrypt
 
-from contextlib import closing
 from enum import Enum
 from typing import Dict, List, Tuple, Union
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
 from loguru import logger
-from sqlalchemy import select, insert
+from sqlalchemy import insert, select
 
-from pyjabber.db.model import Model
-from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber import metadata
+from pyjabber.db.model import Model
 from pyjabber.db.database import DB
+from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
+from pyjabber.stream.Signal import Signal
 from pyjabber.utils import ClarkNotation as CN, Singleton
 
 
@@ -24,11 +24,6 @@ class MECHANISM(Enum):
     PLAIN = "PLAIN"
     SCRAM_SHA_1 = "SCRAM-SHA-1"
     EXTERNAL = "EXTERNAL"
-
-
-class Signal(Enum):
-    RESET = 0
-    DONE = 1
 
 
 class SASL(metaclass=Singleton):
@@ -67,7 +62,7 @@ class SASL(metaclass=Singleton):
                 "from": metadata.HOST})
         return ET.tostring(iq)
 
-    def handleIQ(self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
+    def handleIQ(self, element: ET.Element) -> bytes:
         query = element.find("{jabber:iq:register}query")
 
         if query is None:
@@ -114,11 +109,11 @@ class SASL(metaclass=Singleton):
 
         if mechanism == MECHANISM.EXTERNAL.value:
             if not self._from_claim:
-                raise Exception() # TODO: handler error properly
+                raise Exception()  # TODO: handler error properly
 
             cert = self._connection_manager.get_connection_certificate_server(self._peername)
             if not cert:
-                raise Exception() # TODO: missing cert
+                raise Exception()  # TODO: missing cert
             #
             # if not self.validate_cert(self._from_claim, cert):
             #     raise Exception() # TODO: from_claim != cert domain

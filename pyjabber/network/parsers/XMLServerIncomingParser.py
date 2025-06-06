@@ -16,6 +16,5 @@ class XMLServerIncomingParser(XMLParser):
     stream_handler_constructor = StreamServerIncomingHandler
     server: bool = False
 
-
     def __init__(self, transport, starttls):
         super().__init__(transport, starttls)

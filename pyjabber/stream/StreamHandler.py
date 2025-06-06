@@ -17,9 +17,6 @@ from pyjabber.stream.Signal import Signal
 
 
 class StreamHandler:
-    sasl_mechanisms: List[MECHANISM] = None
-    ibr_feature: bool = True
-
     def __init__(self, transport, starttls, parser_ref) -> None:
         self._host = metadata.HOST
         self._transport = transport
@@ -28,6 +25,9 @@ class StreamHandler:
         self._connection_manager: ConnectionManager = ConnectionManager()
         self._stage = Stage.CONNECTED
         self._parser_ref = parser_ref
+
+        self._ibr_feature = True
+        self._sasl_mechanisms: List[MECHANISM] = []
 
         self._stages_handlers = {
             Stage.CONNECTED: self._handle_init,
@@ -73,9 +73,9 @@ class StreamHandler:
     def _handle_init_ssl(self, _):
         self._streamFeature.reset()
 
-        if self.ibr_feature:
+        if self._ibr_feature:
             self._streamFeature.register(IBR.InBandRegistration())
-        self._streamFeature.register(SASLFeature(mechanism_list=self.sasl_mechanisms))
+        self._streamFeature.register(SASLFeature(mechanism_list=self._sasl_mechanisms))
         self._transport.write(self._streamFeature.to_bytes())
 
         self._stage = Stage.SASL
@@ -86,14 +86,12 @@ class StreamHandler:
         ).feed(element, {"peername": self._transport.get_extra_info('peername')})
 
         if type(res) is tuple:
-            if res[0].value == Signal.RESET.value:
-                self._transport.write(res[1])
-                self._stage = Stage.AUTH
-                return Signal.RESET
-            else:
-                self._transport.write(res[1])
-                self._stage = Stage.AUTH
-                return
+            signal, message = res
+            self._transport.write(message)
+            self._stage = Stage.AUTH
+            return Signal.RESET if signal == Signal.RESET else None
+
+        self._transport.write(res)
 
         self._transport.write(res)
 
@@ -127,4 +125,3 @@ class StreamHandler:
                 self._connection_manager.set_jid(peername, new_jid, self._transport)
 
         return Signal.DONE
-

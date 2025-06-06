@@ -23,7 +23,6 @@ class StreamAlivenessMonitor:
             if self._timeout_callback is not None:
                 self._timeout_callback()
 
-
     def reset(self):
         """
             Reset the timer. Called always after received a message from the client/server
