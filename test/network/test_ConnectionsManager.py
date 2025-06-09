@@ -264,8 +264,8 @@ def test_update_resource(connections_manager):
 
 
 def test_disconnection_key_error(connections_manager, caplog):
-    peer = ('127.0.0.1', 12345)
     connections_manager, log = connections_manager
+    peer = ('127.0.0.1', 5342)
     connections_manager.disconnection(peer)
     assert peer not in connections_manager._peerList
     log.warning.assert_called_with(f"{peer} not present in the online list")
