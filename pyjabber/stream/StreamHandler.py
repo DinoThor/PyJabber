@@ -27,6 +27,8 @@ class StreamHandler:
         self._parser_ref = parser_ref
 
         self._ibr_feature = True
+
+        self._sasl = None
         self._sasl_mechanisms: List[MECHANISM] = []
 
         self._stages_handlers = {
@@ -49,7 +51,7 @@ class StreamHandler:
     def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
         try:
             return self._stages_handlers[self._stage](elem)
-        except KeyError:
+        except Exception as e:
             SE.internal_server_error()
 
     def _handle_init(self, _):
@@ -81,9 +83,10 @@ class StreamHandler:
         self._stage = Stage.SASL
 
     def _handle_ssl(self, element: ET.Element):
-        res = SASL(
-            self._parser_ref.from_claim,
-        ).feed(element, {"peername": self._transport.get_extra_info('peername')})
+        if self._sasl is None:
+            self._sasl = SASL(self._parser_ref)
+
+        res = self._sasl.feed(element, {"peername": self._transport.get_extra_info('peername')})
 
         if type(res) is tuple:
             signal, message = res

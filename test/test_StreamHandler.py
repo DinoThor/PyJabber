@@ -100,10 +100,10 @@ def test_handle_open_stream_sasl_continue(setup):
     auth_text = b64encode(b'\x00username\x00password').decode('ascii')
     elem.text = auth_text
 
-    with patch.object(SASL, "__init__", lambda self: None), \
-         patch.object(SASL, "feed", return_value=(Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")):
+    with patch("pyjabber.stream.StreamHandler.SASL") as mock_sasl:
 
-         handler.handle_open_stream(elem)
+        mock_sasl.return_value.feed.return_value = (Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")
+        handler.handle_open_stream(elem)
 
     assert handler._stage == Stage.AUTH
     expected_response = b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>"
