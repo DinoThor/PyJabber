@@ -7,8 +7,6 @@ import pytest
 
 from pyjabber.features.presence.PresenceFeature import PresenceType
 from pyjabber.stream.JID import JID
-from pyjabber.utils import ClarkNotation as CN
-import os
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stream.StanzaHandler import StanzaHandler, InternalServerError
 

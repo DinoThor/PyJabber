@@ -1,7 +1,7 @@
 import os
 import shutil
 from sqlite3 import Connection
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, call
 
 from sqlalchemy import create_engine
 
@@ -90,3 +90,23 @@ def test_setup_database_new_file():
         del db
         if os.path.isfile(new_file):
             os.remove(new_file)
+
+
+def test_migration():
+    expected_calls = [
+        call("script_location", os.path.join("..", '..', 'alembic_local')),
+        call("sqlalchemy.url", f"sqlite:///absolute_path"),
+    ]
+
+    with patch('pyjabber.db.database.Config') as mock_config, \
+         patch('pyjabber.db.database.command') as mock_command, \
+         patch('pyjabber.db.database.metadata') as mock_meta:
+        mock_meta.ROOT_PATH = ".."
+        mock_meta.DATABASE_PATH = "absolute_path"
+
+        db = DB()
+        db.run_db_migrations()
+
+        mock_config.assert_called()
+        mock_config.return_value.set_main_option.assert_has_calls(expected_calls, any_order=False)
+        mock_command.upgrade.assert_called_with(mock_config.return_value, "head")

@@ -3,7 +3,7 @@ import os
 import sqlalchemy
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, MetaData, Engine, text
+from sqlalchemy import create_engine, MetaData, Engine
 
 from pyjabber import metadata
 from loguru import logger
