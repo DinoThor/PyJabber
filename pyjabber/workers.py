@@ -177,7 +177,7 @@ async def queue_worker():
                     if host in pending_stanzas:
                         while pending_stanzas[host]:
                             stanza_bytes = pending_stanzas[host].pop()
-                            _, buffer = connection_manager.get_server_buffer(host=host)
+                            buffer = connection_manager.get_server_buffer(host=host)
                             buffer.write(stanza_bytes)
                         pending_stanzas.pop(host, None)
 

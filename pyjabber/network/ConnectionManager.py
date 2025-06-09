@@ -29,6 +29,7 @@ class ConnectionManager(metaclass=Singleton):
             ("0.0.0.0", "50001"): ("host.com", <asyncio.Transport>)
         }
     """
+
     def __init__(self) -> None:
 
         self._peerList: PeerList = {}
@@ -46,7 +47,7 @@ class ConnectionManager(metaclass=Singleton):
     ############################## LOCAL BOUND ################################
     ###########################################################################
 
-    def connection(self, peer: Tuple[str, int], transport = None) -> None:
+    def connection(self, peer: Tuple[str, int], transport=None) -> None:
         """
             Store a new connection, without jid or transport.
             Those will be added in the future with the set_jid method.
@@ -142,7 +143,8 @@ class ConnectionManager(metaclass=Singleton):
 
     def update_buffer(self, new_transport: Transport, peer: Tuple[str, int] = None, jid: JID = None):
         if not peer and not jid:
-            logger.warning("Missing peer OR jid parameter to update transport in client connection. No action will be performed")
+            logger.warning(
+                "Missing peer OR jid parameter to update transport in client connection. No action will be performed")
             return
 
         if peer:
@@ -165,12 +167,12 @@ class ConnectionManager(metaclass=Singleton):
         else:
             logger.warning("Unable to find client with given JID. Check this inconsistency")
 
-    def get_connection_certificate(self, peer: Tuple[str, int]):
-        """
-            Return the SSL certificate used in the STARTTLS process
-            If no certificated is bounded with the connection, returns None
-        """
-        return next(self._peerList.get(peer)[1].get_extra_info("ssl_object"), None)
+    # def get_connection_certificate(self, peer: Tuple[str, int]):
+    #     """
+    #         Return the SSL certificate used in the STARTTLS process
+    #         If no certificated is bounded with the connection, returns None
+    #     """
+    #     return next(self._peerList.get(peer)[1].get_extra_info("ssl_object"), None)
 
     ###########
     ### JID ###
@@ -212,7 +214,7 @@ class ConnectionManager(metaclass=Singleton):
     ###########################################################################
     ############################# REMOTE SERVER ###############################
     ###########################################################################
-    def connection_server(self, peer: Tuple[str, int], transport = None, host: str = None) -> None:
+    def connection_server(self, peer: Tuple[str, int], transport=None, host: str = None) -> None:
         """
             Store a new server connection.
 
@@ -236,10 +238,6 @@ class ConnectionManager(metaclass=Singleton):
             logger.warning(f"Server {peer} not present in the online list")
 
     def update_host(self, peer: Tuple[str, int], host: str) -> None:
-        if not peer:
-            logger.warning("Need peer to update host on server connection")
-            return
-
         try:
             _, transport = self._remoteList[peer]
             self._remoteList[peer] = (host, transport)
@@ -258,29 +256,35 @@ class ConnectionManager(metaclass=Singleton):
         try:
             _, buffer = self._remoteList.pop(peer)
             buffer.write('</stream:stream>'.encode())
-            self.disconnection(peer)
+            self.disconnection_server(peer)
         except KeyError as e:
             logger.error(f"{peer} not present in the online list")
 
-    def get_server_buffer(self, peer: Optional[Tuple[str, str]] = None, host: Optional[str] = None) -> Union[Transport, None]:
+    def get_server_buffer(self, peer: Optional[Tuple[str, int]] = None, host: Optional[str] = None) -> Union[
+        Transport, None]:
         """
             Return the buffer associated with the given host
             :return: (<HOST>, <TRANSPORT>) tuple
         """
         if peer:
-            return self._remoteList.get(peer)
+            if peer not in self._remoteList:
+                logger.error("Missing peer in the connection list. Check it")
+                return None
+            return self._remoteList.get(peer)[1]
 
         if host:
             try:
-                return [buffer for buffer in self._remoteList.values() if buffer[0] == host].pop()
+                return [buffer[1] for buffer in self._remoteList.values() if buffer[0] == host].pop()
             except IndexError:
                 pass
 
+        logger.error("Missing peer OR host to search for server transport. Returning None")
         return None
 
     def update_transport_server(self, new_transport: Transport, peer: Tuple[str, int] = None, host: str = None):
         if not peer and not host:
-            logger.warning("Missing peer OR jid parameter to update transport in server connection. No action will be performed")
+            logger.warning(
+                "Missing peer OR jid parameter to update transport in server connection. No action will be performed")
             return
 
         if peer:
