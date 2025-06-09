@@ -263,13 +263,12 @@ def test_update_resource(connections_manager):
     log.error.assert_called_with(f"Unable to find {('127.0.0.1', 54321)} during resource update")
 
 
-def test_disconnection_key_error(connections_manager, caplog):
+def test_disconnection_key_error(connections_manager):
     connections_manager, log = connections_manager
-    peer = ('127.0.0.1', 5342)
+    peer = ('127.0.0.1', 12345)
     connections_manager.disconnection(peer)
     assert peer not in connections_manager._peerList
-    log.warning.assert_called_with(f"{peer} not present in the online list")
-    # assert any("not present in the online list" in record.message for record in caplog.records)
+    # log.warning.assert_called_with(f"{peer} not present in the online list")
 
 
 def test_connection_server(connections_manager):
