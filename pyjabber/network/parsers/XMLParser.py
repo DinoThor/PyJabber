@@ -69,7 +69,10 @@ class XMLParser(ContentHandler):
             self._stack.append(elem)
 
             self._transport.write(Stream.responseStream(attrs, self.server))
-            self._streamHandler.handle_open_stream()
+            signal = self._streamHandler.handle_open_stream()
+            if signal and signal == Signal.DONE:
+                self._stanzaHandler = self.stanza_handler_constructor(self._transport)
+                self._state = self.StreamState.READY
 
         else:
             raise Exception()

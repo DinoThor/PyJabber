@@ -1,48 +1,44 @@
-import os
 import xml.etree.ElementTree as ET
 
-from pyjabber.features.presence.PresenceFeature import Presence
-from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber.stanzas.error import StanzaError as SE
+from pyjabber.stream.JID import JID
 from pyjabber.stream.StanzaHandler import StanzaHandler
-
-try:
-    from typing import override
-except ImportError:
-    def override(func): return func
 
 
 class StanzaServerIncomingHandler(StanzaHandler):
     def __init__(self, buffer) -> None:
         super().__init__(buffer)
 
-    @override
-    def feed(self, element: ET.Element):
-        ssl_cert = self._buffer.get_extra_info("ssl_object")
-        from_ = element.attrib.get("from")
-        from_ = from_.split("@").pop() if from_ else None
+        self._functions = {
+            "{jabber:server}iq": self.handle_iq,
+            "{jabber:server}message": self.handle_msg,
+            "{jabber:server}presence": self.handle_pre
+        }
 
-        if not from_:
-            pass
+    def handle_iq(self, element: ET.Element):
+        return
 
-        if not self.verify_claimed_domain(ssl_cert, from_):
-            pass
+    def handle_pre(self, element: ET.Element):
+        pass
 
-        try:
-            self._functions[element.tag](element)
-        except KeyError:
-            self._buffer.write(SE.bad_request())
+    def handle_msg(self, element: ET.Element):
+        jid = JID(element.attrib["to"])
 
-    @staticmethod
-    def verify_claimed_domain(cert: dict, expected_domain: str) -> bool:
-        san = cert.get("subjectAltName", [])
-        for key, value in san:
-            if key == "DNS" and value.lower() == expected_domain.lower():
-                return True
+        if not jid.resource:
+            priority = self._presenceManager.most_priority(jid)
+            if not priority and self._message_persistence:
+                self._message_queue.put_nowait(('MESSAGE', JID(jid.bare()), ET.tostring(element)))
+                return None
 
-        for item in cert.get("subject", []):
-            for key, value in item:
-                if key == "commonName" and value.lower() == expected_domain.lower():
-                    return True
-
-        return False
+            all_resources_online = []
+            for user in priority:
+                all_resources_online += self._connections.get_buffer_online(
+                    JID(user=jid.user, domain=jid.domain, resource=user[0]))
+            for buffer in all_resources_online:
+                buffer[1].write(ET.tostring(element))
+        else:
+            resource_online = self._connections.get_buffer_online(jid)
+            if not resource_online and self._message_persistence:
+                self._message_queue.put_nowait(('MESSAGE', jid, ET.tostring(element)))
+            else:
+                for buffer in resource_online:
+                    buffer[1].write(ET.tostring(element))

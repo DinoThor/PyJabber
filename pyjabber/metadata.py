@@ -3,6 +3,7 @@ from typing import List
 
 HOST = None
 IP = None
+CONNECTION_TIMEOUT = None
 SERVER_PORT = None
 FAMILY = None
 CONFIG_PATH = None
@@ -13,7 +14,8 @@ DATABASE_IN_MEMORY = None
 DATABASE_PURGE = None
 MESSAGE_PERSISTENCE = None
 PLUGINS = None
-ITEMS =None
+ITEMS = None
+
 
 TLS_QUEUE = None
 CONNECTION_QUEUE = None
@@ -24,6 +26,7 @@ MESSAGE_QUEUE = None
 def init_config(
     host: str,
     ip: List[str],
+    connection_timeout: int,
     server_port: int,
     family: AddressFamily,
     config_path: str,
@@ -36,9 +39,10 @@ def init_config(
     plugins: List[str],
     items: List[tuple]
 ):
-    global HOST, IP, SERVER_PORT, FAMILY, CONFIG_PATH, CERT_PATH, ROOT_PATH, DATABASE_PATH, DATABASE_IN_MEMORY, DATABASE_PURGE, MESSAGE_PERSISTENCE, PLUGINS, ITEMS
+    global HOST, IP, CONNECTION_TIMEOUT, SERVER_PORT, FAMILY, CONFIG_PATH, CERT_PATH, ROOT_PATH, DATABASE_PATH, DATABASE_IN_MEMORY, DATABASE_PURGE, MESSAGE_PERSISTENCE, PLUGINS, ITEMS
     HOST = host
     IP = ip
+    CONNECTION_TIMEOUT = connection_timeout
     SERVER_PORT = server_port
     FAMILY = family
     CONFIG_PATH = config_path

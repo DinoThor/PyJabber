@@ -96,8 +96,6 @@ class StreamHandler:
 
         self._transport.write(res)
 
-        self._transport.write(res)
-
     def _handle_init_resource_bind(self, _):
         self._streamFeature.reset()
         self._streamFeature.register(ResourceBinding())

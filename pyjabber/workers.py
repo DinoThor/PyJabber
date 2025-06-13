@@ -6,7 +6,6 @@ from typing import Dict, List
 from loguru import logger
 
 from pyjabber import metadata
-from pyjabber.network import CertGenerator
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.ServerConnectionType import ServerConnectionType as SCT
 from pyjabber.network.XMLProtocol import TransportProxy, XMLProtocol
@@ -207,7 +206,6 @@ async def queue_worker():
 async def s2s_outgoing_connection_worker():
     connection_manager = ConnectionManager()
     s2s_queue: asyncio.Queue = metadata.S2S_OUTGOING_QUEUE
-    connection_queue: asyncio.Queue = metadata.CONNECTION_QUEUE
     loop = asyncio.get_running_loop()
 
     try:
@@ -222,17 +220,14 @@ async def s2s_outgoing_connection_worker():
                 lambda: XMLProtocol(
                     namespace="jabber:server",
                     host=host,
-                    connection_timeout=60,
+                    connection_timeout=metadata.CONNECTION_TIMEOUT,
                     cert_path=metadata.CERT_PATH,
                     connection_type=SCT.TO_SERVER
                 ),
                 host=host,
-                port=5269,
+                port=metadata.SERVER_PORT,
                 family=metadata.FAMILY
             )
-
-            connection_manager.connection_server(None,  transport)
-            # connection_queue.put_nowait(('CONNECTION', host))
 
     except asyncio.CancelledError:
         pass

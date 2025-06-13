@@ -1,12 +1,8 @@
 from xml.etree import ElementTree as ET
 
-from pyjabber.features.SASLFeature import MECHANISM
+from pyjabber.features.SASLFeature import MECHANISM, SASL
+from pyjabber.stream.Signal import Signal
 from pyjabber.stream.StreamHandler import StreamHandler, Stage
-
-try:
-    from typing import override
-except ImportError:
-    def override(func): return func
 
 
 class StreamServerIncomingHandler(StreamHandler):
@@ -15,14 +11,13 @@ class StreamServerIncomingHandler(StreamHandler):
         self._ibr_feature = False
         self._sasl_mechanisms = [MECHANISM.EXTERNAL]
 
-        self._stages_handlers = {
-            Stage.AUTH: self._handle_empty_feautres,
-        }
+        self._stages_handlers[Stage.AUTH] = self._handle_empty_features
         self._stages_handlers.pop(Stage.BIND)
 
-    def _handle_empty_feautres(self, element: ET.Element):
+    def _handle_empty_features(self, _):
         self._streamFeature.reset()
         self._transport.write(self._streamFeature.to_bytes())
 
         self._stage = Stage.READY
+        return Signal.DONE
 

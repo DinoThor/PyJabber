@@ -3,7 +3,6 @@ import os
 import signal
 
 from loguru import logger
-import ssl
 
 
 from pyjabber import init_utils
@@ -56,6 +55,7 @@ class Server:
         metadata.init_config(
             host=param.host,
             ip=[self._host_ip, self._public_ip],
+            connection_timeout=param.connection_timeout,
             family=self._family,
             server_port=self._server_port,
             database_path=self._database_path,
