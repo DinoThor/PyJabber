@@ -26,7 +26,7 @@ class StreamHandler:
         self._stage = Stage.CONNECTED
         self._parser_ref = parser_ref
 
-        self._ibr_feature = True
+        self._ibr_feature = 'jabber:iq:register' in metadata.PLUGINS
 
         self._sasl = None
         self._sasl_mechanisms: List[MECHANISM] = []

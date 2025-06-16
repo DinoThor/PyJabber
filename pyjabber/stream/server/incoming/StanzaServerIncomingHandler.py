@@ -14,10 +14,10 @@ class StanzaServerIncomingHandler(StanzaHandler):
             "{jabber:server}presence": self.handle_pre
         }
 
-    def handle_iq(self, element: ET.Element):
+    def handle_iq(self, element: ET.Element):   # pragma: no cover
         return
 
-    def handle_pre(self, element: ET.Element):
+    def handle_pre(self, element: ET.Element):  # pragma: no cover
         pass
 
     def handle_msg(self, element: ET.Element):
@@ -26,7 +26,7 @@ class StanzaServerIncomingHandler(StanzaHandler):
         if not jid.resource:
             priority = self._presenceManager.most_priority(jid)
             if not priority and self._message_persistence:
-                self._message_queue.put_nowait(('MESSAGE', JID(jid.bare()), ET.tostring(element)))
+                self._message_queue.put_nowait(('MESSAGE', jid, ET.tostring(element)))
                 return None
 
             all_resources_online = []
