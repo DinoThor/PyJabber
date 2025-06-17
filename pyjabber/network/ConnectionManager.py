@@ -264,7 +264,6 @@ class ConnectionManager(metaclass=Singleton):
         Transport, None]:
         """
             Return the buffer associated with the given host
-            :return: (<HOST>, <TRANSPORT>) tuple
         """
         if peer:
             if peer not in self._remoteList:

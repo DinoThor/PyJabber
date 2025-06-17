@@ -17,10 +17,10 @@ def setup():
     mock_buffer.get_extra_info.return_value = '127.0.0.1'
 
     with patch('pyjabber.stream.StanzaHandler.ConnectionManager') as MockConnectionsManager, \
-         patch('pyjabber.stream.StanzaHandler.PluginManager') as MockPluginManager, \
+         patch('pyjabber.stream.StanzaHandler.PluginManager'), \
          patch('pyjabber.stream.StanzaHandler.metadata') as mock_metadata, \
          patch('pyjabber.stream.StanzaHandler.Presence') as MockPresence, \
-         patch('pyjabber.stream.StanzaHandler.logger') as mock_logger: \
+         patch('pyjabber.stream.StanzaHandler.logger') as mock_logger:
 
         MockConnectionsManager.get_jid.return_value = 'user@localhost'
         mock_metadata.HOST = 'localhost'
@@ -32,8 +32,8 @@ def setup():
             "{jabber:client}presence": MagicMock()
         }
 
-    yield (handler, mock_buffer, MockConnectionsManager,
-           MockPresence, mock_logger, mock_metadata.MESSAGE_QUEUE)
+        yield (handler, mock_buffer, MockConnectionsManager,
+               MockPresence, mock_logger, mock_metadata.MESSAGE_QUEUE)
 
 
 def test_feed_valid_element(setup):
@@ -129,9 +129,9 @@ def test_handleMsg_enqueue_resource(setup):
     handler.handle_msg(element)
 
     args = mock_queue.put_nowait.call_args.args[0]
-    assert args [0] == 'MESSAGE'
-    assert args [1] == 'user@localhost/res1'
-    assert args [2] == ET.tostring(element)
+    assert args[0] == 'MESSAGE'
+    assert args[1] == JID('user@localhost/res1')
+    assert args[2] == ET.tostring(element)
 
 
 def test_handleMsg_bare(setup):
@@ -161,14 +161,31 @@ def test_handleMsg_bare(setup):
     buffer_mock_2.write.assert_called_with(ET.tostring(element))
 
 
-@pytest.mark.skip
 def test_handleMsg_remote_user(setup):
-    handler, mock_buffer, mock_connections, mock_presence, _, _ = setup
+    handler, mock_buffer, mock_connections, mock_presence, _, mock_queue = setup
     element = Element('message', attrib={"to": "user@remote.com"})
     element.tag = "{jabber:client}message"
-    mock_connections.get_server_buffer.return_value = None
+
+    buffer_mock = MagicMock()
+    mock_connections.return_value.get_server_buffer.return_value = buffer_mock
+
     handler.handle_msg(element)
-    mock_queue_message.enqueue.assert_called_once_with('remote.com', ET.tostring(element))
+
+    mock_connections.return_value.get_server_buffer.assert_called_with(host='remote.com')
+    buffer_mock.write.assert_called_with(ET.tostring(element))
+    mock_queue.put_nowait.assert_not_called()
+
+
+def test_handleMsg_remote_user_queue(setup):
+    handler, mock_buffer, mock_connections, mock_presence, _, mock_queue = setup
+    element = Element('message', attrib={"to": "user@remote.com"})
+    element.tag = "{jabber:client}message"
+    mock_connections.return_value.get_server_buffer.return_value = None
+
+    handler.handle_msg(element)
+
+    mock_connections.return_value.get_server_buffer.assert_called_with(host='remote.com')
+    mock_queue.put_nowait.assert_called_with(('MESSAGE', 'remote.com', ET.tostring(element)))
 
 
 def test_handlePre(setup):

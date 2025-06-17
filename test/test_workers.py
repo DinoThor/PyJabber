@@ -12,11 +12,10 @@ from pyjabber.workers import tls_worker, queue_worker
 
 
 @pytest.mark.asyncio
-async def test_tls_worker():
+async def test_tls_worker_client():
     with patch('pyjabber.workers.metadata') as mock_metadata, \
          patch('pyjabber.workers.asyncio.get_running_loop') as mock_get_loop, \
-         patch('pyjabber.workers.ssl') as mock_ssl, \
-         patch('pyjabber.workers.CertGenerator') as mock_cert:
+         patch('pyjabber.workers.ssl') as mock_ssl:
 
         mock_queue = MagicMock()
         mock_transport = MagicMock()
@@ -59,13 +58,12 @@ async def test_tls_worker():
 
 
 @pytest.mark.asyncio
-async def test_tls_worker_connection_error():
+async def test_tls_worker_connection_error_client():
     with patch('pyjabber.workers.ConnectionManager') as mock_con, \
          patch('pyjabber.workers.metadata') as mock_metadata, \
          patch('pyjabber.workers.asyncio.get_running_loop') as mock_get_loop, \
          patch('pyjabber.workers.ssl') as mock_ssl, \
-         patch('pyjabber.workers.logger') as mock_logger, \
-         patch('pyjabber.workers.CertGenerator') as mock_cert:
+         patch('pyjabber.workers.logger') as mock_logger:
 
         mock_queue = MagicMock()
         mock_transport = MagicMock()
@@ -85,7 +83,7 @@ async def test_tls_worker_connection_error():
         mock_queue.get.side_effect = [(mock_transport, mock_protocol, mock_parser), asyncio.CancelledError()]
 
         mock_metadata.TLS_QUEUE = mock_queue
-        mock_metadata.CERT_PATJ = ""
+        mock_metadata.CERT_PATH = ""
         mock_metadata.HOST = "localhost"
 
         mock_loop.start_tls = AsyncMock()
@@ -111,7 +109,7 @@ async def test_tls_worker_connection_error():
 
 @pytest.mark.skip
 @pytest.mark.asyncio
-async def test_tls_worker_connection_queue():
+async def test_tls_worker_connection_queue_client():
     with patch('pyjabber.workers.ConnectionManager') as mock_con, \
          patch('pyjabber.workers.metadata') as mock_metadata, \
          patch('pyjabber.workers.asyncio.get_running_loop') as mock_get_loop, \

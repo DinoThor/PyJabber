@@ -78,9 +78,9 @@ def test_handleMsg_enqueue_resource(setup):
     handler.handle_msg(element)
 
     args = mock_queue.put_nowait.call_args.args[0]
-    assert args [0] == 'MESSAGE'
-    assert args [1] == 'user@localhost/res1'
-    assert args [2] == ET.tostring(element)
+    assert args[0] == 'MESSAGE'
+    assert args[1] == JID('user@localhost/res1')
+    assert args[2] == ET.tostring(element)
 
 
 def test_handleMsg_bare(setup):
