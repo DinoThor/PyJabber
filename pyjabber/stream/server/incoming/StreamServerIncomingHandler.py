@@ -1,5 +1,3 @@
-from xml.etree import ElementTree as ET
-
 from pyjabber.features.SASLFeature import MECHANISM, SASL
 from pyjabber.stream.Signal import Signal
 from pyjabber.stream.StreamHandler import StreamHandler, Stage
