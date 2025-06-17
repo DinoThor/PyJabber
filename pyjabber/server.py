@@ -129,7 +129,7 @@ class Server:
                         cert_path=self._cert_path,
                         connection_type=SCT.FROM_SERVER
                     ),
-                    host=["0.0.0.0"],
+                    host=["127.0.0.1"],
                     port=self._server_port,
                     family=self._family,
                 )

@@ -3,7 +3,7 @@ import socket
 from loguru import logger
 
 
-def setup_query_local_ip():
+def setup_query_local_ip():  # pragma: no cover
     """
     Return the local IP of the host machine
     """
@@ -20,7 +20,7 @@ def setup_query_local_ip():
     return IP
 
 
-def setup_ip_by_host(host: str):
+def setup_ip_by_host(host: str):  # pragma: no cover
     try:
         return socket.gethostbyname(host)
     except socket.gaierror as e:

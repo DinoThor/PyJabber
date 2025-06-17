@@ -38,7 +38,6 @@ class SASL(metaclass=Singleton):
             "iq": self.handleIQ,
             "auth": self.handleAuth
         }
-        self._ns = "jabber:iq:register"
         self._connection_manager = ConnectionManager()
         self._peername = None
         self._from_claim = from_claim
@@ -83,7 +82,7 @@ class SASL(metaclass=Singleton):
                 if credentials:
                     return SE.conflict_error(element.attrib["id"])
                 else:
-                    pwd = query.find(CN.clarkFromTuple((self._ns, "password"))).text
+                    pwd = query.find("{jabber:iq:register}password").text
                     hashed_pwd = bcrypt.hashpw(pwd.encode(), bcrypt.gensalt())
 
                     query_insert = insert(Model.Credentials).values({"jid": new_jid, "hash_pwd": hashed_pwd})
@@ -113,10 +112,12 @@ class SASL(metaclass=Singleton):
 
             cert = self._connection_manager.get_connection_certificate_server(self._peername)
             if not cert:
-                raise Exception()  # TODO: missing cert
-            #
-            # if not self.validate_cert(self._from_claim, cert):
-            #     raise Exception() # TODO: from_claim != cert domain
+                logger.error(f"Error retrieving TLS cert from {self._peername}. Closing connection for server safety")
+                self._connection_manager.close(self._peername)
+
+            if not self.validate_cert(self._from_claim, cert):
+                logger.error(f"Host claim cannot be verified with presented cert. Verify host used on stream or cert: {self._peername}")
+                self._connection_manager.close(self._peername)
 
             return Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>"
 

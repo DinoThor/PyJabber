@@ -114,5 +114,18 @@ def test_sasl_feature():
     assert feature_element[1].text == MECHANISM.SCRAM_SHA_1.value
 
 
+def test_iq_register_result():
+    with patch('pyjabber.features.SASLFeature.metadata') as mock_meta:
+        mock_meta.HOST = 'localhost'
+
+        res = SASL.iq_register_result("123")
+        res_parsed = ET.fromstring(res)
+
+        assert res_parsed.tag == "iq"
+        assert res_parsed.attrib["type"] == "result"
+        assert res_parsed.attrib["id"] == "123"
+        assert res_parsed.attrib["from"] == "localhost"
+
+
 if __name__ == "__main__":
     pytest.main()

@@ -30,6 +30,7 @@ async def tls_worker():
         keyfile=os.path.join(metadata.CERT_PATH, f"{metadata.HOST}_key.pem"),
     )
 
+
     server_ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
     server_ssl_context.maximum_version = ssl.TLSVersion.TLSv1_2
     server_ssl_context.load_cert_chain(
@@ -37,8 +38,8 @@ async def tls_worker():
         keyfile=os.path.join(metadata.CERT_PATH, f"{metadata.HOST}_key.pem"),
     )
 
-    server_ssl_context.check_hostname = False
-    server_ssl_context.verify_mode = ssl.CERT_NONE
+    # server_ssl_context.check_hostname = True
+    # server_ssl_context.verify_mode = ssl.CERT_REQUIRED
 
     loop = asyncio.get_running_loop()
     tls_queue = metadata.TLS_QUEUE
