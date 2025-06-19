@@ -106,7 +106,7 @@ class PubSub(metaclass=Singleton):
         Return the info for a given node
         :return: A 2-tuple in the format of (name, type)
         """
-        match_node = [n for n in self._nodes if node[NodeAttrib.NODE.value] == node]
+        match_node = [n for n in self._nodes if n[NodeAttrib.NODE.value] == node]
         if match_node:
             match_node = match_node.pop()
             return match_node[NodeAttrib.NAME.value], match_node[NodeAttrib.TYPE.value]

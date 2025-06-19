@@ -91,9 +91,8 @@ def test_handle_subscribe(setup_presence):
     ]
     mock_connections().get_buffer.return_value = [MagicMock()]
     jid = JID('user2@localhost')
-    presence._jid = jid
     presence._roster = mock_roster
-    result = presence.handle_subscribe(presence._jid, element)
+    result = presence.handle_subscribe(jid, element)
 
     assert result is None
     mock_roster.roster_by_jid.assert_called_with(jid)
@@ -125,7 +124,6 @@ def test_handle_subscribe_subscription_both(setup_presence):
         {"id": 1, "item": '<item jid="user@localhost" subscription="both"/>'}
     ]
     jid = JID('user2@localhost')
-    presence._jid = jid
     presence._roster = mock_roster
     result = presence.handle_subscribe(jid, element)
 
@@ -150,7 +148,6 @@ def test_handle_global_presence_no_roster_entries(setup_presence):
     element = ET.Element('presence', attrib={'id': '123'})
     mock_roster.roster_by_jid.return_value = []
     jid = JID('user@localhost/1223')
-    presence._jid = jid
     presence._roster = mock_roster
     presence.handle_global_presence(jid, element)
 
@@ -172,7 +169,6 @@ def test_feed_handle_subscribed(setup_presence):
         [{"id": 2, "item": '<item jid="user" subscription="none"/>'}]  # After update
     ]
     mock_connections.get_buffer.return_value = []
-    presence._jid = jid
     presence._roster = mock_roster
     presence._connections = mock_connections
 
@@ -198,7 +194,6 @@ def test_feed_handle_unsubscribed(setup_presence):
         [{"id": 1, "item": '<item jid="user" subscription="to"/>'}]
     ]
     mock_connections.get_buffer.return_value = ([(JID("user@localhost/123"), MagicMock())])
-    presence._jid = jid
     presence._roster = mock_roster
     presence._connections = mock_connections
     presence.feed(jid, element)
@@ -212,8 +207,8 @@ def test_feed_handle_unsubscribed(setup_presence):
 def test_feed_handle_unavailable(setup_presence):
     presence, _, _ = setup_presence
     element = ET.Element('presence', attrib={'type': 'unavailable', 'from': 'user2@localhost', 'id': '123'})
-    presence._jid = JID('user2@localhost')
-    result = presence.feed(element)
+    jid = JID('user2@localhost')
+    result = presence.feed(jid, element)
     assert result is None
 
 
@@ -222,7 +217,7 @@ def test_handle_subscribed(setup_presence):
     presence, mock_connections, mock_retrieve_roster = setup_presence
     element = ET.Element('presence', attrib={'type': 'subscribed', 'to': 'user@localhost', 'id': '123'})
 
-    presence._jid = JID('user2@localhost')
+    jid = JID('user2@localhost')
 
     mock_retrieve_roster.side_effect = [
         [(1, 'user2@localhost', '<item jid="user@localhost" subscription="from"/>')],
@@ -234,7 +229,7 @@ def test_handle_subscribed(setup_presence):
         [MagicMock()]
     ]
 
-    result = presence.handle_subscribed(element)
+    result = presence.handle_subscribed(jid, element)
 
     assert result is None
 
@@ -244,7 +239,7 @@ def test_handle_unsubscribed(setup_presence):
     presence, mock_connections, mock_retrieve_roster = setup_presence
     element = ET.Element('presence', attrib={'type': 'unsubscribed', 'to': 'user@localhost', 'id': '123'})
 
-    presence._jid = JID('user2@localhost')
+    jid = JID('user2@localhost')
 
     mock_retrieve_roster.side_effect = [
         [(1, 'user2@localhost', '<item jid="user@localhost" subscription="both"/>')]
@@ -252,7 +247,7 @@ def test_handle_unsubscribed(setup_presence):
 
     mock_connections.get_buffer.return_value = [MagicMock()]
 
-    result = presence.handle_unsubscribed(element)
+    result = presence.handle_unsubscribed(jid, element)
 
     assert result is None
 
@@ -262,7 +257,7 @@ def test_handle_unavailable(setup_presence):
     presence, mock_connections, mock_retrieve_roster = setup_presence
     element = ET.Element('presence', attrib={'type': 'unavailable', 'from': 'user2@localhost', 'id': '123'})
 
-    presence._jid = JID('user2@localhost')
+    jid = JID('user2@localhost')
 
     mock_retrieve_roster.return_value = [
         (1, 'user@localhost', '<item jid="user2@localhost" subscription="both"/>')
@@ -270,7 +265,7 @@ def test_handle_unavailable(setup_presence):
 
     mock_connections.get_buffer.return_value = [MagicMock()]
 
-    result = presence.handle_unavailable(element)
+    result = presence.handle_unavailable(jid, element)
 
     assert result is None
 
@@ -279,7 +274,7 @@ def test_handle_unavailable(setup_presence):
 def test_feed_handle_global_presence(setup_presence):
     presence, mock_connections, mock_retrieve_roster = setup_presence
     element = ET.Element('presence', attrib={'id': '123'})
-    presence._jid = JID('user2@localhost')
+    jid = JID('user2@localhost')
 
     mock_retrieve_roster.return_value = [
         (1, 'user2@localhost', '<item jid="user@localhost" subscription="both"/>')
@@ -288,7 +283,7 @@ def test_feed_handle_global_presence(setup_presence):
     buffer_mock = MagicMock()
     mock_connections.get_buffer.return_value = [buffer_mock]
 
-    result = presence.feed(element)
+    result = presence.feed(jid, element)
 
     assert result is None
     mock_retrieve_roster.assert_called_once()
@@ -300,7 +295,7 @@ def test_feed_handle_global_presence(setup_presence):
 def test_handle_initial_presence(setup_presence):
     presence, mock_connections, mock_retrieve_roster = setup_presence
     element = ET.Element('presence', attrib={'id': '123'})
-    presence._jid = JID('user@localhost')
+    jid = JID('user@localhost')
 
     mock_retrieve_roster.return_value = [
         (1, 'user2@localhost', '<item jid="user2@localhost" subscription="both"/>')
@@ -309,7 +304,7 @@ def test_handle_initial_presence(setup_presence):
     buffer_mock = MagicMock()
     mock_connections.get_buffer.return_value = [buffer_mock]
 
-    presence.handle_initial_presence(element)
+    presence.handle_global_presence(jid, element)
 
     mock_retrieve_roster.assert_called_once()
     mock_connections.get_buffer.assert_called_once()

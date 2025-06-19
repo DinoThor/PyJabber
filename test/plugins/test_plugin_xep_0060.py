@@ -92,7 +92,14 @@ def pubsub(setup_database):
         engine = setup_database
         mock_db.connection = lambda: engine.connect()
         mock_meta.HOST = 'localhost'
-        mock_meta.ITEMS = [('pubsub', 'service', 'http://jabber.org/protocol/pubsub')]
+        mock_meta.ITEMS = {
+            'pubsub.$': {
+                "name": "Pubsub Service",
+                "category": "pubsub",
+                "type": "service",
+                "var": "http://jabber.org/protocol/pubsub"
+            }
+        }
         pubsub = PubSub()
         yield pubsub, engine
 
@@ -190,30 +197,15 @@ def test_feed_exception(pubsub):
         mock_se.feature_not_implemented.assert_called()
 
 
-def test_discovery_items_root(pubsub):
-    pubsub, _ = pubsub
-    element = ET.fromstring(
-        "<iq type='get' from='test@localhost' to='pubsub.localhost' id='items1'><query xmlns='http://jabber.org/protocol/disco#items'/></iq>"
-    )
-    res = pubsub.discover_items(element)
-    assert res == [('TestNode', 'Sample', 'leaf'), ('TestNode2', 'Sample', 'leaf')]
-
-
 def test_discovery_items(pubsub):
     pubsub, _ = pubsub
-    element = ET.fromstring(
-        "<iq type='get' from='test@localhost' to='pubsub.localhost' id='items1'><query xmlns='http://jabber.org/protocol/disco#items' node='TestNode'/></iq>"
-    )
-    res = pubsub.discover_items(element)
-    assert res == [('TestNode', 'Sample', 'leaf')]
+    res = pubsub.discover_items()
+    assert res == [('TestNode', 'Sample', 'leaf'), ('TestNode2', 'Sample', 'leaf')]
 
 
 def test_discover_info(pubsub):
     pubsub, _ = pubsub
-    element = ET.fromstring(
-        "<iq type='get' from='test@localhost' to='pubsub.localhost' id='items1'><query xmlns='http://jabber.org/protocol/disco#info' node='TestNode'/></iq>"
-    )
-    res = pubsub.discover_info(element)
+    res = pubsub.discover_info('TestNode')
     assert res == ("Sample", "leaf")
 
 

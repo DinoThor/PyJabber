@@ -34,11 +34,19 @@ def test_from_json():
         'database_in_memory': True,
         'cert_path': '/another/fake/path',
         'message_persistence': False,
+        'verbose': True,
         'plugins': [
             'http://jabber.org/protocol/disco#info',
             'http://jabber.org/protocol/disco#items'
         ],
-        'items': [('pubsub', 'http://jabber.org/protocol/pubsub')]
+        'items': {
+            'pubsub.$': {
+                "name": "Pubsub Service",
+                "category": "pubsub",
+                "type": "service",
+                "var": "http://jabber.org/protocol/pubsub"
+            }
+        }
     }
     m = mock_open(read_data=json.dumps(data_mock))
 
@@ -56,6 +64,7 @@ def test_from_json():
     assert param.database_in_memory is data_mock["database_in_memory"]
     assert param.cert_path == data_mock["cert_path"]
     assert param.message_persistence is data_mock["message_persistence"]
+    assert param.verbose is True
     assert param.plugins == data_mock["plugins"]
     assert param.items == data_mock["items"]
 
@@ -73,11 +82,19 @@ def test_update_from_json():
         'database_in_memory': True,
         'cert_path': '/another/fake/path',
         'message_persistence': False,
+        'verbose': True,
         'plugins': [
             'http://jabber.org/protocol/disco#info',
             'http://jabber.org/protocol/disco#items'
         ],
-        'items': [('pubsub', 'http://jabber.org/protocol/pubsub')]
+        'items': {
+            'pubsub.$': {
+                "name": "Pubsub Service",
+                "category": "pubsub",
+                "type": "service",
+                "var": "http://jabber.org/protocol/pubsub"
+            }
+        }
     }
     m = mock_open(read_data=json.dumps(data_mock))
 
@@ -95,6 +112,7 @@ def test_update_from_json():
     assert param.database_in_memory is data_mock["database_in_memory"]
     assert param.cert_path == data_mock["cert_path"]
     assert param.message_persistence is data_mock["message_persistence"]
+    assert param.verbose is True
     assert param.plugins == data_mock["plugins"]
     assert param.items == data_mock["items"]
 
@@ -133,7 +151,14 @@ def test_pickle():
         'urn:xmpp:ping',
         'jabber:iq:rpc'
     ]
-    assert parsed_param.items == [('pubsub', 'service', 'http://jabber.org/protocol/pubsub')]
+    assert parsed_param.items == {
+        'pubsub.$': {
+            "name": "Pubsub Service",
+            "category": "pubsub",
+            "type": "service",
+            "var": "http://jabber.org/protocol/pubsub"
+        }
+    }
 
     if os.path.exists(filepath):
         os.remove(filepath)
