@@ -20,7 +20,7 @@ class Parameters:
     database_in_memory: bool = False
     cert_path: str = None
     message_persistence: bool = True
-    verbose: bool = True
+    verbose: bool = False
     plugins: List[str] = field(default_factory=lambda: [
             'http://jabber.org/protocol/disco#info',
             'http://jabber.org/protocol/disco#items',
