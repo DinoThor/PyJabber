@@ -53,6 +53,8 @@ class FieldResponse:
 
 
 class FieldRequest:
+    __slots__ = ('_type', '_var', '_label', '_values', '_options', '_desc', '_required')
+
     def __init__(
             self,
             field_type: FieldTypes,

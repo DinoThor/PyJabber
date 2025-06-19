@@ -39,11 +39,11 @@ class DB:
         """
         if metadata.DATABASE_IN_MEMORY:
             logger.info("Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!")
-            DB._engine = create_engine("sqlite:///:memory:")
+            DB._engine = create_engine("sqlite:///:memory:", echo=metadata.VERBOSE)
             DB._init_metadata(DB._engine)
 
         elif os.path.isfile(metadata.DATABASE_PATH):
-            DB._engine = create_engine(f"sqlite:///{metadata.DATABASE_PATH}")
+            DB._engine = create_engine(f"sqlite:///{metadata.DATABASE_PATH}", echo=metadata.VERBOSE)
             if metadata.DATABASE_PURGE:
                 purge_md = MetaData()
                 purge_md.reflect(bind=DB._engine)
@@ -53,7 +53,7 @@ class DB:
 
         else:
             logger.info("No database found. Initializing one...")
-            DB._engine = create_engine(f"sqlite:///{metadata.DATABASE_PATH}")
+            DB._engine = create_engine(f"sqlite:///{metadata.DATABASE_PATH}", echo=metadata.VERBOSE)
             DB._init_metadata(DB._engine)
 
         return DB._engine

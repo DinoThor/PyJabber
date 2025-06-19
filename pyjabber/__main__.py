@@ -87,22 +87,22 @@ def main(
 
     logger.remove()
 
+    verbosity = set_verbosity(verbose)
+
     if log_path:
         log_file = open(os.path.join(log_path, "pyjabber.log"), 'w')
         logger.add(
             log_file,
             enqueue=True,
             format="<green>{time}</green> - <level>{level}: {message}</level>",
-            level=set_verbosity(verbose),
+            level=verbosity,
         )
-
-    level = set_verbosity(verbose)
 
     logger.add(
         sys.stderr,
         enqueue=True,
         format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> - <level>{level}: {message}</level>",
-        level=level,
+        level=verbosity,
     )
 
     logging.getLogger("sqlalchemy.engine").setLevel(logging.NOTSET)
@@ -118,7 +118,8 @@ def main(
         database_path=database_path,
         database_purge=database_purge,
         database_in_memory=database_in_memory,
-        message_persistence=message_persistence
+        message_persistence=message_persistence,
+        verbose=verbosity == 'TRACE'
     )
 
     server = Server(param)

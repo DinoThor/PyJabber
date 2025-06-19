@@ -10,7 +10,7 @@
 .. image:: https://img.shields.io/pypi/v/pyjabber.svg
         :target: https://pypi.org/project/pyjabber/
 
-.. image:: https://img.shields.io/badge/python-3.8%20to%203.12-orange?logo=python&logoColor=green
+.. image:: https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue
         :alt: Python 3.8 to 3.12
 
 .. image:: https://img.shields.io/github/actions/workflow/status/dinothor/pyjabber/python-app.yml

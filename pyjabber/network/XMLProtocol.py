@@ -19,6 +19,8 @@ from pyjabber.stream.StanzaHandler import InternalServerError
 
 
 class TransportProxy:
+    __slots__ = ('_transport', '_peer', '_server')
+
     def __init__(self, transport, peer, server = False):
         self._transport = transport
         self._peer = peer
@@ -45,6 +47,10 @@ class XMLProtocol(asyncio.Protocol):
     :param connection_timeout: Max time without any response from a client. After that, the server will terminate the connection
     :param cert_path: Path to custom domain certs. By default, the server generates its own certificates for hostname
     """
+    __slots__ = ('_xmlns', '_host', '_connection_timeout', '_cert_path', '_connection_manager',
+                 '_presence_manager', '_tls_queue', '_transport', '_peer', '_xml_parser',
+                 '_timeout_monitor', '_timeout_flag', '_connection_type', '_server_log', '_logger_tag')
+
     def __init__(
             self,
             namespace,

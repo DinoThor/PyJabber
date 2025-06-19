@@ -21,6 +21,7 @@ class Roster(metaclass=Singleton):
         It enables real-time presence updates, contact organization, and synchronization across devices,
         ensuring seamless and private communication.
     """
+    __slots__ = ('_handlers', '_roster_in_memory')
 
     def __init__(self) -> None:
         self._handlers = {

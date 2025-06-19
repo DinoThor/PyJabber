@@ -31,6 +31,8 @@ class PresenceType(Enum):
 
 
 class Presence(metaclass=Singleton):
+    __slots__ = ('_handlers', '_connections', '_roster', '_pending', '_connection_queue', '_online_status')
+
     def __init__(self) -> None:
         self._handlers = {
             "subscribe": self.handle_subscribe,

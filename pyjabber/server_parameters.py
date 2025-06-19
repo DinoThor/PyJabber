@@ -4,7 +4,7 @@ import pickle
 import socket
 from dataclasses import dataclass, replace, field
 
-from typing import List, Tuple
+from typing import List, Dict
 
 
 @dataclass(frozen=True)
@@ -20,6 +20,7 @@ class Parameters:
     database_in_memory: bool = False
     cert_path: str = None
     message_persistence: bool = True
+    verbose: bool = True
     plugins: List[str] = field(default_factory=lambda: [
             'http://jabber.org/protocol/disco#info',
             'http://jabber.org/protocol/disco#items',
@@ -35,9 +36,14 @@ class Parameters:
             'jabber:iq:rpc',
     ])
 
-    items: List[tuple] = field(default_factory=lambda: [
-        ('pubsub', 'service', 'http://jabber.org/protocol/pubsub')
-    ])
+    items: Dict[str, Dict[str, str]] = field(default_factory=lambda: {
+        'pubsub.$': {
+            "name": "Pubsub Service",
+            "category": "pubsub",
+            "type": "service",
+            "var": "http://jabber.org/protocol/pubsub"
+        }
+    })
 
     def dump(self, file_path: str):
         with open(file_path, "wb") as data:
@@ -59,8 +65,9 @@ class Parameters:
                 database_in_memory=loaded.get('database_in_memory', False),
                 cert_path=loaded.get('cert_path', None),
                 message_persistence=loaded.get('message_persistence', True),
+                verbose=loaded.get('verbose', False),
                 plugins=loaded.get('plugins', []),
-                items=[tuple(item) for item in loaded.get('items', [])]
+                items=loaded.get('items', {})
             )
 
     @staticmethod
@@ -84,6 +91,7 @@ class Parameters:
                 database_in_memory=loaded.get('database_in_memory', False),
                 cert_path=loaded.get('cert_path', None),
                 message_persistence=loaded.get('message_persistence', True),
+                verbose=loaded.get('verbose', False),
                 plugins=loaded.get('plugins', []),
-                items=[tuple(item) for item in loaded.get('items', [])]
+                items=loaded.get('items', {})
             )

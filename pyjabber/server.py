@@ -65,6 +65,7 @@ class Server:
             cert_path=self._cert_path,
             root_path=SERVER_FILE_PATH,
             message_persistence=param.message_persistence or False,
+            verbose=param.verbose,
             plugins=param.plugins,
             items=param.items
         )

@@ -2,10 +2,10 @@ import xml.etree.ElementTree as ET
 import re
 from typing import Dict
 
+from pyjabber import metadata
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stream.JID import JID
 from pyjabber.utils import ClarkNotation as CN
-
 
 # Plugins
 from pyjabber.plugins.roster.Roster import Roster
@@ -15,15 +15,20 @@ from pyjabber.plugins.xep_0060.xep_0060 import PubSub
 
 
 class PluginManager:
+    __slots__ = ('_jid', '_plugins')
+
     def __init__(self, jid: JID) -> None:
         self._jid = jid
 
         self._plugins: Dict[str, object] = {
             'jabber:iq:roster': Roster(),
-            'urn:xmpp:ping': Ping,
-            'http://jabber.org/protocol/disco*': Disco(),
-            'http://jabber.org/protocol/pubsub*': PubSub()
+            'urn:xmpp:ping': Ping
         }
+
+        if any(p.startswith('http://jabber.org/protocol/disco') for p in metadata.PLUGINS):
+            self._plugins['http://jabber.org/protocol/disco*'] = Disco()
+        if any(p.startswith('http://jabber.org/protocol/pubsub') for p in metadata.PLUGINS):
+            self._plugins['http://jabber.org/protocol/pubsub*'] = PubSub()
 
     def feed(self, element: ET.Element):
         try:

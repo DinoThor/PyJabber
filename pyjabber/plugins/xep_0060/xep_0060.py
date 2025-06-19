@@ -1,6 +1,6 @@
 from asyncio import Transport
 from itertools import chain
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Union
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
@@ -22,18 +22,18 @@ from pyjabber.utils import Singleton, ClarkNotation as CN
 
 
 class PubSub(metaclass=Singleton):
+    __slots__ = ('_connections', '_jid', '_category', '_var', '_nodes', '_subscribers', '_operations')
+
     def __init__(self):
         super().__init__()
 
         self._connections = ConnectionManager()
-        items = metadata.ITEMS
-        pubsub_item = next((var for var in items if [var[0] == 'pubsub']), None)
-        if pubsub_item is None:
-            raise Exception  # TODO: Define missing config exception
 
-        self._jid, self._category, self._var = pubsub_item
+        pubsub_item = next(((key, item) for key, item in metadata.ITEMS.items() if 'pubsub' in key), None)
+        self._jid = pubsub_item[0].replace('$', metadata.HOST)
+        self._category = pubsub_item[1]['category']
+        self._var = pubsub_item[1]['var']
 
-        self._host = metadata.HOST
 
         self._nodes = None
         self._subscribers = None
@@ -87,46 +87,29 @@ class PubSub(metaclass=Singleton):
             logger.error(f"Pubsub operation not supported: {e}")
             return StanzaError.feature_not_implemented(feature=str(e), namespace="{http://jabber.org/protocol/pubsub}pubsub")
 
-    def discover_items(self, element: ET.Element) -> List[tuple]:
+    def discover_items(self) -> List[tuple]:
         """
         Returns the available nodes at the level specified in the query
         :return: A list of 3-tuples in the format (node, name, type)
         """
-        query = element.find('{http://jabber.org/protocol/disco#items}query')
-        if query is None:
-            return []
         res = []
-        if query.attrib.get('node') is None:  # Query to root
-            for node in self._nodes:
-                _node = node[NodeAttrib.NODE.value]
-                _name = node[NodeAttrib.NAME.value]
-                _type = node[NodeAttrib.TYPE.value]
-                res.append((_node, _name, _type))
-            return res
+        for node in self._nodes:
+            _node = node[NodeAttrib.NODE.value]
+            _name = node[NodeAttrib.NAME.value]
+            _type = node[NodeAttrib.TYPE.value]
+            res.append((_node, _name, _type))
 
-        else:  # Query to branch/leaf in the nodes tree
-            target_node = query.attrib.get('node')
-            node_match = [node for node in self._nodes if node[NodeAttrib.NODE.value] == target_node]
-            if node_match:
-                for node in node_match:
-                    _node = node[NodeAttrib.NODE.value]
-                    _name = node[NodeAttrib.NAME.value]
-                    _type = node[NodeAttrib.TYPE.value]
-                    res.append((_node, _name, _type))
-            return res
+        return res
 
-    def discover_info(self, element: ET.Element):
+    def discover_info(self, node: str) -> Optional[Tuple[str, str]]:
         """
         Return the info for a given node
         :return: A 2-tuple in the format of (name, type)
         """
-        query = element.find('{http://jabber.org/protocol/disco#info}query')
-        query_node = query.attrib.get('node')
-        if query is not None and query_node is not None:
-            match_node = [node for node in self._nodes if node[NodeAttrib.NODE.value] == query_node]
-            if match_node:
-                match_node = match_node.pop()
-                return match_node[NodeAttrib.NAME.value], match_node[NodeAttrib.TYPE.value]
+        match_node = [n for n in self._nodes if node[NodeAttrib.NODE.value] == node]
+        if match_node:
+            match_node = match_node.pop()
+            return match_node[NodeAttrib.NAME.value], match_node[NodeAttrib.TYPE.value]
 
         return None
 
@@ -151,10 +134,6 @@ class PubSub(metaclass=Singleton):
         if config:  #pragma: no cover
             pass  # TODO: create node with given configuration
 
-        """
-        A new item MUST follow the order described in the NodeAttrib enum
-        for correct attribute access
-        """
         item = {
             "node": new_node,
             "owner": jid.user,
@@ -225,10 +204,9 @@ class PubSub(metaclass=Singleton):
         if not is_owner:
 
             subscribed = any(s[SubscribersAttrib.JID.value] == jid.user
-                                and s[SubscribersAttrib.NODE.value] == target_node
-                                and s[SubscribersAttrib.SUBSCRIPTION.value] in [Affiliation.MEMBER, Affiliation.PUBLISHER]
-                                for s in self._subscribers
-                             )
+                             and s[SubscribersAttrib.NODE.value] == target_node
+                             and s[SubscribersAttrib.SUBSCRIPTION.value] in [Affiliation.MEMBER, Affiliation.PUBLISHER]
+                             for s in self._subscribers)
 
             if not subscribed:
                 return error_response(element, jid, ErrorType.FORBIDDEN)
@@ -405,7 +383,8 @@ class PubSub(metaclass=Singleton):
             sub.attrib['subid'] = subid
         return ET.tostring(iq_res)
 
-    def retrieve_subscriptions(self, element: ET.Element, jid: JID):
+    @staticmethod
+    def retrieve_subscriptions(element: ET.Element, jid: JID):
         pubsub = element.find('{http://jabber.org/protocol/pubsub}pubsub')
         subscriptions = pubsub.find('{http://jabber.org/protocol/pubsub}subscriptions')
         target_node = subscriptions.attrib.get('node')
@@ -449,7 +428,7 @@ class PubSub(metaclass=Singleton):
 
         return ET.tostring(iq_res)
 
-    def retrieve_affiliations(self, element: ET.Element, jid: str): #pragma: no cover
+    def retrieve_affiliations(self, element: ET.Element, jid: str):  # pragma: no cover
         pass
 
     def purge(self, element: ET.Element, jid: JID):
@@ -601,7 +580,7 @@ class PubSub(metaclass=Singleton):
                      and s[SubscribersAttrib.AFFILIATION.value] in [Affiliation.MEMBER, Affiliation.PUBLISHER, Affiliation.OWNER]]
 
         receivers_jid = [r[1] for r in receivers]
-        receivers_buffer = [self._connections.get_buffer(JID(user=r, domain=self._host)) for r in receivers_jid]
+        receivers_buffer = [self._connections.get_buffer(JID(user=r, domain=metadata.HOST)) for r in receivers_jid]
         receivers_buffer_single_iterator: List[Tuple[JID, Transport]] = list(chain.from_iterable(receivers_buffer))
 
         event = ET.Element('event', attrib={'xmlns': 'http://jabber.org/protocol/pubsub#event'})
@@ -622,7 +601,7 @@ class PubSub(metaclass=Singleton):
         for jid, buffer, _ in receivers_buffer_single_iterator:
             message = Message(
                 mto=jid.bare(),
-                mfrom=self._host,
+                mfrom=metadata.HOST,
                 id=str(uuid4()),
                 mtype=None,
                 body=event

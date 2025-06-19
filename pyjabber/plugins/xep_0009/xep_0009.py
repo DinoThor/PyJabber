@@ -7,12 +7,15 @@ from pyjabber.stanzas.error import StanzaError as SE
 
 
 class RPC(metaclass=Singleton):
+    __slots__ = ('_connections',)
+
     def __init__(self):
         self._connections = ConnectionManager()
 
     def feed(self, _, element: ET.Element):
         try:
             type_iq = element.attrib.get('type')
+
             if type_iq == 'set':
                 error = self.validate_set_stanza(element)
                 if error:
@@ -34,7 +37,7 @@ class RPC(metaclass=Singleton):
             return SE.invalid_xml()
 
     @staticmethod
-    def validate_res_stanza(self, element: ET.Element):
+    def validate_res_stanza(element: ET.Element):
         ns, tag = CN.deglose(element[0].tag)
         if tag != 'query' or ns != 'jabber:iq:rpc':
             return "Malformed response"
@@ -55,7 +58,7 @@ class RPC(metaclass=Singleton):
             return "Missing fields or malformed response"
 
     @staticmethod
-    def validate_set_stanza(self, element: ET.Element):
+    def validate_set_stanza(element: ET.Element):
         ns, tag = CN.deglose(element[0].tag)
         if tag != 'query' or ns != 'jabber:iq:rpc':
             return "Malformed response"
@@ -75,7 +78,8 @@ class RPC(metaclass=Singleton):
         except:
             return "Missing fields or malformed response"
 
-    def error_response(self, to_: JID, from_: JID, id_: str, error: str):
+    @staticmethod
+    def error_response(to_: JID, from_: JID, id_: str, error: str):
         iq_res = IQ(type_=IQ.TYPE.ERROR, to_=str(to_), from_=str(from_), id_=id_)
         iq_res.append(ET.fromstring(SE.not_acceptable(error)))
         return iq_res
