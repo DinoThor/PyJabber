@@ -1,51 +1,35 @@
 from asyncio import Transport
-from enum import Enum
-from typing import Union
+from typing import Union, List
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
 from pyjabber.features import InBandRegistration as IBR
 from pyjabber.features.StartTLSFeature import StartTLSFeature, proceed_response
 from pyjabber.features.StreamFeature import StreamFeature
-from pyjabber.features.SASLFeature import SASLFeature, SASL
+from pyjabber.features.SASLFeature import SASLFeature, SASL, MECHANISM
 from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber import metadata
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stanzas.error import StanzaError as SE
-
-class Stage(Enum):
-    """
-    Stream connection states.
-    """
-    CONNECTED = 0
-    OPENED = 1
-    SSL = 2
-    SASL = 3
-    AUTH = 4
-    BIND = 5
-    READY = 6
-
-
-class Signal(Enum):
-    RESET = 0
-    DONE = 1
-    FORCE_CLOSE = 2
-
-    def __eq__(self, other):
-        if not isinstance(other, Signal):
-            return False
-        return self.value == other.value
+from pyjabber.stream.Stage import Stage
+from pyjabber.stream.Signal import Signal
 
 
 class StreamHandler:
-    def __init__(self, transport, starttls) -> None:
+    def __init__(self, transport, starttls, parser_ref) -> None:
         self._host = metadata.HOST
         self._transport = transport
         self._starttls = starttls
         self._streamFeature = StreamFeature()
         self._connection_manager: ConnectionManager = ConnectionManager()
         self._stage = Stage.CONNECTED
+        self._parser_ref = parser_ref
+
+        self._ibr_feature = 'jabber:iq:register' in metadata.PLUGINS
+
+        self._sasl = None
+        self._sasl_mechanisms: List[MECHANISM] = []
 
         self._stages_handlers = {
             Stage.CONNECTED: self._handle_init,
@@ -67,7 +51,7 @@ class StreamHandler:
     def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
         try:
             return self._stages_handlers[self._stage](elem)
-        except KeyError:
+        except Exception as e:
             SE.internal_server_error()
 
     def _handle_init(self, _):
@@ -91,23 +75,24 @@ class StreamHandler:
     def _handle_init_ssl(self, _):
         self._streamFeature.reset()
 
-        self._streamFeature.register(IBR.InBandRegistration())
-        self._streamFeature.register(SASLFeature())
+        if self._ibr_feature:
+            self._streamFeature.register(IBR.InBandRegistration())
+        self._streamFeature.register(SASLFeature(mechanism_list=self._sasl_mechanisms))
         self._transport.write(self._streamFeature.to_bytes())
 
         self._stage = Stage.SASL
 
     def _handle_ssl(self, element: ET.Element):
-        res = SASL().feed(element, {"peername": self._transport.get_extra_info('peername')})
+        if self._sasl is None:
+            self._sasl = SASL(self._parser_ref)
+
+        res = self._sasl.feed(element, {"peername": self._transport.get_extra_info('peername')})
+
         if type(res) is tuple:
-            if res[0].value == Signal.RESET.value:
-                self._transport.write(res[1])
-                self._stage = Stage.AUTH
-                return Signal.RESET
-            else:
-                self._transport.write(res[1])
-                self._stage = Stage.AUTH
-                return
+            signal, message = res
+            self._transport.write(message)
+            self._stage = Stage.AUTH
+            return Signal.RESET if signal == Signal.RESET else None
 
         self._transport.write(res)
 
@@ -141,4 +126,3 @@ class StreamHandler:
                 self._connection_manager.set_jid(peername, new_jid, self._transport)
 
         return Signal.DONE
-

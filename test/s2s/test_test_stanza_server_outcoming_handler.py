@@ -3,7 +3,6 @@ from unittest.mock import Mock, MagicMock
 import xml.etree.ElementTree as ET
 
 # Ensure this path is correct
-from pyjabber.stream.server.outcoming.StanzaServerOutcomingHandler import StanzaServerOutcomingHandler
 from pyjabber.stanzas.error import StanzaError as SE
 
 

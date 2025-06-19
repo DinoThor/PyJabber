@@ -1,7 +1,7 @@
 import os
 import shutil
 from sqlite3 import Connection
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, call
 
 from sqlalchemy import create_engine
 
@@ -12,10 +12,10 @@ def test_setup_database_in_memory():
     with patch('pyjabber.db.database.metadata') as mock_meta, \
          patch('pyjabber.db.database.logger') as mock_log, \
          patch('pyjabber.db.database.os') as mock_os, \
-         patch('pyjabber.db.database.DB.init_metadata') as mock_init:
+         patch('pyjabber.db.database.DB._init_metadata') as mock_init:
         mock_meta.DATABASE_IN_MEMORY = True
         db = DB()
-        db.init_metadata = MagicMock()
+        db._init_metadata = MagicMock()
         db.setup_database()
 
         assert db._engine is not None
@@ -26,12 +26,12 @@ def test_setup_database_in_memory():
 
 def test_setup_database_local():
     with patch('pyjabber.db.database.metadata') as mock_meta, \
-         patch('pyjabber.db.database.DB.init_metadata') as mock_init:
+         patch('pyjabber.db.database.DB._init_metadata') as mock_init:
         mock_meta.DATABASE_IN_MEMORY = False
         mock_meta.DATABASE_PURGE = False
         mock_meta.DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test_database.db')
         db = DB()
-        db.init_metadata = MagicMock()
+        db._init_metadata = MagicMock()
         db.setup_database()
 
         assert db._engine is not None
@@ -45,13 +45,13 @@ def test_setup_database_purge():
     shutil.copy(origin, copy)
 
     with patch('pyjabber.db.database.metadata') as mock_meta, \
-         patch('pyjabber.db.database.DB.init_metadata') as mock_init, \
+         patch('pyjabber.db.database.DB._init_metadata') as mock_init, \
          patch('pyjabber.db.database.MetaData') as mock_meta_const:
         mock_meta.DATABASE_IN_MEMORY = False
         mock_meta.DATABASE_PURGE = True
         mock_meta.DATABASE_PATH = copy
         db = DB()
-        db.init_metadata = MagicMock()
+        db._init_metadata = MagicMock()
         db.setup_database()
 
         assert db._engine is not None
@@ -71,12 +71,12 @@ def test_setup_database_new_file():
         with patch('pyjabber.db.database.metadata') as mock_meta, \
              patch('pyjabber.db.database.logger') as mock_log, \
              patch('pyjabber.db.database.create_engine', wraps=create_engine) as spy_engine, \
-             patch('pyjabber.db.database.DB.init_metadata', wraps=DB.init_metadata) as spy_init:
+             patch('pyjabber.db.database.DB._init_metadata', wraps=DB._init_metadata) as spy_init:
             mock_meta.DATABASE_IN_MEMORY = False
             mock_meta.DATABASE_PATH = new_file
 
             db = DB()
-            db.init_metadata = MagicMock()
+            db._init_metadata = MagicMock()
             db.setup_database()
 
             assert db._engine is not None
@@ -90,3 +90,23 @@ def test_setup_database_new_file():
         del db
         if os.path.isfile(new_file):
             os.remove(new_file)
+
+
+def test_migration():
+    expected_calls = [
+        call("script_location", os.path.join("..", '..', 'alembic_local')),
+        call("sqlalchemy.url", f"sqlite:///absolute_path"),
+    ]
+
+    with patch('pyjabber.db.database.Config') as mock_config, \
+         patch('pyjabber.db.database.command') as mock_command, \
+         patch('pyjabber.db.database.metadata') as mock_meta:
+        mock_meta.ROOT_PATH = ".."
+        mock_meta.DATABASE_PATH = "absolute_path"
+
+        db = DB()
+        db.run_db_migrations()
+
+        mock_config.assert_called()
+        mock_config.return_value.set_main_option.assert_has_calls(expected_calls, any_order=False)
+        mock_command.upgrade.assert_called_with(mock_config.return_value, "head")

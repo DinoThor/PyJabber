@@ -4,7 +4,7 @@ from xml.etree.ElementTree import Element
 from pyjabber.stream.server.incoming.StanzaServerIncomingHandler import StanzaServerIncomingHandler
 from pyjabber.stream.server.incoming.StreamServerIncomingHandler import StreamServerIncomingHandler
 from pyjabber.utils import ClarkNotation as CN
-from pyjabber.network.server.incoming.XMLServerIncomingParser import XMLServerIncomingParser, StreamState, Signal
+from pyjabber.network.server.XMLServerIncomingParser import XMLServerIncomingParser, StreamState, Signal
 
 @pytest.fixture
 def setup_parser():

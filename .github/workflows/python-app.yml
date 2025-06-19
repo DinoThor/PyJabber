@@ -160,6 +160,8 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
     - name: Send coverage report to Codecov
       uses: codecov/codecov-action@v1
+      with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   coveralls_finish:
     needs: coverage

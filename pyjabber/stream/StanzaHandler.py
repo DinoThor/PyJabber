@@ -1,3 +1,4 @@
+import asyncio
 import xml.etree.ElementTree as ET
 
 from loguru import logger
@@ -5,6 +6,7 @@ from loguru import logger
 from pyjabber import metadata
 from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.utils import ClarkNotation as CN
 from pyjabber.stream.JID import JID
 from pyjabber.plugins.PluginManager import PluginManager
 
@@ -15,7 +17,6 @@ class InternalServerError(Exception):
 
 class StanzaHandler:
     def __init__(self, buffer) -> None:
-        self._host = metadata.HOST
         self._ip = metadata.IP
         self._buffer = buffer
         self._connections = ConnectionManager()
@@ -27,6 +28,8 @@ class StanzaHandler:
 
         self._pluginManager = PluginManager(self._jid)
         self._presenceManager = Presence()
+
+        self._connection_queue: asyncio.Queue = metadata.CONNECTION_QUEUE
 
         self._functions = {
             "{jabber:client}iq": self.handle_iq,
@@ -65,13 +68,14 @@ class StanzaHandler:
         """
         jid = JID(element.attrib["to"])
 
-        if jid.domain == self._host or jid.domain in self._ip:
+        # Local bound
+        if jid.domain == metadata.HOST or jid.domain in self._ip:
             if jid.domain in self._ip:
-                jid.domain = self._host
+                jid.domain = metadata.HOST
             if not jid.resource:
                 priority = self._presenceManager.most_priority(jid)
                 if not priority and self._message_persistence:
-                    self._message_queue.put_nowait(('MESSAGE', jid.bare(), ET.tostring(element)))
+                    self._message_queue.put_nowait(('MESSAGE', JID(jid.bare()), ET.tostring(element)))
                     return None
 
                 all_resources_online = []
@@ -82,22 +86,22 @@ class StanzaHandler:
             else:
                 resource_online = self._connections.get_buffer_online(jid)
                 if not resource_online and self._message_persistence:
-                    self._message_queue.put_nowait(('MESSAGE', str(jid), ET.tostring(element)))
+                    self._message_queue.put_nowait(('MESSAGE', jid, ET.tostring(element)))
                 else:
                     for buffer in resource_online:
                         buffer[1].write(ET.tostring(element))
 
+        # Remote server
         else:
-            pass
-            # the s2s feature is currently disabled due to bad implementation
-            # Future version of the server will fix that
+            ns, tag = CN.deglose(element.tag)
+            if ns == 'jabber:client':
+                CN.update_namespace('jabber:server', element)
 
-            # server_buffer = self._connections.get_server_buffer(jid.bare())
-            # if server_buffer:
-            #     server_buffer[1].write(ET.tostring(element))
-            #
-            # else:
-            #     self._queue_message.enqueue(jid.domain, ET.tostring(element))
+            buffer = self._connections.get_server_buffer(host=jid.domain)
+            if buffer:
+                buffer.write(ET.tostring(element))
+            else:
+                self._message_queue.put_nowait(('MESSAGE', jid.domain, ET.tostring(element)))
 
     def handle_pre(self, element: ET.Element):
         """

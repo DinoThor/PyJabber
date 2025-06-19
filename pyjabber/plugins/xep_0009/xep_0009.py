@@ -33,6 +33,7 @@ class RPC(metaclass=Singleton):
         except:
             return SE.invalid_xml()
 
+    @staticmethod
     def validate_res_stanza(self, element: ET.Element):
         ns, tag = CN.deglose(element[0].tag)
         if tag != 'query' or ns != 'jabber:iq:rpc':
@@ -53,6 +54,7 @@ class RPC(metaclass=Singleton):
         except:
             return "Missing fields or malformed response"
 
+    @staticmethod
     def validate_set_stanza(self, element: ET.Element):
         ns, tag = CN.deglose(element[0].tag)
         if tag != 'query' or ns != 'jabber:iq:rpc':

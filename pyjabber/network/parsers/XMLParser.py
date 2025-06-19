@@ -1,9 +1,9 @@
-from asyncio import BaseProtocol, Transport
+from asyncio import Transport
 from enum import Enum
 from xml.etree import ElementTree as ET
 from xml.sax import ContentHandler
 
-from pyjabber.stream import Stream
+from pyjabber.stream.Stream import Stream
 from pyjabber.stream.StanzaHandler import StanzaHandler
 from pyjabber.stream.StreamHandler import Signal, StreamHandler
 from pyjabber.utils import ClarkNotation as CN
@@ -14,17 +14,21 @@ class XMLParser(ContentHandler):
         Manages the stream data and process the XML objects.
         Inheriting from sax.ContentHandler
 
-        :param buffer: Transport instance of the connected client. Used to send replays
+        :param transport: Transport instance of the connected client. Used to send replays
         :param starttls: Coroutine launched when server and client start the connection upgrade process to TLS
     """
+    stanza_handler_constructor = StanzaHandler
+    stream_handler_constructor = StreamHandler
+    server: bool = False
 
     def __init__(self, transport, starttls):
         super().__init__()
         self._transport = transport
         self._state = self.StreamState.CONNECTED
         self._stanzaHandler = None
+        self._from_claim = None
         self._stack = []
-        self._streamHandler = StreamHandler(self._transport, starttls)
+        self._streamHandler = self.stream_handler_constructor(self._transport, starttls, self)
 
     class StreamState(Enum):
         """
@@ -42,6 +46,10 @@ class XMLParser(ContentHandler):
         self._transport = transport
         self._streamHandler.transport = transport
 
+    @property
+    def from_claim(self):
+        return self._from_claim
+
     def startElementNS(self, name, qname, attrs):
         if self._stack:  # "<stream:stream>" tag already present in the data stack
             elem = ET.Element(
@@ -52,16 +60,19 @@ class XMLParser(ContentHandler):
             self._stack.append(elem)
 
         elif name[1] == "stream" and name[0] == "http://etherx.jabber.org/streams":
-            self._transport.write(Stream.responseStream(attrs))
-
             elem = ET.Element(
                 CN.clarkFromTuple(name),
                 attrib={
                     CN.clarkFromTuple(key): item for key,
                     item in dict(attrs).items()})
-
+            self._from_claim = elem.attrib.get("from")
             self._stack.append(elem)
-            self._streamHandler.handle_open_stream()
+
+            self._transport.write(Stream.responseStream(attrs, self.server))
+            signal = self._streamHandler.handle_open_stream()
+            if signal and signal == Signal.DONE:
+                self._stanzaHandler = self.stanza_handler_constructor(self._transport)
+                self._state = self.StreamState.READY
 
         else:
             raise Exception()
@@ -90,7 +101,7 @@ class XMLParser(ContentHandler):
             else:
                 signal = self._streamHandler.handle_open_stream(elem)
                 if signal == Signal.DONE:
-                    self._stanzaHandler = StanzaHandler(self._transport)
+                    self._stanzaHandler = self.stanza_handler_constructor(self._transport)
                     self._state = self.StreamState.READY
                 elif signal == Signal.RESET and "stream" in self._stack[-1].tag:
                     self._stack.clear()

@@ -1,44 +1,44 @@
-import os
 import xml.etree.ElementTree as ET
 
-from pyjabber.features.presence.PresenceFeature import Presence
-from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber.stanzas.error import StanzaError as SE
-
-FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+from pyjabber.stream.JID import JID
+from pyjabber.stream.StanzaHandler import StanzaHandler
 
 
-class StanzaServerIncomingHandler:
+class StanzaServerIncomingHandler(StanzaHandler):
     def __init__(self, buffer) -> None:
-        self._buffer = buffer
-        self._connection_manager = ConnectionManager()
-        self._peername = buffer.get_extra_info('peername')
-        self._host = self._connection_manager.get_server_host(self._peername)
-        self._presenceManager = Presence(self._host)
+        super().__init__(buffer)
 
         self._functions = {
-            "{jabber:client}iq": self.handle_iq,
-            "{jabber:client}message": self.handle_msg,
-            "{jabber:client}presence": self.handle_pre
+            "{jabber:server}iq": self.handle_iq,
+            "{jabber:server}message": self.handle_msg,
+            "{jabber:server}presence": self.handle_pre
         }
 
-    def feed(self, element: ET.Element):
-        try:
-            self._functions[element.tag](element)
-        except KeyError:
-            self._buffer.write(SE.bad_request())
-
-    ############################################################
-    ############################################################
-
-    def handle_iq(self, element: ET.Element):
+    def handle_iq(self, element: ET.Element):   # pragma: no cover
         return
+
+    def handle_pre(self, element: ET.Element):  # pragma: no cover
+        pass
 
     def handle_msg(self, element: ET.Element):
-        receiver_buffer = self._connection_manager.get_buffer(element.attrib["to"])
+        jid = JID(element.attrib["to"])
 
-        for buffer in receiver_buffer:
-            buffer[1].write(ET.tostring(element))
+        if not jid.resource:
+            priority = self._presenceManager.most_priority(jid)
+            if not priority and self._message_persistence:
+                self._message_queue.put_nowait(('MESSAGE', jid, ET.tostring(element)))
+                return None
 
-    def handle_pre(self, element: ET.Element):
-        return
+            all_resources_online = []
+            for user in priority:
+                all_resources_online += self._connections.get_buffer_online(
+                    JID(user=jid.user, domain=jid.domain, resource=user[0]))
+            for buffer in all_resources_online:
+                buffer[1].write(ET.tostring(element))
+        else:
+            resource_online = self._connections.get_buffer_online(jid)
+            if not resource_online and self._message_persistence:
+                self._message_queue.put_nowait(('MESSAGE', jid, ET.tostring(element)))
+            else:
+                for buffer in resource_online:
+                    buffer[1].write(ET.tostring(element))

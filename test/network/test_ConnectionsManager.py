@@ -13,21 +13,22 @@ def connections_manager():
     with patch('pyjabber.network.ConnectionManager.logger') as mock_logger:
         yield ConnectionManager(), mock_logger
 
+
 @pytest.fixture(autouse=True)
 def cleanup(connections_manager):
-    connections_manager[0]._peerList.clear()
+    connections_manager, _ = connections_manager
+    connections_manager.peerList.clear()
+
 
 @pytest.fixture(autouse=True)
 def setup_logging(caplog):
-    # Remover todos los handlers para evitar duplicados
     logger.remove()
-    # Configurar loguru para trabajar con caplog
     logger.add(caplog.handler, level="ERROR")
 
 
 def test_connection(connections_manager):
     connections_manager, _ = connections_manager
-    peer = ("127.0.0.1", 12345)
+    peer = ('127.0.0.1', 12345)
     connections_manager.connection(peer)
     assert peer in connections_manager._peerList
     assert connections_manager._peerList[peer] == (None, None, [False])
@@ -35,116 +36,10 @@ def test_connection(connections_manager):
 
 def test_disconnection(connections_manager):
     connections_manager, _ = connections_manager
-    peer = ("127.0.0.1", 12345)
+    peer = ('127.0.0.1', 12345)
     connections_manager.connection(peer)
     connections_manager.disconnection(peer)
     assert peer not in connections_manager._peerList
-
-
-def test_get_users_connected(connections_manager):
-    connections_manager, _ = connections_manager
-    peer = ("127.0.0.1", 12345)
-    connections_manager.connection(peer)
-    users_connected = connections_manager.get_users_connected()
-    assert users_connected == {peer: (None, None, [False])}
-
-
-def test_get_buffer(connections_manager):
-    connections_manager, _ = connections_manager
-    peer = ("127.0.0.1", 12345)
-    jid = JID("user@localhost")
-    transport = MagicMock(spec=Transport)
-    connections_manager.connection(peer)
-    connections_manager.set_jid(peer, jid, transport)
-    buffer = connections_manager.get_buffer(jid)
-    assert buffer[0][1] == transport
-    assert buffer[0][0] == jid
-
-
-def test_get_buffer_online(connections_manager):
-    connections_manager, _ = connections_manager
-    peer = ("127.0.0.1", 12345)
-    jid = JID("user@localhost")
-    transport = MagicMock(spec=Transport)
-    connections_manager.connection(peer)
-    connections_manager.set_jid(peer, jid, transport)
-    connections_manager.online(jid)
-    buffer = connections_manager.get_buffer_online(jid)
-
-    assert buffer[0][0] == jid
-    assert buffer[0][1] == transport
-    assert buffer[0][2] is True
-
-    connections_manager.online(jid, False)
-
-    buffer = connections_manager.get_buffer_online(jid)
-
-    assert len(buffer) == 0
-
-def test_get_buffer_online_with_resource(connections_manager):
-    connections_manager, _ = connections_manager
-    peer = ("127.0.0.1", 12345)
-    jid = JID("user@localhost/res1")
-    transport = MagicMock(spec=Transport)
-    connections_manager.connection(peer)
-    connections_manager.set_jid(peer, jid, transport)
-    connections_manager.online(jid)
-    buffer = connections_manager.get_buffer_online(jid)
-
-    assert buffer[0][0] == jid
-    assert buffer[0][1] == transport
-    assert buffer[0][2] is True
-
-    connections_manager.online(jid, False)
-
-    buffer = connections_manager.get_buffer_online(jid)
-
-    assert len(buffer) == 0
-
-
-def test_get_jid(connections_manager):
-    connections_manager, _ = connections_manager
-    peer = ("127.0.0.1", 12345)
-    connections_manager.connection(peer)
-    connections_manager.set_jid(peer, JID("user@localhost"))
-    jid = connections_manager.get_jid(peer)
-    assert str(jid) == "user@localhost"
-
-
-def test_set_jid(connections_manager):
-    connections_manager, _ = connections_manager
-    peer = ("127.0.0.1", 12345)
-    transport = MagicMock(spec=Transport)
-    connections_manager.connection(peer)
-    connections_manager.set_jid(peer, JID("user@localhost"), transport)
-    jid, buffer, online = connections_manager._peerList[peer]
-    assert str(jid) == "user@localhost"
-    assert buffer == transport
-    assert online == [False]
-
-
-def test_set_jid_without_transport(connections_manager):
-    connections_manager, _ = connections_manager
-    peer = ("127.0.0.1", 12345)
-    connections_manager.connection(peer)
-    connections_manager.set_jid(peer, JID("user@localhost"))
-    assert str(connections_manager._peerList[peer][0]) == "user@localhost"
-
-
-def test_set_jid_key_error(connections_manager):
-    connections_manager, log = connections_manager
-    peer = ("127.0.0.1", 12345)
-    connections_manager.set_jid(peer, JID("user@localhost"))
-    log.error.assert_called()
-
-
-def test_disconnection_key_error(connections_manager, caplog):
-    peer = ("127.0.0.1", 12345)
-    connections_manager, log = connections_manager
-    connections_manager.disconnection(peer)
-    assert peer not in connections_manager._peerList
-    log.warning.assert_called_with(f"{peer} not present in the online list")
-    # assert any("not present in the online list" in record.message for record in caplog.records)
 
 
 def test_online(connections_manager):
@@ -153,100 +48,336 @@ def test_online(connections_manager):
     jid_3 = JID("demo@host/res3")
     connections_manager, _ = connections_manager
     connections_manager._peerList = {
-        ("127.0.0.1", 12345): (jid_1, MagicMock(), [True]),
-        ("127.0.0.1", 12346): (jid_2, MagicMock(), [True]),
-        ("127.0.0.1", 12347): (jid_3, MagicMock(), [False])
+        ('127.0.0.1', 12345): (jid_1, MagicMock(), [True]),
+        ('127.0.0.1', 12346): (jid_2, MagicMock(), [True]),
+        ('127.0.0.1', 12347): (jid_3, MagicMock(), [False])
     }
     connections_manager.online(jid_1)
     connections_manager.online(jid_2, False)
     connections_manager.online(jid_3)
 
-    assert connections_manager._peerList[("127.0.0.1", 12345)][2][0] is True
-    assert connections_manager._peerList[("127.0.0.1", 12346)][2][0] is False
-    assert connections_manager._peerList[("127.0.0.1", 12347)][2][0] is True
+    assert connections_manager._peerList[('127.0.0.1', 12345)][2][0] is True
+    assert connections_manager._peerList[('127.0.0.1', 12346)][2][0] is False
+    assert connections_manager._peerList[('127.0.0.1', 12347)][2][0] is True
 
 
-@pytest.mark.skip(reason="no way of currently testing this")
-def test_check_server_present_in_list_false(connections_manager):
-    host = "server.localhost"
-    assert not connections_manager.check_server_present_in_list(host)
+def test_get_users_connected(connections_manager):
+    connections_manager, _ = connections_manager
+    peer = ('127.0.0.1', 12345)
+    connections_manager.connection(peer)
+    users_connected = connections_manager.peerList
+    assert users_connected == {peer: (None, None, [False])}
 
 
-@pytest.mark.skip(reason="no way of currently testing this")
-def test_get_server_buffer_task_s2s(connections_manager):
-    host = "server.localhost"
-    connections_manager.get_server_buffer(host)
-    connections_manager._task_s2s.assert_called_with(host)
+def test_close(connections_manager):
+    connections_manager, mock_logger = connections_manager
+    peer = ('127.0.0.1', 12345)
+    mock_transport = MagicMock()
+    connections_manager._peerList = {
+        ('127.0.0.1', 12345): (JID("demo@localhost"), mock_transport, [True]),
+    }
+    connections_manager.disconnection = MagicMock()
 
-@pytest.mark.skip(reason="no way of currently testing this")
+    connections_manager.close(peer)
+    connections_manager.disconnection.assert_called()
+    mock_transport.write.assert_called_with('</stream:stream>'.encode())
+
+    connections_manager.close(('127.0.0.1', 54321))
+    mock_logger.error.assert_called_with(f"{('127.0.0.1', 54321)} not present in the online list")
+
+
+def test_get_buffer(connections_manager):
+    connections_manager, _ = connections_manager
+    peer = ('127.0.0.1', 12345)
+    jid = JID("user@localhost")
+    transport = MagicMock(spec=Transport)
+    connections_manager._peerList = {
+        peer: (jid, transport, [False])
+    }
+    buffer = connections_manager.get_buffer(jid)
+    assert buffer[0][1] == transport
+    assert buffer[0][0] == jid
+
+
+def test_get_buffer_with_resource(connections_manager):
+    connections_manager, _ = connections_manager
+    peer = ('127.0.0.1', 12345)
+    jid = JID("user@localhost/1234")
+    transport = MagicMock(spec=Transport)
+    connections_manager._peerList = {
+        peer: (jid, transport, [False])
+    }
+    buffer = connections_manager.get_buffer(jid)
+    assert buffer[0][1] == transport
+    assert buffer[0][0] == jid
+
+
+def test_get_buffer_online(connections_manager):
+    connections_manager, _ = connections_manager
+    peer = ('127.0.0.1', 12345)
+    jid = JID("user@localhost")
+    transport = MagicMock(spec=Transport)
+    connections_manager._peerList = {
+        peer: (jid, transport, [False])
+    }
+
+    connections_manager.online(jid)
+    buffer = connections_manager.get_buffer_online(jid)
+
+    assert buffer[0][0] == jid
+    assert buffer[0][1] == transport
+    assert buffer[0][2] is True
+
+    connections_manager.online(jid, False)
+
+    buffer = connections_manager.get_buffer_online(jid)
+
+    assert len(buffer) == 0
+
+
+def test_get_buffer_online_with_resource(connections_manager):
+    connections_manager, _ = connections_manager
+    peer = ('127.0.0.1', 12345)
+    jid = JID("user@localhost/res1")
+    transport = MagicMock(spec=Transport)
+    connections_manager._peerList = {
+        peer: (jid, transport, [True])
+    }
+
+    buffer = connections_manager.get_buffer_online(jid)
+
+    assert buffer[0][0] == jid
+    assert buffer[0][1] == transport
+    assert buffer[0][2] is True
+
+    connections_manager.online(jid, False)
+
+    buffer = connections_manager.get_buffer_online(jid)
+
+    assert len(buffer) == 0
+
+
+def test_update_buffer_peer(connections_manager):
+    connections_manager, _ = connections_manager
+    peer = ('127.0.0.1', 12345)
+    transport = MagicMock()
+    jid = JID("demo@localhost")
+    connections_manager._peerList = {
+        peer: (jid, transport, [False])
+    }
+    new_transport = MagicMock
+    connections_manager.update_buffer(peer=peer, new_transport=new_transport)
+    assert connections_manager._peerList[peer][1] == new_transport
+    assert connections_manager._peerList[peer][0] == jid
+    assert connections_manager._peerList[peer][2] == [False]
+
+
+def test_update_buffer_jid(connections_manager):
+    connections_manager, _ = connections_manager
+    peer = ('127.0.0.1', 12345)
+    transport = MagicMock()
+    jid = JID("demo@localhost/123")
+    connections_manager._peerList = {
+        peer: (jid, transport, [False])
+    }
+    new_transport = MagicMock
+    connections_manager.update_buffer(new_transport=new_transport, jid=jid)
+    assert connections_manager._peerList[peer][1] == new_transport
+    assert connections_manager._peerList[peer][0] == jid
+    assert connections_manager._peerList[peer][2] == [False]
+
+
+def test_update_buffer_malformed(connections_manager):
+    connections_manager, mock_logger = connections_manager
+    peer = ('127.0.0.1', 12345)
+    transport = MagicMock()
+    jid = JID("demo@localhost/123")
+    connections_manager._peerList = {
+        peer: (jid, transport, [False])
+    }
+    new_transport = MagicMock
+    connections_manager.update_buffer(new_transport=new_transport)
+    mock_logger.warning.assert_called_with(
+        "Missing peer OR jid parameter to update transport in client connection. No action will be performed"
+    )
+    connections_manager.update_buffer(new_transport=new_transport, jid=JID("demo@localhost"))
+    mock_logger.warning.assert_called_with(
+        "JID must have a resource to update transport"
+    )
+    connections_manager.update_buffer(new_transport=new_transport, jid=JID("demo2@localhost/123"))
+    mock_logger.warning.assert_called_with(
+        "Unable to find client with given JID. Check this inconsistency"
+    )
+
+
+def test_get_jid(connections_manager):
+    connections_manager, _ = connections_manager
+    peer = ('127.0.0.1', 12345)
+    connections_manager.connection(peer)
+    connections_manager.set_jid(peer, JID("user@localhost"))
+    jid = connections_manager.get_jid(peer)
+    assert str(jid) == "user@localhost"
+    assert connections_manager.get_jid(('127.0.0.1', 54321)) is None
+
+
+def test_set_jid(connections_manager):
+    connections_manager, mock_logger = connections_manager
+    peer = ('127.0.0.1', 12345)
+    new_transport = MagicMock(spec=Transport)
+    connections_manager._peerList = {
+        peer: (None, MagicMock(), [False])
+    }
+    connections_manager.set_jid(peer, JID("user@localhost"), new_transport)
+    jid, buffer, online = connections_manager._peerList[peer]
+    assert str(jid) == "user@localhost"
+    assert buffer == new_transport
+    assert online == [False]
+
+
+def test_set_jid_without_transport(connections_manager):
+    connections_manager, _ = connections_manager
+    peer = ('127.0.0.1', 12345)
+    connections_manager.connection(peer)
+    connections_manager.set_jid(peer, JID("user@localhost"))
+    assert str(connections_manager._peerList[peer][0]) == "user@localhost"
+
+
+def test_set_jid_key_error(connections_manager):
+    connections_manager, log = connections_manager
+    peer = ('127.0.0.1', 12345)
+    connections_manager.set_jid(peer, JID("user@localhost"))
+    log.error.assert_called_with(f"Unable to find {('127.0.0.1', 12345)} during jid/transport update")
+
+
+def test_update_resource(connections_manager):
+    connections_manager, log = connections_manager
+    peer = ('127.0.0.1', 12345)
+    jid = JID("demo@localhost")
+    transport = MagicMock()
+    connections_manager._peerList = {
+        peer: (jid, transport, [False])
+    }
+    connections_manager.update_resource(peer, "resource")
+    assert connections_manager._peerList[peer][0] == JID("demo@localhost/resource")
+    connections_manager.update_resource(('127.0.0.1', 54321), "resource")
+    log.error.assert_called_with(f"Unable to find {('127.0.0.1', 54321)} during resource update")
+
+
+def test_disconnection_key_error(connections_manager):
+    connections_manager, log = connections_manager
+    peer = ('127.0.0.1', 12345)
+    connections_manager.disconnection(peer)
+    assert peer not in connections_manager._peerList
+    # log.warning.assert_called_with(f"{peer} not present in the online list")
+
+
 def test_connection_server(connections_manager):
-    peer = ("127.0.0.1", 12345)
-    host = "server.localhost"
-    transport = MagicMock(spec=Transport)
-    connections_manager.connection_server(peer, host, transport)
+    connections_manager, _ = connections_manager
+    peer = ('127.0.0.1', 12345)
+    connections_manager.connection_server(peer)
     assert peer in connections_manager._remoteList
-    assert connections_manager._remoteList[peer] == {"jid": host, "transport": None}
+    assert connections_manager._remoteList[peer] == (None, None)
 
-@pytest.mark.skip(reason="no way of currently testing this")
+
 def test_disconnection_server(connections_manager):
-    peer = ("127.0.0.1", 12345)
-    host = "server.localhost"
-    transport = MagicMock(spec=Transport)
-    connections_manager.connection_server(peer, host, transport)
+    connections_manager, _ = connections_manager
+    peer = ('127.0.0.1', 12345)
+    connections_manager._remoteList = {
+        peer: (None, None)
+    }
     connections_manager.disconnection_server(peer)
-    assert peer not in connections_manager._remoteList
+    assert len(connections_manager._remoteList) == 0
 
-@pytest.mark.skip(reason="no way of currently testing this")
-def test_get_server_buffer(connections_manager):
-    peer = ("127.0.0.1", 12345)
-    host = "server.localhost"
-    transport = MagicMock(spec=Transport)
-    connections_manager.connection_server(peer, host, transport)
-    connections_manager.set_server_transport(peer, transport)
-    buffer = connections_manager.get_server_buffer(host)
-    assert buffer == (host, transport)
 
-@pytest.mark.skip(reason="no way of currently testing this")
-def test_set_server_transport(connections_manager):
-    peer = ("127.0.0.1", 12345)
-    host = "server.localhost"
-    transport = MagicMock(spec=Transport)
-    connections_manager.connection_server(peer, host, None)
-    connections_manager.set_server_transport(peer, transport)
-    assert connections_manager._remoteList[peer]["transport"] == transport
+def test_disconnection_server_missing_entry(connections_manager):
+    connections_manager, mock_logger = connections_manager
+    peer = ('127.0.0.1', 12345)
+    connections_manager._remoteList = {
+        peer: (None, None)
+    }
+    connections_manager.disconnection_server(('127.0.0.1', 54321))
+    assert len(connections_manager._remoteList) > 0
+    mock_logger.warning.assert_called_with(f"Server {('127.0.0.1', 54321)} not present in the online list")
 
-@pytest.mark.skip(reason="no way of currently testing this")
-def test_check_server_stream_available(connections_manager):
-    peer = ("127.0.0.1", 12345)
-    host = "server.localhost"
-    transport = MagicMock(spec=Transport)
-    connections_manager.connection_server(peer, host, transport)
-    connections_manager.set_server_transport(peer, transport)
-    available = connections_manager.check_server_stream_available(host)
-    assert available is True
 
-@pytest.mark.skip(reason="no way of currently testing this")
-def test_check_server_present_in_list(connections_manager):
-    peer = ("127.0.0.1", 12345)
-    host = "server.localhost"
-    transport = MagicMock(spec=Transport)
-    connections_manager.connection_server(peer, host, transport)
-    present = connections_manager.check_server_present_in_list(host)
-    assert present is True
+def test_update_host(connections_manager):
+    connections_manager, mock_logger = connections_manager
+    peer = ('127.0.0.1', 12345)
+    connections_manager._remoteList = {
+        peer: (None, None)
+    }
+    connections_manager.update_host(peer, "remote.es")
+    assert connections_manager._remoteList[peer][0] == "remote.es"
 
-@pytest.mark.skip(reason="no way of currently testing this")
-def test_get_server_buffer_no_transport(connections_manager):
-    peer = ("127.0.0.1", 12345)
-    host = "server.localhost"
-    connections_manager.connection_server(peer, host, None)
-    connections_manager.set_server_transport(peer, None)
-    buffer = connections_manager.get_server_buffer(host)
-    assert buffer is None
 
-@pytest.mark.skip(reason="no way of currently testing this")
-def test_check_server_stream_available_false(connections_manager):
-    peer = ("127.0.0.1", 12345)
-    host = "server.localhost"
-    connections_manager.connection_server(peer, host, None)
-    available = connections_manager.check_server_stream_available(host)
-    assert available is False
+def test_update_host_no_entry(connections_manager):
+    connections_manager, mock_logger = connections_manager
+    peer = ('127.0.0.1', 12345)
+    connections_manager._remoteList = {
+        peer: (None, None)
+    }
+    connections_manager.update_host(('127.0.0.1', 54321), "remote.es")
+    assert connections_manager._remoteList[peer][0] is None
+    mock_logger.warning.assert_called_with("Unable to find server with given peer during host update. Check this inconsistency")
+
+
+def test_close_server(connections_manager):
+    connections_manager, mock_logger = connections_manager
+    peer = ('127.0.0.1', 12345)
+    transport = MagicMock()
+    connections_manager._remoteList = {
+        peer: ("remote.es", transport)
+    }
+    connections_manager.disconnection_server = MagicMock()
+    connections_manager.close_server(peer)
+    transport.write.assert_called_with('</stream:stream>'.encode())
+    connections_manager.disconnection_server.assert_called()
+
+    connections_manager.close_server(('127.0.0.1', 54321))
+    mock_logger.error.assert_called_with(f"{('127.0.0.1', 54321)} not present in the online list")
+
+
+def test_get_server_buffer_peer(connections_manager):
+    connections_manager, mock_logger = connections_manager
+    peer = ('127.0.0.1', 12345)
+    transport = MagicMock()
+    connections_manager._remoteList = {
+        peer: ("remote.es", transport)
+    }
+
+    assert connections_manager.get_server_buffer(peer) == transport
+
+
+def test_get_server_buffer_host(connections_manager):
+    connections_manager, mock_logger = connections_manager
+    peer = ('127.0.0.1', 12345)
+    transport = MagicMock()
+    connections_manager._remoteList = {
+        peer: ("remote.es", transport)
+    }
+
+    assert connections_manager.get_server_buffer(host="remote.es") == transport
+
+
+def test_get_server_buffer_no_entry(connections_manager):
+    connections_manager, mock_logger = connections_manager
+    peer = ('127.0.0.1', 12345)
+    transport = MagicMock()
+    connections_manager._remoteList = {
+        peer: ("remote.es", transport)
+    }
+
+    assert connections_manager.get_server_buffer(('127.0.0.1', 54321)) is None
+    mock_logger.error.assert_called_with("Missing peer in the connection list. Check it")
+
+
+def test_get_server_buffer_malformed(connections_manager):
+    connections_manager, mock_logger = connections_manager
+    peer = ('127.0.0.1', 12345)
+    transport = MagicMock()
+    connections_manager._remoteList = {
+        peer: ("remote.es", transport)
+    }
+
+    assert connections_manager.get_server_buffer() is None
+    mock_logger.error.assert_called_with("Missing peer OR host to search for server transport. Returning None")

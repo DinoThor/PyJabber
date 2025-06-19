@@ -4,7 +4,7 @@ from xml.etree import ElementTree as ET
 from pyjabber.stream.StreamHandler import Signal, Stage, StreamHandler
 
 
-class StreamServerOutcomingHandler(StreamHandler):
+class StreamServerOutgoingHandler(StreamHandler):
 
     PROCEED = "{urn:ietf:params:xml:ns:xmpp-tls}proceed"
     SUCCESS = "{urn:ietf:params:xml:ns:xmpp-sasl}success"
@@ -13,21 +13,19 @@ class StreamServerOutcomingHandler(StreamHandler):
     FEATURES = "{http://etherx.jabber.org/streams}features"
     STARTTLS = "{urn:ietf:params:xml:ns:xmpp-tls}starttls"
 
-    def __init__(self, host, buffer, starttls) -> None:
-        super().__init__(host, buffer, starttls)
+    def __init__(self, buffer, starttls) -> None:
+        super().__init__(buffer, starttls)
 
     def handle_open_stream(
             self, elem: ET.Element = None) -> Union[Signal, None]:
         if self._stage == Stage.READY:
-            peer = self.buffer.get_extra_info('peername')
-            self._connection_manager.set_server_transport(peer, self.buffer)
             return Signal.DONE
 
         elif elem.tag == self.FEATURES:
             children = [child.tag for child in elem]
             if self.STARTTLS in children:
                 if self._stage == Stage.CONNECTED:
-                    self._buffer.write(
+                    self._transport.write(
                         "<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>".encode())
                     self._stage = Stage.OPENED
                     return
@@ -35,20 +33,19 @@ class StreamServerOutcomingHandler(StreamHandler):
             elif self.MECHANISMS in children:
                 mechanisms = [mech for mech in elem.find(self.MECHANISMS)]
                 if 'EXTERNAL' in [mech.text for mech in mechanisms]:
-                    self._buffer.write(
+                    self._transport.write(
                         "<auth xmlns='urn:ietf:params:xml:ns:xmpp-sasl' mechanism='EXTERNAL'>=</auth>".encode())
                     return
 
-            elif self.DIALBACK in children and self._stage == Stage.READY:
-                peer = self.buffer.get_extra_info('peername')
-                self._connection_manager.set_server_transport(peer, self.buffer)
+            else:
+                peer = self._transport.get_extra_info('peername')
                 return Signal.DONE
 
         elif elem.tag == self.PROCEED:
             if self._stage == Stage.OPENED:
                 self._starttls()
                 self._stage = Stage.SSL
-                return Signal.RESET
+                return Signal.CLEAR
 
         elif elem.tag == self.SUCCESS:
             self._stage = Stage.READY

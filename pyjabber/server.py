@@ -4,15 +4,17 @@ import signal
 
 from loguru import logger
 
+
 from pyjabber import init_utils
 from pyjabber.db.database import DB
+from pyjabber.network import CertGenerator
 from pyjabber.network.XMLProtocol import XMLProtocol
-from pyjabber.network.server.incoming.XMLServerIncomingProtocol import XMLServerIncomingProtocol
+from pyjabber.network.ServerConnectionType import ServerConnectionType as SCT
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.server_parameters import Parameters
 from pyjabber.webpage.adminPage import AdminPage
 from pyjabber import metadata
-from pyjabber.workers import tls_worker, queue_worker
+from pyjabber.workers import tls_worker, queue_worker, s2s_outgoing_connection_worker
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -53,6 +55,9 @@ class Server:
         metadata.init_config(
             host=param.host,
             ip=[self._host_ip, self._public_ip],
+            connection_timeout=param.connection_timeout,
+            family=self._family,
+            server_port=self._server_port,
             database_path=self._database_path,
             database_purge=self._database_purge,
             database_in_memory=self._database_in_memory,
@@ -67,6 +72,14 @@ class Server:
         # Flags
         self._ready = asyncio.Event()
 
+        try:
+            if CertGenerator.check_hostname_cert_exists(metadata.HOST, metadata.CERT_PATH) is False:
+                CertGenerator.generate_hostname_cert(metadata.HOST, metadata.CERT_PATH)
+        except FileNotFoundError as e:
+            logger.error(f"{e.__class__.__name__}: Pass an existing directory in your system to load the certs. "
+                         f"Closing server")
+            raise SystemExit
+
     @property
     def ready(self):
         return self._ready
@@ -78,11 +91,10 @@ class Server:
         try:
             logger.info("Starting server...")
 
-            engine = DB.setup_database()
+            DB.setup_database()
             if not self._database_in_memory:
                 DB.run_db_migrations()
-            # if not self._database_in_memory and DB.needs_upgrade(engine):
-            #     DB.run_migrations_if_needed()
+
             self._public_ip = init_utils.setup_query_local_ip()
 
             loop = asyncio.get_running_loop()
@@ -94,10 +106,11 @@ class Server:
                         host=self._host,
                         connection_timeout=self._connection_timeout,
                         cert_path=self._cert_path,
+                        connection_type=SCT.CLIENT
                     ),
                     host=[self._host, self._public_ip] if self._public_ip else [self._host],
                     port=self._client_port,
-                    family=self._family
+                    family=self._family,
                 )
             except OSError as e:
                 logger.error(e)
@@ -109,15 +122,16 @@ class Server:
 
             try:
                 self._server_listener = await loop.create_server(
-                    lambda: XMLServerIncomingProtocol(
+                    lambda: XMLProtocol(
                         namespace="jabber:server",
                         host=self._host,
                         connection_timeout=self._connection_timeout,
                         cert_path=self._cert_path,
+                        connection_type=SCT.FROM_SERVER
                     ),
-                    host=["0.0.0.0"],
+                    host=["127.0.0.1"],
                     port=self._server_port,
-                    family=self._family
+                    family=self._family,
                 )
             except OSError as e:
                 logger.error(e)
@@ -147,7 +161,8 @@ class Server:
 
             logger.success("Server stopped...")
 
-    def raise_exit(self, *args):
+    @staticmethod
+    def raise_exit(*args) -> Exception:
         """Exception used to signal the safe close of the server"""
         raise SystemExit(1)
 
@@ -155,6 +170,7 @@ class Server:
         """Start the already created and configuration server"""
         metadata.TLS_QUEUE = asyncio.Queue()
         metadata.CONNECTION_QUEUE = asyncio.Queue()
+        metadata.S2S_OUTGOING_QUEUE = asyncio.Queue()
         metadata.MESSAGE_QUEUE = asyncio.Queue()
 
         signal.signal(signal.SIGINT, self.raise_exit)
@@ -168,6 +184,7 @@ class Server:
                 asyncio.create_task(self._adminServer.start()),
                 asyncio.create_task(tls_worker()),
                 asyncio.create_task(queue_worker()),
+                asyncio.create_task(s2s_outgoing_connection_worker()),
                 asyncio.create_task(self.run_server())
             ]
             await asyncio.gather(*tasks)

@@ -72,7 +72,13 @@ async def test_unauthorized():
             self.login_reached.set_result("REACHED")
             self.disconnect()
 
-    server = Server(Parameters(database_path='./pyjabber.db'))
+    server = Server(Parameters(
+        database_path='./pyjabber.db',
+        plugins=[
+            # 'jabber:iq:register',
+            'jabber:x:data',
+            'urn:xmpp:ping',
+        ]))
     server_task = asyncio.create_task(server.start())
     await server.ready.wait()
 

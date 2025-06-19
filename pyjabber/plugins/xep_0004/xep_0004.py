@@ -25,11 +25,11 @@ class FormType(Enum):
 def parse_form(element: ET.Element):
     """
     If a proper dataforms is passes, it returns a list of field
-    submitted by the client
-    @param element:
-    @return: List of dicts in format {type, var, values[]}
+    submitted by the client.
+
+    :param element:
+    :return: List of dicts in format {type, var, values[]}
     """
-    data = None
     try:
         """
         Supposing element is an IQ stanza, it should be in a second-level child
@@ -106,7 +106,3 @@ def generate_form(form_type: FormType, title: str = None, instructions: str = No
         form_res.append(field)
 
     return form_res
-
-
-def generate_form_multi_res():
-    pass

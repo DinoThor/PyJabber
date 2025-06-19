@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import Dict
 from xml.etree import ElementTree as ET
 

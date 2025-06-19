@@ -17,7 +17,9 @@ def setup():
             starttls = Mock()
             mock_meta_sh.HOST = 'localhost'
             mock_meta_sasl.HOST = 'localhost'
-            yield StreamHandler(transport, starttls)
+            mock_protocol = MagicMock()
+            mock_protocol.from_claim = None
+            yield StreamHandler(transport, starttls, mock_protocol)
 
 
 def test_stage_enum():
@@ -29,9 +31,12 @@ def test_stage_enum():
     assert Stage.BIND.value == 5
     assert Stage.READY.value == 6
 
+
 def test_signal_enum():
     assert Signal.RESET.value == 0
-    assert Signal.DONE.value == 1
+    assert Signal.CLEAR.value == 1
+    assert Signal.DONE.value == 2
+    assert Signal.FORCE_CLOSE.value == 3
 
 
 def test_stream_handler_initialization(setup):
@@ -49,6 +54,7 @@ def test_stream_handler_transport_property(setup):
 
     assert handler.transport == new_transport
 
+
 def test_handle_open_stream_connected(setup):
     handler = setup
 
@@ -56,6 +62,7 @@ def test_handle_open_stream_connected(setup):
 
     assert handler._stage == Stage.OPENED
     handler._transport.write.assert_called_once()
+
 
 def test_handle_open_stream_opened(setup):
     handler = setup
@@ -68,6 +75,7 @@ def test_handle_open_stream_opened(setup):
     assert result == Signal.RESET
     handler._transport.write.assert_called_once()
     handler._starttls.assert_called_once()
+
 
 def test_handle_open_stream_ssl(setup):
     handler = setup
@@ -92,10 +100,10 @@ def test_handle_open_stream_sasl_continue(setup):
     auth_text = b64encode(b'\x00username\x00password').decode('ascii')
     elem.text = auth_text
 
-    with patch.object(SASL, "__init__", lambda self: None), \
-         patch.object(SASL, "feed", return_value=(Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")):
+    with patch("pyjabber.stream.StreamHandler.SASL") as mock_sasl:
 
-         handler.handle_open_stream(elem)
+        mock_sasl.return_value.feed.return_value = (Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")
+        handler.handle_open_stream(elem)
 
     assert handler._stage == Stage.AUTH
     expected_response = b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>"

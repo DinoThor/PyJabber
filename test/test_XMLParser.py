@@ -4,7 +4,7 @@ from xml.etree import ElementTree as ET
 
 from pyjabber.utils import ClarkNotation as CN
 from pyjabber.stream.StreamHandler import Signal
-from pyjabber.network.XMLParser import XMLParser
+from pyjabber.network.parsers.XMLParser import XMLParser
 
 
 @pytest.fixture
@@ -16,6 +16,7 @@ def setup():
 
         return XMLParser(transport, starttls)
 
+
 def test_initialization(setup):
     handler = setup
 
@@ -24,6 +25,7 @@ def test_initialization(setup):
     assert handler._stanzaHandler is None
     assert handler._streamHandler is not None
     assert handler._stack == []
+
 
 def test_transport_property(setup):
     handler = setup
@@ -123,7 +125,7 @@ def test_end_element_ns_stream_handling(mock_plugin_manager, mock_presence, mock
     mock_stream_handler.handle_open_stream.return_value = Signal.DONE
     handler._streamHandler = mock_stream_handler
 
-    with patch('pyjabber.network.XMLParser.StanzaHandler') as mock_stanza_handler:
+    with patch('pyjabber.network.parsers.XMLParser.StanzaHandler') as mock_stanza_handler:
         handler.endElementNS(("namespace", "dummy"), "dummy")
 
     assert handler._state == XMLParser.StreamState.READY

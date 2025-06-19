@@ -1,87 +1,47 @@
-import pytest
-from unittest.mock import Mock, MagicMock
-from xml.etree import ElementTree as ET
-import base64
+from unittest.mock import MagicMock, patch
 
-# Ensure this path is correct
-from pyjabber.stream.server.incoming.StreamServerIncomingHandler import StreamServerIncomingHandler, Signal, Stage
-from pyjabber.features.StartTLSFeature import StartTLSFeature
-
-@pytest.fixture
-def mock_buffer():
-    mock = Mock()
-    return mock
-
-@pytest.fixture
-def mock_connection_manager():
-    mock = Mock()
-    return mock
-
-@pytest.fixture
-def stream_handler(mock_buffer, mock_connection_manager):
-    return StreamServerIncomingHandler('mock_host', mock_buffer, 'mock_starttls', mock_connection_manager)
-
-def test_initialization(stream_handler, mock_buffer, mock_connection_manager):
-    assert stream_handler._host == 'mock_host'
-    assert stream_handler._buffer == mock_buffer
-    assert stream_handler._starttls == 'mock_starttls'
-    assert stream_handler._connection_manager == mock_connection_manager
-
-def test_handle_open_stream_connected(stream_handler, mock_buffer):
-    stream_handler._stage = Stage.CONNECTED
-    stream_handler.handle_open_stream()
-    mock_buffer.write.assert_called_once()
-    assert stream_handler._stage == Stage.OPENED
-
-def test_handle_open_stream_ssl(stream_handler, mock_buffer):
-    stream_handler._stage = Stage.SSL
-    stream_handler.handle_open_stream()
-    mock_buffer.write.assert_called_once()
-    assert stream_handler._stage == Stage.SASL
-
-def test_handle_open_stream_auth(stream_handler, mock_buffer):
-    stream_handler._stage = Stage.AUTH
-    result = stream_handler.handle_open_stream()
-    mock_buffer.write.assert_called_once_with(b"<features xmlns='http://etherx.jabber.org/streams'/>")
-    assert stream_handler._stage == Stage.READY
-    assert result == Signal.DONE
-
-def test_handle_open_stream_exception(stream_handler):
-    stream_handler._stage = None
-    with pytest.raises(Exception):
-        stream_handler.handle_open_stream()
-
-def test_handle_open_stream_starttls(stream_handler, mock_buffer):
-    stream_handler._stage = Stage.OPENED
-    stream_handler._starttls = Mock()
-    starttls_element = ET.Element(StreamServerIncomingHandler.STARTTLS)
-    result = stream_handler.handle_open_stream(starttls_element)
-    mock_buffer.write.assert_called_once_with(StartTLSFeature().proceed_response())
-    stream_handler._starttls.assert_called_once()  # Ensure _starttls was called
-    assert stream_handler._stage == Stage.SSL
-    assert result == Signal.RESET
+from pyjabber.features.SASLFeature import MECHANISM
+from pyjabber.stream.Signal import Signal
+from pyjabber.stream.Stage import Stage
+from pyjabber.stream.server.incoming.StreamServerIncomingHandler import StreamServerIncomingHandler
 
 
-def test_handle_open_stream_sasl_auth_with_mechanism(stream_handler, mock_buffer):
-    stream_handler._stage = Stage.SASL
-    auth_element = ET.Element(StreamServerIncomingHandler.AUTH, attrib={'mechanism': 'EXTERNAL'})
-    auth_element.text = base64.b64encode(b'mock_host').decode()
-    result = stream_handler.handle_open_stream(auth_element)
-    mock_buffer.write.assert_called_once_with(b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")
-    assert stream_handler._stage == Stage.AUTH
-    assert result == Signal.RESET
+def test_constructor():
+    mock_transport = MagicMock()
+    mock_tls = MagicMock()
+    mock_parser_red = MagicMock()
 
-def test_handle_open_stream_sasl_auth_no_mechanism(stream_handler, mock_buffer):
-    stream_handler._stage = Stage.SASL
-    auth_element = ET.Element(StreamServerIncomingHandler.AUTH, attrib={'mechanism': 'EXTERNAL'})
-    auth_element.text = None  # Explicitly set text to None to trigger the exception
-    with pytest.raises(Exception):
-        stream_handler.handle_open_stream(auth_element)
+    with patch('pyjabber.stream.StreamHandler.metadata') as mock_meta:
+        mock_meta.HOST = 'localhost'
+        mock_meta.PLUGINS = ['jabber:iq:register']
+
+        handler = StreamServerIncomingHandler(mock_transport, mock_tls, mock_parser_red)
+
+    assert handler._ibr_feature == False
+    assert handler._sasl_mechanisms == [MECHANISM.EXTERNAL]
+    assert list(handler._stages_handlers.keys()) == [
+        Stage.CONNECTED, Stage.OPENED, Stage.SSL, Stage.SASL, Stage.AUTH
+    ]
+    assert handler._handle_empty_features == handler._stages_handlers[Stage.AUTH]
 
 
-def test_handle_open_stream_sasl_auth_invalid_text(stream_handler, mock_buffer):
-    stream_handler._stage = Stage.SASL
-    auth_element = ET.Element(StreamServerIncomingHandler.AUTH, attrib={'mechanism': 'EXTERNAL'})
-    auth_element.text = 'invalid'
-    with pytest.raises(Exception):
-        stream_handler.handle_open_stream(auth_element)
+def test_handler_empty_features():
+    mock_transport = MagicMock()
+    mock_tls = MagicMock()
+    mock_parser_red = MagicMock()
+
+    with patch('pyjabber.stream.StreamHandler.metadata') as mock_meta:
+        mock_meta.HOST = 'localhost'
+        mock_meta.PLUGINS = ['jabber:iq:register']
+
+        handler = StreamServerIncomingHandler(mock_transport, mock_tls, mock_parser_red)
+        handler._stage = Stage.AUTH
+
+    handler._handle_empty_features = MagicMock()
+    signal = handler.handle_open_stream(MagicMock())
+
+    assert len(handler._streamFeature._features) == 0
+    mock_transport.write.assert_called_with(b'<stream:features xmlns="http://etherx.jabber.org/streams" />')
+    assert handler._stage == Stage.READY
+    assert signal == Signal.DONE
+
