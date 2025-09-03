@@ -61,7 +61,7 @@ The process of starting the server returns a coroutine, leaving it to the user t
 
 .. code-block:: python
 
-    from pyjabber import Server
+    from pyjabber.server import Server
 
     my_server = Server()
     asyncio.run(my_server.start())
