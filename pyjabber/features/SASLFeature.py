@@ -61,7 +61,7 @@ class SASL(metaclass=Singleton):
                 "from": metadata.HOST})
         return ET.tostring(iq)
 
-    def handleIQ(self, element: ET.Element) -> bytes:
+    def handleIQ(self, element: ET.Element) -> bytes | None:
         query = element.find("{jabber:iq:register}query")
 
         if query is None:
@@ -102,6 +102,8 @@ class SASL(metaclass=Singleton):
             iq.append(query)
 
             return ET.tostring(iq)
+
+        return None
 
     def handleAuth(self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
         mechanism = element.attrib.get("mechanism")

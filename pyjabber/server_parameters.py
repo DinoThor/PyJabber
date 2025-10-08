@@ -34,6 +34,7 @@ class Parameters:
             'jabber:x:data',
             'urn:xmpp:ping',
             'jabber:iq:rpc',
+            'urn:xmpp:http:upload:0'
     ])
 
     items: Dict[str, Dict[str, str]] = field(default_factory=lambda: {
@@ -41,7 +42,17 @@ class Parameters:
             "name": "Pubsub Service",
             "category": "pubsub",
             "type": "service",
-            "var": "http://jabber.org/protocol/pubsub"
+            "var": "http://jabber.org/protocol/pubsub",
+            "extra": {}
+        },
+        'upload.$': {
+            "name": "HTTP File Upload",
+            "category": "store",
+            "type": "file",
+            "var": "urn:xmpp:http:upload:0",
+            "extra": {
+                "max-size": 5242880
+            }
         }
     })
 

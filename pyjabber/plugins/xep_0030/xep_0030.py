@@ -2,7 +2,9 @@ from typing import Literal, Dict, Callable
 from xml.etree import ElementTree as ET
 
 from pyjabber import metadata
+from pyjabber.plugins.xep_0004.field import FieldRequest, FieldTypes
 from pyjabber.plugins.xep_0060.xep_0060 import PubSub, NodeAttrib
+from pyjabber.plugins.xep_0004.xep_0004 import generate_form, FormType
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
@@ -20,7 +22,7 @@ def iq_skeleton(element: ET.Element, disco_type: Literal['info', 'items']):
 
 
 class Disco(metaclass=Singleton):
-    __slots__ = ('_handlers', '_config_path', '_pubsub', '_pubsub_jid')
+    __slots__ = ('_handlers', '_config_path', '_pubsub', '_pubsub_jid', '_0363_jid', '_0363_max_size')
 
     def __init__(self):
         self._handlers: Dict[str, Callable[[JID, ET.Element], bytes]] = {
@@ -33,6 +35,12 @@ class Disco(metaclass=Singleton):
             self._pubsub_jid = next((s for s in metadata.ITEMS if 'pubsub' in s), None)
             self._pubsub_jid = self._pubsub_jid.replace('$', metadata.HOST)
             self._pubsub = PubSub()
+
+        if 'urn:xmpp:http:upload:0' in metadata.PLUGINS:
+            self._0363_jid = next((s for s in metadata.ITEMS if 'upload' in s), None)
+            self._0363_max_size = metadata.ITEMS[self._0363_jid]["extra"]["max-size"]
+            self._0363_jid = self._0363_jid.replace('$', metadata.HOST)
+
 
     def feed(self, jid: JID, element: ET.Element):
         if len(element) != 1:
@@ -78,6 +86,33 @@ class Disco(metaclass=Singleton):
             )
 
             return ET.tostring(iq_res)
+
+        # XEP 0363 (HTTP File Upload) info
+        if self._0363_jid and to == self._0363_jid:
+            iq_res, query_res = iq_skeleton(element, 'info')
+            ET.SubElement(
+                query_res,
+                'identity',
+                attrib={'category': 'store', 'type': 'file', 'name': 'HTTP File Upload'}
+            )
+            ET.SubElement(
+                query_res,
+                'feature',
+                attrib={'var': 'urn:xmpp:http:upload:0'}
+            )
+
+            dataform = generate_form(
+                form_type=FormType.RESULT,
+                fields=[
+                    FieldRequest(var='FORM_TYPE', field_type=FieldTypes.HIDDEN, values=['urn:xmpp:http:upload:0']),
+                    FieldRequest(var='max-file-size', values=self._0363_max_size)
+                ]
+            )
+            query_res.append(dataform)
+
+            return ET.tostring(iq_res)
+
+        return None
 
     def handle_items(self, _, element: ET.Element):
         to = JID(element.attrib.get('to')) if element.attrib.get('to') else None

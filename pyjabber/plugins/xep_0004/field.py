@@ -57,15 +57,15 @@ class FieldRequest:
 
     def __init__(
             self,
-            field_type: FieldTypes,
             var: str,
+            field_type: FieldTypes = None,
             label: str = None,
             values: List[str] = None,
             options: List[Option] = None,
             desc: str = None,
             required: bool = False):
 
-        if field_type not in [FieldTypes.LIST_SINGLE.value, FieldTypes.LIST_MULTI.value] and options is not None:
+        if options is not None and field_type not in [FieldTypes.LIST_SINGLE.value, FieldTypes.LIST_MULTI.value]:
             raise ValueError("Options is only available with FieldType of [LIST-SINGLE, LIST-MULTIPLE]")
 
         if options is not None and values is not None:
