@@ -1,8 +1,8 @@
 import xml.etree.ElementTree as ET
 from sqlalchemy import select, insert, update, delete, and_
 
-from pyjabber.db.database import DB
 from pyjabber import metadata
+from pyjabber.db.database import DB
 from pyjabber.db.model import Model
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ

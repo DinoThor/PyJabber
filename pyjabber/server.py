@@ -7,12 +7,14 @@ from loguru import logger
 
 from pyjabber import init_utils
 from pyjabber.db.database import DB
+from pyjabber.http_server import HttpServer
 from pyjabber.network import CertGenerator
 from pyjabber.network.XMLProtocol import XMLProtocol
 from pyjabber.network.ServerConnectionType import ServerConnectionType as SCT
 from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.plugins.xep_0363.upload_server import UploadHttpServer
 from pyjabber.server_parameters import Parameters
-from pyjabber.webpage.adminPage import AdminPage
+from pyjabber.webpage.adminPage import api_adminpage_app
 from pyjabber import metadata
 from pyjabber.workers import tls_worker, queue_worker, s2s_outgoing_connection_worker
 
@@ -37,7 +39,8 @@ class Server:
         self._family = param.family
         self._client_listener = None
         self._server_listener = None
-        self._adminServer = AdminPage()
+        self._http_server = None
+        self._http_apps = []
         self._connection_timeout = param.connection_timeout
 
         # Database
@@ -70,9 +73,6 @@ class Server:
             items=param.items
         )
 
-        # Flags
-        self._ready = asyncio.Event()
-
         try:
             if CertGenerator.check_hostname_cert_exists(metadata.HOST, metadata.CERT_PATH) is False:
                 CertGenerator.generate_hostname_cert(metadata.HOST, metadata.CERT_PATH)
@@ -80,6 +80,17 @@ class Server:
             logger.error(f"{e.__class__.__name__}: Pass an existing directory in your system to load the certs. "
                          f"Closing server")
             raise SystemExit
+
+        # HTTP Server
+        self._http_apps.append(api_adminpage_app())
+        if 'upload.$' in param.items:
+            self._UploadHttpServer = UploadHttpServer()
+            self._http_apps.append(self._UploadHttpServer.get_aiohttp_webapp())
+
+        self._http_server = HttpServer(self._http_apps)
+
+        # Flags
+        self._ready = asyncio.Event()
 
     @property
     def ready(self):
@@ -182,7 +193,7 @@ class Server:
 
         try:
             tasks = [
-                asyncio.create_task(self._adminServer.start()),
+                asyncio.create_task(self._http_server.start()),
                 asyncio.create_task(tls_worker()),
                 asyncio.create_task(queue_worker()),
                 asyncio.create_task(s2s_outgoing_connection_worker()),

@@ -3,6 +3,7 @@ import re
 from typing import Dict
 
 from pyjabber import metadata
+from pyjabber.plugins.xep_0363.xep_0363 import HTTPFieldUpload
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stream.JID import JID
 from pyjabber.utils import ClarkNotation as CN
@@ -22,7 +23,8 @@ class PluginManager:
 
         self._plugins: Dict[str, object] = {
             'jabber:iq:roster': Roster(),
-            'urn:xmpp:ping': Ping
+            'urn:xmpp:ping': Ping,
+            'urn:xmpp:http:upload:0': HTTPFieldUpload()
         }
 
         if any(p.startswith('http://jabber.org/protocol/disco') for p in metadata.PLUGINS):
