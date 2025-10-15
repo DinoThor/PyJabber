@@ -171,7 +171,7 @@ class XMLProtocol(asyncio.Protocol):
         :param data: Chunk of data received
         :type data: Byte array
         """
-        logger.debug(f"Data received {self._logger_tag} {self._peer}: {data.decode()}")
+        logger.debug(f"Data received {self._logger_tag} {self._peer}: {data.decode(errors="ignore")}")
 
         if self._timeout_monitor:
             self._timeout_monitor.reset()

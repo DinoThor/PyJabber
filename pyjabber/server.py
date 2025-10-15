@@ -13,6 +13,7 @@ from pyjabber.network.XMLProtocol import XMLProtocol
 from pyjabber.network.ServerConnectionType import ServerConnectionType as SCT
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.plugins.xep_0363.upload_server import UploadHttpServer
+from pyjabber.plugins.xep_0363.xep_0363 import HTTPFieldUpload
 from pyjabber.server_parameters import Parameters
 from pyjabber.webpage.adminPage import api_adminpage_app
 from pyjabber import metadata
@@ -86,6 +87,7 @@ class Server:
         if 'upload.$' in param.items:
             self._UploadHttpServer = UploadHttpServer()
             self._http_apps.append(self._UploadHttpServer.get_aiohttp_webapp())
+            HTTPFieldUpload(self._UploadHttpServer)     # Pre-create Singleton Plugin 0363 to store the UploadHttpServer app instance
 
         self._http_server = HttpServer(self._http_apps)
 

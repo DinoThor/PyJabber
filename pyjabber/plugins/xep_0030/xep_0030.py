@@ -53,10 +53,7 @@ class Disco(metaclass=Singleton):
             return self._handlers['items'](jid, element)
 
     def handle_info(self, _, element: ET.Element):
-        to = JID(element.attrib.get('to')) if element.attrib.get('to') else None
-
-        if to is None or to.domain == metadata.HOST:
-            return self.server_info(element)
+        to = element.attrib.get('to')
 
         # Pubsub info
         if self._pubsub_jid and to == self._pubsub_jid:
@@ -69,35 +66,35 @@ class Disco(metaclass=Singleton):
 
                 ET.SubElement(
                     query_res,
-                    'identity',
+                    '{http://jabber.org/protocol/disco#info}identity',
                     attrib={'category': 'pubsub', 'type': info[-1]}
                 )
                 return ET.tostring(iq_res)
 
             ET.SubElement(
                 query_res,
-                'identity',
+                '{http://jabber.org/protocol/disco#info}identity',
                 attrib={'category': 'pubsub', 'type': 'service'}
             )
             ET.SubElement(
                 query_res,
-                'feature',
+                '{http://jabber.org/protocol/disco#info}feature',
                 attrib={'var': 'http://jabber.org/protocol/pubsub'}
             )
 
             return ET.tostring(iq_res)
 
         # XEP 0363 (HTTP File Upload) info
-        if self._0363_jid and to == self._0363_jid:
+        elif self._0363_jid and to == self._0363_jid:
             iq_res, query_res = iq_skeleton(element, 'info')
             ET.SubElement(
                 query_res,
-                'identity',
+                '{http://jabber.org/protocol/disco#info}identity',
                 attrib={'category': 'store', 'type': 'file', 'name': 'HTTP File Upload'}
             )
             ET.SubElement(
                 query_res,
-                'feature',
+                '{http://jabber.org/protocol/disco#info}feature',
                 attrib={'var': 'urn:xmpp:http:upload:0'}
             )
 
@@ -105,23 +102,19 @@ class Disco(metaclass=Singleton):
                 form_type=FormType.RESULT,
                 fields=[
                     FieldRequest(var='FORM_TYPE', field_type=FieldTypes.HIDDEN, values=['urn:xmpp:http:upload:0']),
-                    FieldRequest(var='max-file-size', values=self._0363_max_size)
+                    FieldRequest(var='max-file-size', values=[str(self._0363_max_size)])
                 ]
             )
             query_res.append(dataform)
 
             return ET.tostring(iq_res)
 
-        return None
+        else:
+            return self.server_info(element)
 
     def handle_items(self, _, element: ET.Element):
-        to = JID(element.attrib.get('to')) if element.attrib.get('to') else None
+        to = element.attrib.get('to')
 
-        # Server items
-        if to is None or to.domain == metadata.HOST:
-            return self.server_items(element)
-
-        # Pubsub items
         if self._pubsub_jid and to == self._pubsub_jid:
             # query = element.find('{http://jabber.org/protocol/disco#items}query')
             # node = query.attrib.get('node')
@@ -139,16 +132,19 @@ class Disco(metaclass=Singleton):
                 })
             return ET.tostring(iq_res)
 
+        else:
+            return self.server_items(element)
+
     @staticmethod
     def server_info(element: ET.Element):
         iq_res, query = iq_skeleton(element, 'info')
         ET.SubElement(
             query,
-            'identity',
+            '{http://jabber.org/protocol/disco#info}identity',
             attrib={'category': 'server', 'type': 'im', 'name': 'PyJabber Server'})
 
         for feature in metadata.PLUGINS:
-            ET.SubElement(query, 'feature', attrib={'var': feature})
+            ET.SubElement(query, '{http://jabber.org/protocol/disco#info}feature', attrib={'var': feature})
 
         return ET.tostring(iq_res)
 
@@ -157,11 +153,11 @@ class Disco(metaclass=Singleton):
         iq_res, query = iq_skeleton(element, 'items')
         ET.SubElement(
             query,
-            'identity',
+            '{http://jabber.org/protocol/disco#items}identity',
             attrib={'category': 'server', 'type': 'im', 'name': 'PyJabber Server'})
 
         for key, info in metadata.ITEMS.items():
             jid = key.replace('$', metadata.HOST) if '$' in key else key
-            ET.SubElement(query, 'item', attrib={'jid': jid, 'name': info.name})
+            ET.SubElement(query, '{http://jabber.org/protocol/disco#items}item', attrib={'jid': jid, 'name': info['name']})
 
         return ET.tostring(iq_res)

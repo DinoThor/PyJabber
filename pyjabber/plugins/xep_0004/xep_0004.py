@@ -80,9 +80,11 @@ def generate_form(form_type: FormType, title: str = None, instructions: str = No
 
     for f in fields:
         field = ET.Element('field', attrib={
-            'type': f.type.value,
             'var': f.var
         })
+
+        if f.type:
+            field.attrib['type'] = f.type.value
 
         if f.label:
             field.attrib['label'] = f.label
