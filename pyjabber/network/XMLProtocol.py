@@ -123,7 +123,7 @@ class XMLProtocol(asyncio.Protocol):
                 )
             else:
                 self._xml_parser.setContentHandler(
-                    XMLParser(self._transport, self.task_tls)
+                    XMLParser(self._transport, self)
                 )
 
             if self._connection_timeout:

@@ -1,6 +1,7 @@
 import asyncio
 import os
 import signal
+import ssl
 
 from loguru import logger
 
@@ -55,10 +56,18 @@ class Server:
         # Singletons
         self._connection_manager = ConnectionManager()
 
+        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        # ssl_context.maximum_version = ssl.TLSVersion.TLSv1_2
+        ssl_context.load_cert_chain(
+            certfile=os.path.join(self._cert_path, f"{param.host}_cert.pem"),
+            keyfile=os.path.join(self._cert_path, f"{param.host}_key.pem"),
+        )
+
         # Global constants to use across the server modules/classes
         metadata.init_config(
             host=param.host,
             ip=[self._host_ip, self._public_ip],
+            ssl_context=ssl_context,
             connection_timeout=param.connection_timeout,
             family=self._family,
             server_port=self._server_port,
@@ -105,7 +114,7 @@ class Server:
         try:
             logger.info("Starting server...")
 
-            DB.setup_database()
+            await DB.setup_database()
             if not self._database_in_memory:
                 DB.run_db_migrations()
 

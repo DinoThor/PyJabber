@@ -1,8 +1,10 @@
+import ssl
 from socket import AddressFamily
 from typing import List
 
 HOST = None
 IP = None
+SSL_CONTEXT = None
 CONNECTION_TIMEOUT = None
 SERVER_PORT = None
 FAMILY = None
@@ -27,6 +29,7 @@ MESSAGE_QUEUE = None
 def init_config(
     host: str,
     ip: List[str],
+    ssl_context: ssl.SSLContext,
     connection_timeout: int,
     server_port: int,
     family: AddressFamily,
@@ -41,9 +44,10 @@ def init_config(
     plugins: List[str],
     items: dict
 ):
-    global HOST, IP, CONNECTION_TIMEOUT, SERVER_PORT, FAMILY, CONFIG_PATH, CERT_PATH, ROOT_PATH, DATABASE_PATH, DATABASE_IN_MEMORY, DATABASE_PURGE, MESSAGE_PERSISTENCE, VERBOSE, PLUGINS, ITEMS
+    global HOST, IP, SSL_CONTEXT, CONNECTION_TIMEOUT, SERVER_PORT, FAMILY, CONFIG_PATH, CERT_PATH, ROOT_PATH, DATABASE_PATH, DATABASE_IN_MEMORY, DATABASE_PURGE, MESSAGE_PERSISTENCE, VERBOSE, PLUGINS, ITEMS
     HOST = host
     IP = ip
+    SSL_CONTEXT = ssl_context
     CONNECTION_TIMEOUT = connection_timeout
     SERVER_PORT = server_port
     FAMILY = family

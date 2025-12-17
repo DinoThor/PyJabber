@@ -31,7 +31,7 @@ class Roster(metaclass=Singleton):
         }
 
         self._roster_in_memory = {}
-        self._update_roster()
+        # self._update_roster()
 
     def feed(self, jid: JID, element: ET.Element):
         if len(element) != 1:

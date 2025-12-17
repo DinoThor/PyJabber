@@ -45,7 +45,7 @@ class Presence(metaclass=Singleton):
         self._roster = Roster()
 
         self._pending = {}
-        self._get_all_pending_presence()
+        # self._get_all_pending_presence()
         self._connection_queue: asyncio.Queue = metadata.CONNECTION_QUEUE
 
         self._online_status = {}

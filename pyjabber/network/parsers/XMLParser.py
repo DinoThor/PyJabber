@@ -1,8 +1,10 @@
+import asyncio
 from asyncio import Transport
 from enum import Enum
 from xml.etree import ElementTree as ET
 from xml.sax import ContentHandler
 
+from pyjabber.stream.ClientHandler import ClientHandle
 from pyjabber.stream.Stream import Stream
 from pyjabber.stream.StanzaHandler import StanzaHandler
 from pyjabber.stream.StreamHandler import Signal, StreamHandler
@@ -21,14 +23,18 @@ class XMLParser(ContentHandler):
     stream_handler_constructor = StreamHandler
     server: bool = False
 
-    def __init__(self, transport, starttls):
+    def __init__(self, transport, protocol):
         super().__init__()
-        self._transport = transport
-        self._state = self.StreamState.CONNECTED
-        self._stanzaHandler = None
-        self._from_claim = None
         self._stack = []
-        self._streamHandler = self.stream_handler_constructor(self._transport, starttls, self)
+
+        self._transport = transport
+        self._protocol = protocol
+        self._state = self.StreamState.CONNECTED
+        self._clientHandler = ClientHandle(transport, protocol, self)
+        self._from_claim = None
+
+        asyncio.create_task(self._clientHandler.feed())
+        # self._streamHandler = self.stream_handler_constructor(self._transport, starttls, self)
 
     class StreamState(Enum):
         """
@@ -44,7 +50,6 @@ class XMLParser(ContentHandler):
     @transport.setter
     def transport(self, transport: Transport):
         self._transport = transport
-        self._streamHandler.transport = transport
 
     @property
     def from_claim(self):
@@ -68,11 +73,13 @@ class XMLParser(ContentHandler):
             self._from_claim = elem.attrib.get("from")
             self._stack.append(elem)
 
-            self._transport.write(Stream.responseStream(attrs, self.server))
-            signal = self._streamHandler.handle_open_stream()
-            if signal and signal == Signal.DONE:
-                self._stanzaHandler = self.stanza_handler_constructor(self._transport)
-                self._state = self.StreamState.READY
+            self._clientHandler.put(elem)
+
+            # self._transport.write(Stream.responseStream(attrs, self.server))
+            # signal = self._streamHandler.handle_open_stream()
+            # if signal and signal == Signal.DONE:
+            #     self._stanzaHandler = self.stanza_handler_constructor(self._transport)
+            #     self._state = self.StreamState.READY
 
         else:
             raise Exception()
@@ -96,18 +103,21 @@ class XMLParser(ContentHandler):
             self._stack[-1].append(elem)
 
         else:
-            if self._state == self.StreamState.READY:  # Ready to process stanzas
-                self._stanzaHandler.feed(elem)
-            else:
-                signal = self._streamHandler.handle_open_stream(elem)
-                if signal == Signal.DONE:
-                    self._stanzaHandler = self.stanza_handler_constructor(self._transport)
-                    self._state = self.StreamState.READY
-                elif signal == Signal.RESET and "stream" in self._stack[-1].tag:
-                    self._stack.clear()
-                elif signal == Signal.FORCE_CLOSE:
-                    self._stack.clear()
-                    self._stack.append(b'</stream:stream>')
+            if name[1] in ["starttls", "auth"]:
+                self.transport.pause_reading()
+            self._clientHandler.put(elem)
+            # if self._state == self.StreamState.READY:  # Ready to process stanzas
+            #     self._stanzaHandler.feed(elem)
+            # else:
+            #     signal = self._streamHandler.handle_open_stream(elem)
+            #     if signal == Signal.DONE:
+            #         self._stanzaHandler = self.stanza_handler_constructor(self._transport)
+            #         self._state = self.StreamState.READY
+            #     elif signal == Signal.RESET and "stream" in self._stack[-1].tag:
+            #         self._stack.clear()
+            #     elif signal == Signal.FORCE_CLOSE:
+            #         self._stack.clear()
+            #         self._stack.append(b'</stream:stream>')
 
     def characters(self, content: str) -> None:
         if not self._stack:
@@ -120,3 +130,6 @@ class XMLParser(ContentHandler):
 
         else:
             elem.text = (elem.text or '') + content
+
+    def reset_stack(self) -> None:
+        self._stack.clear()
