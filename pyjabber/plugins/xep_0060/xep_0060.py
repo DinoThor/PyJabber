@@ -14,6 +14,7 @@ from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.plugins.xep_0060.enum import NodeAttrib, SubscribersAttrib, Subscription, Affiliation
 from pyjabber.plugins.xep_0060.error import ErrorType
 from pyjabber.plugins.xep_0060.error import error_response
+from pyjabber.plugins.xep_0060.utils import success_response
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stanzas.Message import Message
 from pyjabber.stanzas.error import StanzaError
@@ -29,7 +30,12 @@ class PubSub(metaclass=Singleton):
 
         self._connections = ConnectionManager()
 
-        pubsub_item = next(((key, item) for key, item in metadata.ITEMS.items() if 'pubsub' in key), None)
+        pubsub_item = next(
+            ((key, item) for key, item
+             in metadata.ITEMS.items()
+             if 'pubsub' in key), None
+        )
+
         self._jid = pubsub_item[0].replace('$', metadata.HOST)
         self._category = pubsub_item[1]['category']
         self._var = pubsub_item[1]['var']
@@ -51,30 +57,17 @@ class PubSub(metaclass=Singleton):
             'retract': self.retract
         }
 
-    @staticmethod
-    def success_response(element: ET.Element, owner: bool = False) -> Tuple[IQ, ET.Element]:
-        iq_res = IQ(
-            type_=IQ.TYPE.RESULT,
-            from_=metadata.HOST,
-            id_=element.attrib.get('id') or str(uuid4())
-        )
-        if owner:
-            xmlns = 'http://jabber.org/protocol/pubsub#owner'
-        else:
-            xmlns = 'http://jabber.org/protocol/pubsub'
-
-        pubsub = ET.SubElement(iq_res, f'{{{xmlns}}}pubsub')
-        return iq_res, pubsub
-
-    def update_memory_from_database(self):
-        with DB.connection() as con:
+    async def update_memory_from_database(self):
+        async with await DB.connection_async() as con:
             query = select(Model.Pubsub)
-            self._nodes = con.execute(query).fetchall()
+            res = await con.execute(query)
+            self._nodes = res.fetchall()
 
             query = select(Model.PubsubSubscribers)
-            self._subscribers = con.execute(query).fetchall()
+            res = con.execute(query)
+            self._subscribers = res.fetchall()
 
-    def feed(self, jid: JID, element: ET.Element):
+    async def feed(self, jid: JID, element: ET.Element):
         try:
             _, tag = CN.deglose(element[0].tag)
 
@@ -92,14 +85,10 @@ class PubSub(metaclass=Singleton):
         Returns the available nodes at the level specified in the query
         :return: A list of 3-tuples in the format (node, name, type)
         """
-        res = []
-        for node in self._nodes:
-            _node = node[NodeAttrib.NODE.value]
-            _name = node[NodeAttrib.NAME.value]
-            _type = node[NodeAttrib.TYPE.value]
-            res.append((_node, _name, _type))
-
-        return res
+        return [
+            (node[NodeAttrib.NODE.value], node[NodeAttrib.NAME.value], node[NodeAttrib.TYPE.value])
+            for node in self._nodes
+        ]
 
     def discover_info(self, node: str) -> Optional[Tuple[str, str]]:
         """
@@ -113,7 +102,7 @@ class PubSub(metaclass=Singleton):
 
         return None
 
-    def create_node(self, element: ET.Element, jid: JID):
+    async def create_node(self, element: ET.Element, jid: JID):
         """
         Creates a new node in the pubsub service.
         The owner will be the creator of the node.
@@ -142,18 +131,19 @@ class PubSub(metaclass=Singleton):
             "max_items": 1024
         }
 
-        with DB.connection() as con:
+        async with await DB.connection_async() as con:
             query = insert(Model.Pubsub).values(item)
-            con.execute(query)
-            con.commit()
+            await con.execute(query)
+            if not metadata.DATABASE_IN_MEMORY:
+                await con.commit()
 
         self.update_memory_from_database()
 
-        iq_res, pubsub = PubSub.success_response(element)
+        iq_res, pubsub = success_response(element)
         ET.SubElement(pubsub, 'create', attrib={'node': new_node})
         return ET.tostring(iq_res)
 
-    def delete_node(self, element: ET.Element, jid: JID):
+    async def delete_node(self, element: ET.Element, jid: JID):
         """
         Deletes a specific node in the pubsub service.
         ONLY the owner has the permissions to delete.
@@ -173,20 +163,22 @@ class PubSub(metaclass=Singleton):
         if node_match[NodeAttrib.OWNER.value] != jid.user:
             return error_response(element, jid, ErrorType.FORBIDDEN)
 
-        with DB.connection() as con:
+        async with await DB.connection_async() as con:
             query = delete(Model.Pubsub).where(Model.Pubsub.c.node == del_node)
-            con.execute(query)
-            con.commit()
+            await con.execute(query)
+            if not metadata.DATABASE_IN_MEMORY:
+                await con.commit()
 
             query = delete(Model.PubsubItems).where(Model.PubsubItems.c.node == del_node)
-            con.execute(query)
-            con.commit()
+            await con.execute(query)
+            if not metadata.DATABASE_IN_MEMORY:
+                await con.commit()
 
         self.update_memory_from_database()
-        iq_res, _ = PubSub.success_response(element)
+        iq_res, _ = success_response(element)
         return ET.tostring(iq_res)
 
-    def retrieve_items_node(self, element: ET.Element, jid: JID):
+    async def retrieve_items_node(self, element: ET.Element, jid: JID):
         pubsub = element.find('{http://jabber.org/protocol/pubsub}pubsub')
         items = pubsub.find('{http://jabber.org/protocol/pubsub}items')
         node = items.attrib.get('node')
@@ -211,24 +203,28 @@ class PubSub(metaclass=Singleton):
             if not subscribed:
                 return error_response(element, jid, ErrorType.FORBIDDEN)
 
-        with DB.connection() as con:
+        async with await DB.connection_async() as con:
             query = select(Model.PubsubItems).where(Model.PubsubItems.c.node == target_node)
-            res = con.execute(query).fetchall()
+            res = await con.execute(query)
+            res = res.fetchall()
 
-        iq_res, pubsub_res = PubSub.success_response(element)
-        items_res = ET.SubElement(pubsub_res, '{http://jabber.org/protocol/pubsub}items', attrib={
-            "node": target_node
-        })
+        iq_res, pubsub_res = success_response(element)
+        items_res = ET.SubElement(
+            pubsub_res,
+            '{http://jabber.org/protocol/pubsub}items',
+            attrib={"node": target_node}
+        )
 
         for i in res:
-            item = ET.SubElement(items_res, '{http://jabber.org/protocol/pubsub}item', attrib={
-                'id': i[2]
-            })
+            item = ET.SubElement(
+                items_res,
+                '{http://jabber.org/protocol/pubsub}item', attrib={'id': i[2]}
+            )
             item.append(ET.fromstring(i[3]))
 
         return ET.tostring(iq_res)
 
-    def subscribe(self, element: ET.Element, jid: JID):
+    async def subscribe(self, element: ET.Element, jid: JID):
         """
         Subscribe to a specific node
         The default affiliation will be PUBLISHER
@@ -262,7 +258,7 @@ class PubSub(metaclass=Singleton):
             if (current_state[SubscribersAttrib.SUBSCRIPTION.value]
                in [Subscription.SUBSCRIBED.value, Subscription.UNCONFIGURED.value]):
 
-                iq_res, pubsub = PubSub.success_response(element)
+                iq_res, pubsub = success_response(element)
                 subid = current_state[SubscribersAttrib.SUBID.value]
                 ET.SubElement(
                     pubsub,
@@ -289,14 +285,15 @@ class PubSub(metaclass=Singleton):
             "affiliation": Affiliation.PUBLISHER
         }
 
-        with DB.connection() as con:
+        async with await DB.connection_async() as con:
             query = insert(Model.PubsubSubscribers).values(item)
-            con.execute(query)
-            con.commit()
+            await con.execute(query)
+            if not metadata.DATABASE_IN_MEMORY:
+                await con.commit()
 
         self.update_memory_from_database()
 
-        iq_res, pubsub = PubSub.success_response(element)
+        iq_res, pubsub = success_response(element)
         ET.SubElement(
             pubsub,
             'subscription',
@@ -309,7 +306,7 @@ class PubSub(metaclass=Singleton):
         )
         return ET.tostring(iq_res)
 
-    def unsubscribe(self, element: ET.Element, jid: JID):
+    async def unsubscribe(self, element: ET.Element, jid: JID):
         """
         Unsubscribe to a specific node
         """
@@ -363,13 +360,14 @@ class PubSub(metaclass=Singleton):
                 )
             )
 
-        with DB.connection() as con:
-            con.execute(query)
-            con.commit()
+        async with await DB.connection_async() as con:
+            await con.execute(query)
+            if not metadata.DATABASE_IN_MEMORY:
+                await con.commit()
 
         self.update_memory_from_database()
 
-        iq_res, pubsub = PubSub.success_response(element)
+        iq_res, pubsub = success_response(element)
         sub = ET.SubElement(
             pubsub,
             'subscription',
@@ -384,7 +382,7 @@ class PubSub(metaclass=Singleton):
         return ET.tostring(iq_res)
 
     @staticmethod
-    def retrieve_subscriptions(element: ET.Element, jid: JID):
+    async def retrieve_subscriptions(element: ET.Element, jid: JID):
         pubsub = element.find('{http://jabber.org/protocol/pubsub}pubsub')
         subscriptions = pubsub.find('{http://jabber.org/protocol/pubsub}subscriptions')
         target_node = subscriptions.attrib.get('node')
@@ -393,7 +391,7 @@ class PubSub(metaclass=Singleton):
         if from_stanza is not None and JID(from_stanza).user != jid.user:
             return error_response(element, jid, ErrorType.FORBIDDEN)
 
-        iq_res, pubsub = PubSub.success_response(element)
+        iq_res, pubsub = success_response(element)
         subscriptions_res = ET.SubElement(pubsub, '{http://jabber.org/protocol/pubsub}subscriptions')
 
         if target_node is not None and target_node != '':
@@ -414,8 +412,8 @@ class PubSub(metaclass=Singleton):
                 Model.PubsubSubscribers.c.subid
             ).where(Model.PubsubSubscribers.c.jid == str(jid.user))
 
-        with DB.connection() as con:
-            res = con.execute(query)
+        async with await DB.connection_async() as con:
+            res = await con.execute(query)
             res = res.fetchall()
 
         for sub in res:
@@ -431,7 +429,7 @@ class PubSub(metaclass=Singleton):
     def retrieve_affiliations(self, element: ET.Element, jid: str):  # pragma: no cover
         pass
 
-    def purge(self, element: ET.Element, jid: JID):
+    async def purge(self, element: ET.Element, jid: JID):
         pubsub = element.find('{http://jabber.org/protocol/pubsub#owner}pubsub')
         purge = pubsub.find('{http://jabber.org/protocol/pubsub#owner}purge')
         node = purge.attrib.get('node')
@@ -447,15 +445,16 @@ class PubSub(metaclass=Singleton):
         if target_node[NodeAttrib.OWNER.value] != jid.user:
             return error_response(element, jid, ErrorType.FORBIDDEN)
 
-        with DB.connection() as con:
+        async with await DB.connection_async() as con:
             query = delete(Model.PubsubItems).where(Model.PubsubItems.c.node == node)
-            con.execute(query)
-            con.commit()
+            await con.execute(query)
+            if not metadata.DATABASE_IN_MEMORY:
+                await con.commit()
 
-        iq_res, _ = PubSub.success_response(element, True)
+        iq_res, _ = success_response(element, True)
         return ET.tostring(iq_res)
 
-    def retract(self, element: ET.Element, jid: JID):
+    async def retract(self, element: ET.Element, jid: JID):
         pubsub = element.find('{http://jabber.org/protocol/pubsub}pubsub')
         retract = pubsub.find('{http://jabber.org/protocol/pubsub}retract')
         node = retract.attrib.get('node')
@@ -481,17 +480,18 @@ class PubSub(metaclass=Singleton):
         if jid.user != target_node[NodeAttrib.OWNER.value] and not current_sub:
             return error_response(element, jid, ErrorType.FORBIDDEN)
 
-        with DB.connection() as con:
+        async with await DB.connection_async() as con:
             query = delete(Model.PubsubItems).where(
                 and_(
                     Model.PubsubItems.c.item_id == item_id,
                     Model.PubsubItems.c.node == node
                 )
             )
-            con.execute(query)
-            con.commit()
+            await con.execute(query)
+            if not metadata.DATABASE_IN_MEMORY:
+                await con.commit()
 
-        iq_res, pubsub_iq = PubSub.success_response(element)
+        iq_res, pubsub_iq = success_response(element)
 
         self.send_notification(
             node=target_node[NodeAttrib.NODE.value],
@@ -503,7 +503,7 @@ class PubSub(metaclass=Singleton):
         iq_res.remove(pubsub_iq)
         return ET.tostring(iq_res)
 
-    def publish(self, element: ET.Element, jid: JID):
+    async def publish(self, element: ET.Element, jid: JID):
         pubsub = element.find('{http://jabber.org/protocol/pubsub}pubsub')
         publish = pubsub.find('{http://jabber.org/protocol/pubsub}publish')
         item = publish.find('{http://jabber.org/protocol/pubsub}item')
@@ -526,7 +526,7 @@ class PubSub(metaclass=Singleton):
             return error_response(element, jid, ErrorType.FORBIDDEN)
 
         if payload is not None:
-            with DB.connection() as con:
+            async with await DB.connection_async() as con:
                 if item_id is not None:
                     query = select(Model.PubsubItems.c.item_id).where(
                         and_(
@@ -534,7 +534,8 @@ class PubSub(metaclass=Singleton):
                             Model.PubsubItems.c.node == node
                         )
                     )
-                    res = con.execute(query).fetchone()
+                    res = await con.execute(query)
+                    res = res.fetchone
 
                     if res:
                         query = update(Model.PubsubItems).where(
@@ -552,8 +553,9 @@ class PubSub(metaclass=Singleton):
                             "payload": ET.tostring(payload)
                         })
 
-                    con.execute(query)
-                    con.commit()
+                    await con.execute(query)
+                    if not metadata.DATABASE_IN_MEMORY:
+                        await con.commit()
 
                 else:
                     item_id = str(uuid4())
@@ -563,12 +565,13 @@ class PubSub(metaclass=Singleton):
                         "item_id": item_id,
                         "payload": ET.tostring(payload)
                     })
-                    con.execute(query)
-                    con.commit()
+                    await con.execute(query)
+                    if not metadata.DATABASE_IN_MEMORY:
+                        await con.commit()
 
         self.send_notification(node=target_node[0][NodeAttrib.NODE.value], payload=payload)
 
-        iq_res, pubsub = PubSub.success_response(element)
+        iq_res, pubsub = success_response(element)
         publish = ET.SubElement(pubsub, 'publish', attrib={'node': node})
         if item_id:
             ET.SubElement(publish, 'item', attrib={'id': item_id})

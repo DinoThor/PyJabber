@@ -41,33 +41,36 @@ class Presence(metaclass=Singleton):
             "unavailable": self.handle_global_presence,
             "INTERNAL": self.handle_lost_connection
         }
+
         self._connections = ConnectionManager()
         self._roster = Roster()
-
         self._pending = {}
-        self._get_all_pending_presence()
         self._connection_queue: asyncio.Queue = metadata.CONNECTION_QUEUE
 
         self._online_status = {}
 
-    def _get_all_pending_presence(self):
-        with DB.connection() as con:
+    async def get_all_pending_presence(self):
+        async with await DB.connection_async() as con:
             query = select(Model.PendingSubs.c.jid, Model.PendingSubs.c.item)
-            res = con.execute(query).fetchall()
+            res = await con.execute(query)
+            res = res.fetchall()
+
         for jid_from, jid_to, item in res:
             if jid_to not in self._pending:
                 self._pending[jid_to] = [item]
             else:
                 self._pending[jid_to].append(item)
 
-    def _update_pending_presence(self):
+    async def update_pending_presence(self):
         pass
 
-    def _delete_pending_presence(self, jid: str):
-        with DB.connection() as con:
+    async def delete_pending_presence(self, jid: str):
+        async with await DB.connection_async() as con:
             query = delete(Model.PendingSubs).where(Model.PendingSubs.c.jid == jid)
-            con.execute(query)
-            con.commit()
+            await con.execute(query)
+            if not metadata.DATABASE_IN_MEMORY:
+                await con.commit()
+
         self._pending[jid].pop()
 
     def priority_by_jid(self, jid: JID):
@@ -83,7 +86,7 @@ class Presence(metaclass=Singleton):
         max_value = max(values) if values else None
         return [item for item in priority if item[-1] == max_value]
 
-    def feed(self, jid: JID, element: Element, extra: Dict[str, Any] = None):
+    def feed(self, jid: JID, element: Element):
         if "type" in element.attrib:
             return self._handlers[element.get("type")](jid, element)
 

@@ -1,3 +1,4 @@
+import asyncio
 from asyncio import Transport
 from typing import Union, List
 from uuid import uuid4
@@ -15,16 +16,24 @@ from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stream.Stage import Stage
 from pyjabber.stream.Signal import Signal
 
+from loguru import logger
+
+from pyjabber.stream.Stream import Stream
+from pyjabber.utils.TransportProxy import TransportProxy
+
 
 class StreamHandler:
-    def __init__(self, transport, starttls, parser_ref) -> None:
+    def __init__(self, transport, protocol, parser) -> None:
         self._host = metadata.HOST
+
         self._transport = transport
-        self._starttls = starttls
+        self._protocol = protocol
+        self._parser = parser
+        self._ssl_context = metadata.SSL_CONTEXT
+
         self._streamFeature = StreamFeature()
         self._connection_manager: ConnectionManager = ConnectionManager()
         self._stage = Stage.CONNECTED
-        self._parser_ref = parser_ref
 
         self._ibr_feature = 'jabber:iq:register' in metadata.PLUGINS
 
@@ -40,39 +49,60 @@ class StreamHandler:
             Stage.BIND: self._handle_resource_bind
         }
 
-    @property
-    def transport(self) -> Transport:
-        return self._transport
-
-    @transport.setter
-    def transport(self, transport: Transport):
-        self._transport = transport
-
-    def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
+    async def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
         try:
-            return self._stages_handlers[self._stage](elem)
+            if elem.tag == '{http://etherx.jabber.org/streams}stream':
+                self._transport.write(Stream.responseStream(elem.attrib))
+            return await self._stages_handlers[self._stage](elem)
         except Exception as e:
-            SE.internal_server_error()
+            self._transport.write(SE.internal_server_error())
 
-    def _handle_init(self, _):
+    async def _handle_init(self, _):
         self._streamFeature.reset()
         self._streamFeature.register(StartTLSFeature())
         self._transport.write(self._streamFeature.to_bytes())
 
         self._stage = Stage.OPENED
+        return
 
-    def _handle_tls(self, element: ET.Element):
+    async def _handle_tls(self, element: ET.Element):
         if "starttls" in element.tag:
             self._transport.write(proceed_response())
-            self._starttls()
-            self._stage = Stage.SSL
             self._transport.pause_reading()
-            return Signal.RESET
+
+            peer = self._transport.get_extra_info("peername")
+            try:
+                new_transport = await asyncio.get_running_loop().start_tls(
+                    transport=self._transport.originalTransport,
+                    protocol=self._protocol,
+                    sslcontext=self._ssl_context,
+                    server_side=True
+                )
+
+                new_transport = TransportProxy(new_transport, peer)
+                self._transport = new_transport
+                self._protocol.transport = new_transport
+                self._parser.transport = new_transport
+                if self._protocol.namespace == 'jabber:client':
+                    self._connection_manager.update_buffer(new_transport=new_transport, peer=peer)
+                else:
+                    self._connection_manager.update_transport_server(new_transport=new_transport, peer=peer)
+
+                logger.debug(f"Done TLS for <{peer}>")
+                self._stage = Stage.SSL
+                self._parser.reset_stack()
+                self._transport.resume_reading()
+                return Signal.RESET
+
+            except ConnectionResetError as e:
+                logger.error(f"ERROR DURING TLS UPGRADE WITH <{peer}>")
+                self._connection_manager.close(peer)
+                return Signal.FORCE_CLOSE
 
         else:
             raise Exception()
 
-    def _handle_init_ssl(self, _):
+    async def _handle_init_ssl(self, _):
         self._streamFeature.reset()
 
         if self._ibr_feature:
@@ -81,31 +111,31 @@ class StreamHandler:
         self._transport.write(self._streamFeature.to_bytes())
 
         self._stage = Stage.SASL
+        return
 
-    def _handle_ssl(self, element: ET.Element):
+    async def _handle_ssl(self, element: ET.Element):
         if self._sasl is None:
-            self._sasl = SASL(self._parser_ref)
+            self._sasl = SASL(self._transport, self._parser)
 
-        res = self._sasl.feed(element, {"peername": self._transport.get_extra_info('peername')})
+        res = await self._sasl.feed(element)
 
-        if type(res) is tuple:
-            signal, message = res
-            self._transport.write(message)
+        if res and res == Stage.AUTH:
             self._stage = Stage.AUTH
-            return Signal.RESET if signal == Signal.RESET else None
+        return
 
-        self._transport.write(res)
-
-    def _handle_init_resource_bind(self, _):
+    async def _handle_init_resource_bind(self, _):
         self._streamFeature.reset()
         self._streamFeature.register(ResourceBinding())
         self._transport.write(self._streamFeature.to_bytes())
 
         self._stage = Stage.BIND
+        return
 
-    def _handle_resource_bind(self, element: ET.Element):
-        if "iq" in element.tag:
-            if element.attrib.get("type") == "set":
+    async def _handle_resource_bind(self, element: ET.Element):
+        if (element.tag == "{jabber:client}iq"
+            and len(element) > 0
+            and element[0].tag == "{urn:ietf:params:xml:ns:xmpp-bind}bind"
+            and element.attrib.get("type") == "set"):
                 resource_id = str(uuid4())
 
                 iq_res = IQ(type_=IQ.TYPE.RESULT, id_=element.get('id') or str(uuid4()))
@@ -119,10 +149,11 @@ class StreamHandler:
 
                 self._transport.write(ET.tostring(iq_res))
 
-                """
-                Stream is negotiated.
-                Update the connection register with the jid and transport
-                """
+                # Stream is negotiated.
+                # Update the connection register with the jid and transport
                 self._connection_manager.set_jid(peername, new_jid, self._transport)
+                return Signal.DONE
 
-        return Signal.DONE
+        else:
+            self._transport.write(SE.invalid_xml())
+            return Signal.FORCE_CLOSE

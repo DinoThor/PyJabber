@@ -46,7 +46,7 @@ def test_handle_auth_success(sasl):
     auth_text = base64.b64encode(b'\x00username\x00password').decode('ascii')
     element.text = auth_text
 
-    result = sasl.handleAuth(element)
+    result = sasl.handle_auth(element)
 
     assert result == (Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")
 
@@ -56,7 +56,7 @@ def test_handle_auth_failure(sasl):
     auth_text = base64.b64encode(b'\x00username\x00wrongpassword').decode('ascii')
     element.text = auth_text
 
-    result = sasl.handleAuth(element)
+    result = sasl.handle_auth(element)
 
     assert result == SE.not_authorized()
 
@@ -69,7 +69,7 @@ def test_handle_iq_register_conflict(sasl):
     password = ET.SubElement(query, "{jabber:iq:register}password")
     password.text = "password"
 
-    result = sasl.handleIQ(element)
+    result = sasl.handle_IQ(element)
 
     assert result == SE.conflict_error("123")
 
@@ -98,7 +98,7 @@ def test_handle_iq_register_success(sasl):
     password = ET.SubElement(query, "{jabber:iq:register}password")
     password.text = "password"
 
-    result = sasl.handleIQ(element)
+    result = sasl.handle_IQ(element)
 
     assert result == SASL.iq_register_result("123")
 

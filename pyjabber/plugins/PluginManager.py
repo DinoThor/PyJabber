@@ -32,12 +32,12 @@ class PluginManager:
         if any(p.startswith('http://jabber.org/protocol/pubsub') for p in metadata.PLUGINS):
             self._plugins['http://jabber.org/protocol/pubsub*'] = PubSub()
 
-    def feed(self, element: ET.Element):
+    async def feed(self, element: ET.Element):
         try:
             child = element[0]
         except IndexError:
             if element.attrib["type"] == "result":
-                return  # Safe return. Nothing to process
+                return None # Safe return. Nothing to process
             else:
                 return SE.bad_request()
 
@@ -45,6 +45,6 @@ class PluginManager:
 
         try:
             ns = list(filter(lambda regex: re.search(regex, ns), list(self._plugins.keys())))[-1]
-            return self._plugins[ns].feed(self._jid, element)
+            return await self._plugins[ns].feed(self._jid, element)
         except (KeyError, IndexError):
             return SE.feature_not_implemented(tag, ns)
