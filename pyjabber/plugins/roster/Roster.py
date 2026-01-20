@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+
 from sqlalchemy import select, insert, update, delete, and_
 
 from pyjabber import metadata
@@ -7,10 +8,10 @@ from pyjabber.db.model import Model
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
-from pyjabber.utils import Singleton
 
 
-class Roster(metaclass=Singleton):
+
+class Roster:
     """
         Roster plugin.
 
@@ -21,7 +22,7 @@ class Roster(metaclass=Singleton):
         It enables real-time presence updates, contact organization, and synchronization across devices,
         ensuring seamless and private communication.
     """
-    __slots__ = ('_handlers', '_roster_in_memory')
+    __slots__ = ('_handlers', '_roster_in_memory', '_initial_update')
 
     def __init__(self) -> None:
         self._handlers = {
@@ -31,13 +32,15 @@ class Roster(metaclass=Singleton):
         }
 
         self._roster_in_memory = {}
-        # self._update_roster()
+        self._initial_update = False
 
-    def feed(self, jid: JID, element: ET.Element):
+    async def feed(self, jid: JID, element: ET.Element):
+        if not self._initial_update:
+            await self._update_roster()
         if len(element) != 1:
             return SE.invalid_xml()
 
-        return self._handlers[element.attrib.get("type")](jid, element)
+        return await self._handlers[element.attrib.get("type")](jid, element)
 
     def handle_get(self, jid: JID, element: ET.Element):
         if jid.domain == metadata.HOST:
@@ -55,7 +58,7 @@ class Roster(metaclass=Singleton):
 
         return ET.tostring(iq)
 
-    def handle_set(self, jid: JID, element: ET.Element):
+    async def handle_set(self, jid: JID, element: ET.Element):
         query = element.find("{jabber:iq:roster}query")
         if query is None:
             return SE.invalid_xml()
@@ -74,47 +77,51 @@ class Roster(metaclass=Singleton):
             if match_item:  # UPDATE EXISTING ENTRY
                 match_item = match_item[0]
                 if new_item.attrib.get("remove") == "remove":  # DELETE ENTRY
-                    with DB.connection() as con:
+                    async with await DB.connection_async() as con:
                         query = delete(Model.Roster).where(
                             and_(
                                 Model.Roster.c.jid == jid,
                                 Model.Roster.c.roster_item == ET.tostring(match_item.get("item")).decode()
                             )
                         )
-                        con.execute(query)
-                        con.commit()
+                        await con.execute(query)
+                        if not metadata.DATABASE_IN_MEMORY:
+                            await con.commit()
 
                 else:  # UPDATE FIELDS OF ENTRY
-                    with DB.connection() as con:
+                    async with await DB.connection_async() as con:
                         query = update(Model.Roster).where(
                             and_(
                                 Model.Roster.c.jid == jid,
                                 Model.Roster.c.roster_item == match_item.get("item")
                             )
                         ).values({"roster_item": ET.tostring(new_item).decode()})
-                        con.execute(query)
-                        con.commit()
+                        await con.execute(query)
+                        if not metadata.DATABASE_IN_MEMORY:
+                            await con.commit()
 
             else:  # CREATE NEW ENTRY
                 if new_item.attrib.get("remove") != "remove":
-                    with DB.connection() as con:
+                    async with await DB.connection_async() as con:
                         query = insert(Model.Roster).values({
                             "jid": jid,
                             "roster_item": ET.tostring(new_item).decode()
                         })
-                        con.execute(query)
-                        con.commit()
+                        await con.execute(query)
+                        if not metadata.DATABASE_IN_MEMORY:
+                            await con.commit()
 
         else:
-            with DB.connection() as con:
+            async with await DB.connection_async() as con:
                 query = insert(Model.Roster).values({
                     "jid": jid,
                     "roster_item": ET.tostring(new_item).decode()
                 })
-                con.execute(query)
-                con.commit()
+                await con.execute(query)
+                if not metadata.DATABASE_IN_MEMORY:
+                    await con.commit()
 
-        self._update_roster()
+        await self._update_roster()
         res = IQ(
             id_=element.attrib.get("id"),
             type_=IQ.TYPE.RESULT
@@ -139,32 +146,36 @@ class Roster(metaclass=Singleton):
         return self.feed(jid, iq)
 
     @staticmethod
-    def store_pending_sub(to_: str, item: ET.Element) -> None:
-        with DB.connection() as con:
+    async def store_pending_sub(to_: str, item: ET.Element) -> None:
+        async with await DB.connection_async() as con:
             query = insert(Model.PendingSubs).values({
                 "jid": to_,
                 "item":  ET.tostring(item).decode()
             })
-            con.execute(query)
-            con.commit()
+            await con.execute(query)
+            if not metadata.DATABASE_IN_MEMORY:
+                await con.commit()
 
-    def update_item(self, item: ET.Element, id_: int):
-        with DB.connection() as con:
+    async def update_item(self, item: ET.Element, id_: int):
+        async with await DB.connection_async() as con:
             query = update(Model.Roster).where(Model.Roster.c.id == id_).values({
                 "roster_item": ET.tostring(item).decode()
             })
-            con.execute(query)
-            con.commit()
-        self._update_roster()
+            await con.execute(query)
+            if not metadata.DATABASE_IN_MEMORY:
+                await con.commit()
 
-    def _update_roster(self):
-        with DB.connection() as con:
+        await self._update_roster()
+
+    async def _update_roster(self):
+        async with await DB.connection_async() as con:
             query = select(
                 Model.Roster.c.id,
                 Model.Roster.c.jid,
                 Model.Roster.c.roster_item
             )
-            res = con.execute(query).fetchall()
+            res = await con.execute(query)
+            res = res.fetchall()
 
         self._roster_in_memory.clear()
         for id_, jid, item in res:

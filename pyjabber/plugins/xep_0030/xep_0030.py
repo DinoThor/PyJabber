@@ -1,24 +1,14 @@
-from typing import Literal, Dict, Callable
+from typing import Dict, Callable
 from xml.etree import ElementTree as ET
 
 from pyjabber import metadata
 from pyjabber.plugins.xep_0004.field import FieldRequest, FieldTypes
+from pyjabber.plugins.xep_0030.utils import iq_skeleton, server_items, server_info
 from pyjabber.plugins.xep_0060.xep_0060 import PubSub, NodeAttrib
 from pyjabber.plugins.xep_0004.xep_0004 import generate_form, FormType
 from pyjabber.stanzas.error import StanzaError as SE
-from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
 from pyjabber.utils import Singleton
-
-
-def iq_skeleton(element: ET.Element, disco_type: Literal['info', 'items']):
-    iq_res = IQ(
-        type_=IQ.TYPE.RESULT,
-        id_=element.get('id'),
-        from_=element.get('to'),
-        to=element.get('from')
-    )
-    return iq_res, ET.SubElement(iq_res, f'{{http://jabber.org/protocol/disco#{disco_type}}}query')
 
 
 class Disco(metaclass=Singleton):
@@ -42,17 +32,20 @@ class Disco(metaclass=Singleton):
             self._0363_jid = self._0363_jid.replace('$', metadata.HOST)
 
 
-    def feed(self, jid: JID, element: ET.Element):
+    async def feed(self, jid: JID, element: ET.Element):
         if len(element) != 1:
             return SE.invalid_xml()
 
         if element.find('{http://jabber.org/protocol/disco#info}query') is not None:
-            return self._handlers['info'](jid, element)
+            return await self._handlers['info'](jid, element)
 
         elif element.find('{http://jabber.org/protocol/disco#items}query') is not None:
-            return self._handlers['items'](jid, element)
+            return await self._handlers['items'](jid, element)
 
-    def handle_info(self, _, element: ET.Element):
+        else:
+            return SE.bad_request()
+
+    async def handle_info(self, _, element: ET.Element):
         to = element.attrib.get('to')
 
         # Pubsub info
@@ -110,7 +103,7 @@ class Disco(metaclass=Singleton):
             return ET.tostring(iq_res)
 
         else:
-            return self.server_info(element)
+            return server_info(element)
 
     def handle_items(self, _, element: ET.Element):
         to = element.attrib.get('to')
@@ -133,31 +126,4 @@ class Disco(metaclass=Singleton):
             return ET.tostring(iq_res)
 
         else:
-            return self.server_items(element)
-
-    @staticmethod
-    def server_info(element: ET.Element):
-        iq_res, query = iq_skeleton(element, 'info')
-        ET.SubElement(
-            query,
-            '{http://jabber.org/protocol/disco#info}identity',
-            attrib={'category': 'server', 'type': 'im', 'name': 'PyJabber Server'})
-
-        for feature in metadata.PLUGINS:
-            ET.SubElement(query, '{http://jabber.org/protocol/disco#info}feature', attrib={'var': feature})
-
-        return ET.tostring(iq_res)
-
-    @staticmethod
-    def server_items(element: ET.Element):
-        iq_res, query = iq_skeleton(element, 'items')
-        ET.SubElement(
-            query,
-            '{http://jabber.org/protocol/disco#items}identity',
-            attrib={'category': 'server', 'type': 'im', 'name': 'PyJabber Server'})
-
-        for key, info in metadata.ITEMS.items():
-            jid = key.replace('$', metadata.HOST) if '$' in key else key
-            ET.SubElement(query, '{http://jabber.org/protocol/disco#items}item', attrib={'jid': jid, 'name': info['name']})
-
-        return ET.tostring(iq_res)
+            return server_items(element)

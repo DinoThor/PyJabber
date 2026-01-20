@@ -3,15 +3,12 @@ import base64
 import binascii
 import hashlib
 import hmac
-import os
-import string
-from concurrent.futures import ThreadPoolExecutor
-from functools import partial
+from asyncio import Transport
 
 import bcrypt
 
 from enum import Enum
-from typing import Dict, List, Tuple, Union
+from typing import List, Tuple, Union
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
@@ -27,7 +24,7 @@ from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
 from pyjabber.stream.Signal import Signal
 from pyjabber.stream.Stage import Stage
-from pyjabber.utils import ClarkNotation as CN, Singleton
+from pyjabber.utils import ClarkNotation as CN
 
 
 class MECHANISM(Enum):
@@ -36,7 +33,7 @@ class MECHANISM(Enum):
     EXTERNAL = "EXTERNAL"
 
 
-class SASL():
+class SASL:
     """
         SASL Class.
 
@@ -54,11 +51,12 @@ class SASL():
         self._transport = transport
         self._parser = parser
 
-        self._pool = asyncio.get_running_loop()
-        self._pool_executor = ThreadPoolExecutor(max_workers=(os.cpu_count() or 2) + 1, thread_name_prefix="crypto_worker")
+        self._loop = asyncio.get_running_loop()
 
-    async def feed(self, element: ET, transport, peername) -> Union[Tuple[Signal, bytes], bytes]:
+        self._semaphore = metadata.SEMAPHORE
+        self._pool_executor = metadata.PROCESS_POOL_EXE
 
+    async def feed(self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
         _, tag = CN.deglose(element.tag)
         return await self._handlers[tag](element)
 
@@ -74,7 +72,6 @@ class SASL():
 
     async def handle_IQ(self, element: ET.Element) -> bytes | None:
         query = element.find("{jabber:iq:register}query")
-
         if query is None:
             return SE.bad_request()
 
@@ -86,18 +83,19 @@ class SASL():
             new_jid = new_jid.text
 
             async with await DB.connection_async() as con:
-                query_db = select(Model.Credentials).where(Model.Credentials.c.jid == new_jid)
-                try:
-                    credentials = await con.execute(query_db)
-                except Exception as e:
-                    a = 1
+                query_db = select(Model.Credentials).where(
+                    Model.Credentials.c.jid == new_jid
+                )
+                credentials = await con.execute(query_db)
                 credentials = credentials.fetchone()
 
             if credentials:
-                self._transport.write(SE.conflict_error(element.attrib.get("id")))
+                self._transport.write(
+                    SE.conflict_error(element.attrib.get("id"))
+                )
             else:
                 pwd = query.find("{jabber:iq:register}password").text
-                await self.store_hash_task(self._transport, pwd, new_jid, element.attrib.get("id"))
+                await self._store_hash_task(pwd, new_jid)
                 self._transport.write(self.iq_register_result(element.attrib["id"]))
 
         elif element.attrib.get("type") == IQ.TYPE.GET.value:
@@ -130,7 +128,9 @@ class SASL():
                 logger.error(f"Host claim cannot be verified with presented cert. Verify host used on stream or cert: {self._transport.get("peername")}")
                 self._connection_manager.close(self._transport.get("peername"))
 
-            return Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>"
+            self._transport.write(b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")
+            self._parser.reset_stack()
+            return None
 
         try:
             data = base64.b64decode(element.text).split("\x00".encode())
@@ -144,13 +144,11 @@ class SASL():
 
             if not hashed_pwd:
                 self._transport.write(SE.not_authorized())
+                return Signal.FORCE_CLOSE
 
-            authorized = await self.verify_password_async(
+            authorized = await self._verify_password_async(
                 stored_password=hashed_pwd[0],
-                provided_password=pwd,
-                jid_str=jid,
-                peername=self._transport.get_extra_info("peername"),
-                transport=self._transport
+                provided_password=pwd
             )
             if authorized:
                 self._connection_manager.set_jid(self._transport.get_extra_info("peername"), JID(user=jid, domain=metadata.HOST))
@@ -165,6 +163,8 @@ class SASL():
         except Exception as e:
             logger.error(f"Exception during auth process for {element.attrib.get('from')}: {e}")
             self._transport.write(SE.not_authorized())
+
+    ###############################################################################################
 
     @staticmethod
     def validate_cert(from_claim, cert):
@@ -183,7 +183,7 @@ class SASL():
 
         return from_claim in cert_names
 
-    async def store_hash_task(self, transport: asyncio.Transport, password: str, jid_str: str, request_id: string):
+    async def _store_hash_task(self, password: str, jid_str: str):
         """Handles the full user registration process by hashing the password and storing credentials.
 
             This coroutine executes the CPU-intensive password hashing and the I/O-bound
@@ -191,37 +191,30 @@ class SASL():
             It concludes the registration by sending an XMPP success response to the client.
 
             Args:
-                transport: The asyncio Transport object to communicate with the client.
                 password: The user's plain text password to be hashed and stored.
-                jid_str: The Jabber ID (JID) of the user being registered.
-                request_id: The original XMPP IQ stanza ID, used to form the response.
-
-            Raises:
-                Exception: Catches and logs any exceptions that might occur during
-                           hashing or database insertion, ensuring the task doesn't
-                           crash the server. (Implicit, based on typical async task handling).
+                jid_str: The JID of the user being registered.
         """
         hashed_pwd = await self._hash_scram_async(
             password=password,
             iterations=100000,
-            salt=os.urandom(16)
+            salt=bcrypt.gensalt(rounds=8) if metadata.DATABASE_IN_MEMORY else bcrypt.gensalt()
         )
 
         async with await DB.connection_async() as con:
-            query_insert = insert(Model.Credentials).values({"jid": jid_str, "hash_pwd": hashed_pwd})
-            await con.execute(query_insert)
-            await con.commit()
+            async with con.begin():
+                query_insert = insert(Model.Credentials).values({"jid": jid_str, "hash_pwd": hashed_pwd})
+                await con.execute(query_insert)
 
-    async def verify_password_async(self, transport: asyncio.Transport, peername: str, jid_str: str, stored_password: str, provided_password: str) -> bool:
+    async def _verify_password_async(self, stored_password: str, provided_password: str) -> bool:
         """
-        Verifica una contraseña SÍNCRONAMENTE contra el string almacenado.
+        Verifies a password against the stored string.
 
         Args:
-            stored_password: El string completo de la DB (ej. "sha256$100000$salt_hex$hash_hex").
-            provided_password: La contraseña que el usuario intentó ingresar.
+            stored_password: The full string from the database (e.g., "sha256$100000$salt_hex$hash_hex").
+            provided_password: The password entered by the user.
 
         Returns:
-            bool: True si las contraseñas coinciden, False en caso contrario.
+            bool: True if the passwords match, False otherwise.
         """
         try:
             _, iter_str, salt_hex, hash_hex = stored_password.split('$')
@@ -235,14 +228,12 @@ class SASL():
             return hmac.compare_digest(new_hash, hash_hex)
 
         except (ValueError, IndexError, binascii.Error):
-            # Maneja formatos incorrectos o errores de decodificación
             return False
 
     async def _hash_scram_async(self, password: str, salt: bytes, iterations: int) -> str:
         """Calculates the PBKDF2 derived key (used in SCRAM) asynchronously.
-
             This function offloads the CPU-intensive PBKDF2-HMAC operation to a
-            thread pool executor to prevent blocking the asyncio event loop.
+            process pool executor to prevent blocking the asyncio event loop.
             It then encodes the result into a single secure string for storage.
 
             Args:
@@ -256,18 +247,19 @@ class SASL():
                      This format is ideal for securely storing credentials in a single
                      database column.
         """
-        function_hashing = partial(
-            hashlib.pbkdf2_hmac,
-            'sha256',
-            password.encode('utf-8'),
-            salt,
-            iterations
-        )
-
-        result = await self._pool.run_in_executor(self._pool_executor, function_hashing)
+        hashed_pwd = None
+        async with self._semaphore:
+            hashed_pwd = await self._loop.run_in_executor(
+                self._pool_executor,
+                hashlib.pbkdf2_hmac,
+                'sha256',
+                password.encode(),
+                salt,
+                iterations
+            )
 
         salt_hex = binascii.hexlify(salt).decode('ascii')
-        hash_hex = binascii.hexlify(result).decode('ascii')
+        hash_hex = binascii.hexlify(hashed_pwd).decode('ascii')
 
         return f"sha256${iterations}${salt_hex}${hash_hex}"
 

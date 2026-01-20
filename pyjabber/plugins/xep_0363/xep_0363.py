@@ -16,7 +16,7 @@ class HTTPFieldUpload(metaclass=Singleton):
         self._max_size = metadata.ITEMS["upload.$"]["extra"]["max-size"]
         self._http_app_instance: UploadHttpServer = http_app_instance
 
-    def feed(self, jid: JID, element: ET.Element):
+    async def feed(self, jid: JID, element: ET.Element):
         if len(element) != 1:
             return SE.invalid_xml()
 
@@ -39,7 +39,12 @@ class HTTPFieldUpload(metaclass=Singleton):
         if size > self._max_size:
             return SE.not_acceptable(f"File too large. The maximum file size is {self._max_size} bytes")
 
-        slot_id = self._http_app_instance.slot_request(filename=filename, content_type=content_type, content_length=size)
+        slot_id = self._http_app_instance.slot_request(
+            filename=filename,
+            content_type=content_type,
+            content_length=size
+        )
+
         iq_res = IQ(
             type_=IQ.TYPE.RESULT,
             from_=metadata.HOST,

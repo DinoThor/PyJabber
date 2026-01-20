@@ -9,7 +9,7 @@ class TransportProxy:
         self._server = server
 
     @property
-    def originalTransport(self):
+    def original_transport(self):
         return self._transport
 
     def write(self, data):

@@ -1,9 +1,10 @@
+import logging
 import os
 
 import sqlalchemy
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, MetaData, Engine
+from sqlalchemy import create_engine, MetaData, Engine, StaticPool, event, QueuePool
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
 from pyjabber import metadata
@@ -13,7 +14,7 @@ from pyjabber.db.model import Model
 
 
 class DB:
-    _engine: sqlalchemy.Engine = None
+    _engine = None
 
     @staticmethod
     def connection() -> sqlalchemy.Connection:  #pragma: no cover
@@ -39,45 +40,69 @@ class DB:
         DB._engine.dispose()
 
     @staticmethod
-    async def setup_database() -> Engine:
+    async def setup_database() -> AsyncEngine:
         """
         Initialize the database that will be used in the server session.
         It can be adjusted by the parameters passed in the Server constructor, as it will be
         read via the metadata class
         :return: SQLAlchemy Engine
         """
+        if not metadata.VERBOSE:
+            logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
+            logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
+            logging.getLogger("sqlite3").setLevel(logging.WARNING)
+            logging.getLogger("aiosqlite").setLevel(logging.WARNING)
+
         if metadata.DATABASE_IN_MEMORY:
             logger.info("Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!")
-            DB._engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=metadata.VERBOSE)
-            await DB._init_metadata(DB._engine)
+            DB._engine = create_async_engine(
+                url="sqlite+aiosqlite:///:memory:",
+                isolation_level="AUTOCOMMIT",
+                poolclass=StaticPool,
+                echo=metadata.VERBOSE
+            )
 
-        elif os.path.isfile(metadata.DATABASE_PATH):
-            DB._engine = create_engine(f"sqlite:///{metadata.DATABASE_PATH}", echo=metadata.VERBOSE)
-            if metadata.DATABASE_PURGE:
-                purge_md = MetaData()
-                purge_md.reflect(bind=DB._engine)
-                purge_md.drop_all(bind=DB._engine)
-                del purge_md
-                DB._init_metadata(DB._engine)
+            @event.listens_for(DB._engine.sync_engine, "connect")
+            def set_sqlite_pragma(dbapi_connection, connection_record):
+                cursor = dbapi_connection.cursor()
+                cursor.execute("PRAGMA synchronous=FULL")
+                cursor.execute("PRAGMA journal_mode=MEMORY")
+                cursor.close()
+
+            await DB._init_metadata(DB._engine)
+            return DB._engine
+
+        if os.path.isfile(metadata.DATABASE_PATH):
+            DB._engine = create_async_engine(
+                url="sqlite+aiosqlite:///tickets.db",
+                echo=metadata.VERBOSE
+            )
 
         else:
             logger.info("No database found. Initializing one...")
-            DB._engine = create_engine(f"sqlite:///{metadata.DATABASE_PATH}", echo=metadata.VERBOSE)
-            DB._init_metadata(DB._engine)
+            DB._engine = create_async_engine(
+                f"sqlite+aiosqlite:///{metadata.DATABASE_PATH}",
+                echo=metadata.VERBOSE
+            )
 
+        @event.listens_for(DB._engine.sync_engine, "connect")
+        def set_sqlite_pragma(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.execute("PRAGMA cache_size=-20000")
+            cursor.close()
+
+        await DB._init_metadata(DB._engine)
         return DB._engine
 
     @staticmethod
     async def _init_metadata(engine: AsyncEngine):
-        # Definimos una pequeña función interna que recibirá una conexión síncrona
         def sync_create_all(connection):
             Model.server_metadata.create_all(connection)
 
-        # Usamos run_sync para ejecutar esa función dentro del motor asíncrono
         async with engine.begin() as conn:
             await conn.run_sync(sync_create_all)
-
-        # Model.server_metadata.create_all(engine)
 
     @staticmethod
     def run_db_migrations() -> None:

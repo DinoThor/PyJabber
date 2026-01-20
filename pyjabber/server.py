@@ -1,13 +1,16 @@
 import asyncio
+import multiprocessing
 import os
 import signal
 import ssl
+from concurrent.futures.process import ProcessPoolExecutor
 
 from loguru import logger
 
 
 from pyjabber import init_utils
 from pyjabber.db.database import DB
+from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.http_server import HttpServer
 from pyjabber.network import CertGenerator
 from pyjabber.network.XMLProtocol import XMLProtocol
@@ -55,9 +58,9 @@ class Server:
 
         # Singletons
         self._connection_manager = ConnectionManager()
+        self._presence_manager = Presence()
 
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        # ssl_context.maximum_version = ssl.TLSVersion.TLSv1_2
         ssl_context.load_cert_chain(
             certfile=os.path.join(self._cert_path, f"{param.host}_cert.pem"),
             keyfile=os.path.join(self._cert_path, f"{param.host}_key.pem"),
@@ -78,6 +81,8 @@ class Server:
             cert_path=self._cert_path,
             root_path=SERVER_FILE_PATH,
             message_persistence=param.message_persistence or False,
+            semaphone=asyncio.Semaphore(multiprocessing.cpu_count()),
+            process_pool_exe=ProcessPoolExecutor(multiprocessing.cpu_count()),
             verbose=param.verbose,
             plugins=param.plugins,
             items=param.items
@@ -119,6 +124,8 @@ class Server:
                 DB.run_db_migrations()
 
             self._public_ip = init_utils.setup_query_local_ip()
+
+            await self._presence_manager.get_all_pending_presence()
 
             loop = asyncio.get_running_loop()
 

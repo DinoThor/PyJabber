@@ -1,6 +1,8 @@
+import asyncio
 import ssl
 from socket import AddressFamily
 from typing import List
+from concurrent.futures import ProcessPoolExecutor
 
 HOST = None
 IP = None
@@ -15,6 +17,8 @@ DATABASE_PATH = None
 DATABASE_IN_MEMORY = None
 DATABASE_PURGE = None
 MESSAGE_PERSISTENCE = None
+SEMAPHORE = None
+PROCESS_POOL_EXE = None
 VERBOSE = None
 PLUGINS = None
 ITEMS = None
@@ -40,11 +44,13 @@ def init_config(
     database_in_memory: bool,
     database_purge: bool,
     message_persistence: bool,
+    semaphone: asyncio.Semaphore,
+    process_pool_exe: ProcessPoolExecutor,
     verbose: bool,
     plugins: List[str],
     items: dict
 ):
-    global HOST, IP, SSL_CONTEXT, CONNECTION_TIMEOUT, SERVER_PORT, FAMILY, CONFIG_PATH, CERT_PATH, ROOT_PATH, DATABASE_PATH, DATABASE_IN_MEMORY, DATABASE_PURGE, MESSAGE_PERSISTENCE, VERBOSE, PLUGINS, ITEMS
+    global HOST, IP, SSL_CONTEXT, CONNECTION_TIMEOUT, SERVER_PORT, FAMILY, CONFIG_PATH, CERT_PATH, ROOT_PATH, DATABASE_PATH, DATABASE_IN_MEMORY, DATABASE_PURGE, MESSAGE_PERSISTENCE, SEMAPHORE, PROCESS_POOL_EXE, VERBOSE, PLUGINS, ITEMS
     HOST = host
     IP = ip
     SSL_CONTEXT = ssl_context
@@ -58,6 +64,8 @@ def init_config(
     DATABASE_IN_MEMORY = database_in_memory
     DATABASE_PURGE = database_purge
     MESSAGE_PERSISTENCE = message_persistence
+    SEMAPHORE = semaphone
+    PROCESS_POOL_EXE = process_pool_exe
     VERBOSE = verbose
     PLUGINS = plugins
     ITEMS = items

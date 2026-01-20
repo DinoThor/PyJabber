@@ -1,5 +1,7 @@
 import asyncio
 import xml.etree.ElementTree as ET
+from asyncio import Transport
+from typing import Coroutine
 
 from loguru import logger
 
@@ -16,14 +18,14 @@ class InternalServerError(Exception):
 
 
 class StanzaHandler:
-    def __init__(self, buffer) -> None:
+    def __init__(self, transport: Transport) -> None:
         self._ip = metadata.IP
-        self._buffer = buffer
+        self._transport = transport
         self._connections = ConnectionManager()
         self._message_queue = metadata.MESSAGE_QUEUE
         self._message_persistence = metadata.MESSAGE_PERSISTENCE
 
-        self._peername = buffer.get_extra_info('peername')
+        self._peername = transport.get_extra_info('peername')
         self._jid = self._connections.get_jid(self._peername)
 
         self._pluginManager = PluginManager(self._jid)
@@ -37,27 +39,26 @@ class StanzaHandler:
             "{jabber:client}presence": self.handle_pre
         }
 
-    def feed(self, element: ET.Element):
+    async def feed(self, element: ET.Element):
         try:
-            self._functions[element.tag](element)
+            await self._functions[element.tag](element)
         except (KeyError, InternalServerError) as e:
-            logger.error(e)
-            logger.error(f"INTERNAL SERVER ERROR WITH {self._peername}. CLOSING CONNECTION FOR SERVER STABILITY")
+            logger.error(
+                f"Internal server error {self._peername}. Closing connection for server stability. Reason: ${e}"
+            )
             raise InternalServerError
 
-    def handle_iq(self, element: ET.Element):
+    async def handle_iq(self, element: ET.Element):
         """
             Process the iq stanza with the PluginManager (PM) class
-            If the feature/XEP requested is not available, the PM instance
-            will send a
 
             :param element: The stanza in the ElementTree format
         """
-        res = self._pluginManager.feed(element)
+        res = await self._pluginManager.feed(element)
         if res:
-            self._buffer.write(res)
+            self._transport.write(res)
 
-    def handle_msg(self, element: ET.Element):
+    async def handle_msg(self, element: ET.Element):
         """
             Router the message to the client
 
@@ -75,21 +76,31 @@ class StanzaHandler:
             if not jid.resource:
                 priority = self._presenceManager.most_priority(jid)
                 if not priority and self._message_persistence:
-                    self._message_queue.put_nowait(('MESSAGE', JID(jid.bare()), ET.tostring(element)))
-                    return None
+                    await self._message_queue.put(
+                        ('MESSAGE', JID(jid.bare()), ET.tostring(element))
+                    )
+                else:
+                    all_resources_online = []
+                    for user in priority:
+                        buffer_online = self._connections.get_buffer_online(
+                            JID(user=jid.user, domain=jid.domain, resource=user[0])
+                        )
+                        all_resources_online += buffer_online
 
-                all_resources_online = []
-                for user in priority:
-                    all_resources_online += self._connections.get_buffer_online(JID(user=jid.user, domain=jid.domain, resource=user[0]))
-                for buffer in all_resources_online:
-                    buffer[1].write(ET.tostring(element))
+                    for buffer in all_resources_online:
+                        buffer[1].write(ET.tostring(element))
+
+                return None
             else:
                 resource_online = self._connections.get_buffer_online(jid)
                 if not resource_online and self._message_persistence:
-                    self._message_queue.put_nowait(('MESSAGE', jid, ET.tostring(element)))
+                    await self._message_queue.put(
+                        ('MESSAGE', jid, ET.tostring(element))
+                    )
                 else:
                     for buffer in resource_online:
                         buffer[1].write(ET.tostring(element))
+                return None
 
         # Remote server
         else:
@@ -101,12 +112,15 @@ class StanzaHandler:
             if buffer:
                 buffer.write(ET.tostring(element))
             else:
-                self._message_queue.put_nowait(('MESSAGE', jid.domain, ET.tostring(element)))
+                await self._message_queue.put(
+                    ('MESSAGE', jid.domain, ET.tostring(element))
+                )
+            return None
 
-    def handle_pre(self, element: ET.Element):
+    async def handle_pre(self, element: ET.Element):
         """
             Handle the presences stanzas
         """
-        res = self._presenceManager.feed(self._jid, element)
+        res = await self._presenceManager.feed(self._jid, element)
         if res:
-            self._buffer.write(res)
+            self._transport.write(res)

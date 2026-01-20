@@ -54,8 +54,8 @@ class StreamHandler:
             if elem.tag == '{http://etherx.jabber.org/streams}stream':
                 self._transport.write(Stream.responseStream(elem.attrib))
             return await self._stages_handlers[self._stage](elem)
-        except Exception:
-            SE.internal_server_error()
+        except Exception as e:
+            self._transport.write(SE.internal_server_error())
 
     async def _handle_init(self, _):
         self._streamFeature.reset()
@@ -111,17 +111,17 @@ class StreamHandler:
         self._transport.write(self._streamFeature.to_bytes())
 
         self._stage = Stage.SASL
+        return
 
     async def _handle_ssl(self, element: ET.Element):
         if self._sasl is None:
             self._sasl = SASL(self._transport, self._parser)
 
-        res = await self._sasl.feed(
-            element, self._transport, self._transport.get_extra_info('peername')
-        )
+        res = await self._sasl.feed(element)
 
         if res and res == Stage.AUTH:
             self._stage = Stage.AUTH
+        return
 
     async def _handle_init_resource_bind(self, _):
         self._streamFeature.reset()
@@ -129,10 +129,13 @@ class StreamHandler:
         self._transport.write(self._streamFeature.to_bytes())
 
         self._stage = Stage.BIND
+        return
 
     async def _handle_resource_bind(self, element: ET.Element):
-        if "iq" in element.tag:
-            if element.attrib.get("type") == "set":
+        if (element.tag == "{jabber:client}iq"
+            and len(element) > 0
+            and element[0].tag == "{urn:ietf:params:xml:ns:xmpp-bind}bind"
+            and element.attrib.get("type") == "set"):
                 resource_id = str(uuid4())
 
                 iq_res = IQ(type_=IQ.TYPE.RESULT, id_=element.get('id') or str(uuid4()))
@@ -146,10 +149,11 @@ class StreamHandler:
 
                 self._transport.write(ET.tostring(iq_res))
 
-                """
-                Stream is negotiated.
-                Update the connection register with the jid and transport
-                """
+                # Stream is negotiated.
+                # Update the connection register with the jid and transport
                 self._connection_manager.set_jid(peername, new_jid, self._transport)
+                return Signal.DONE
 
-        return Signal.DONE
+        else:
+            self._transport.write(SE.invalid_xml())
+            return Signal.FORCE_CLOSE

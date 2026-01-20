@@ -1,5 +1,4 @@
 import asyncio
-import os
 from asyncio import Transport
 from typing import Union
 
@@ -15,27 +14,8 @@ from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.parsers.XMLParser import XMLParser
 from pyjabber.network.parsers.XMLServerIncomingParser import XMLServerIncomingParser
 from pyjabber.network.parsers.XMLServerOutgoingParser import XMLServerOutgoingParser
+from pyjabber.network.utils import TransportProxy
 from pyjabber.stream.StanzaHandler import InternalServerError
-
-
-class TransportProxy:
-    __slots__ = ('_transport', '_peer', '_server')
-
-    def __init__(self, transport, peer, server = False):
-        self._transport = transport
-        self._peer = peer
-        self._server = server
-
-    @property
-    def originalTransport(self):
-        return self._transport
-
-    def write(self, data):
-        logger.trace(f"Sending to {'server ' if self._server else ''}{self._peer}: {data}")
-        return self._transport.write(data)
-
-    def __getattr__(self, name):
-        return getattr(self._transport, name)
 
 
 class XMLProtocol(asyncio.Protocol):
@@ -51,14 +31,7 @@ class XMLProtocol(asyncio.Protocol):
                  '_presence_manager', '_tls_queue', '_transport', '_peer', '_xml_parser',
                  '_timeout_monitor', '_timeout_flag', '_connection_type', '_server_log', '_logger_tag')
 
-    def __init__(
-            self,
-            namespace,
-            host,
-            connection_timeout,
-            cert_path,
-            connection_type):
-
+    def __init__(self, namespace, connection_timeout):
         self._xmlns = namespace
         self._host = host
         self._connection_timeout = connection_timeout

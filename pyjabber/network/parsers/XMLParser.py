@@ -5,9 +5,8 @@ from xml.etree import ElementTree as ET
 from xml.sax import ContentHandler
 
 from pyjabber.stream.ClientHandler import ClientHandle
-from pyjabber.stream.Stream import Stream
 from pyjabber.stream.StanzaHandler import StanzaHandler
-from pyjabber.stream.StreamHandler import Signal, StreamHandler
+from pyjabber.stream.StreamHandler import StreamHandler
 from pyjabber.utils import ClarkNotation as CN
 
 
@@ -34,7 +33,6 @@ class XMLParser(ContentHandler):
         self._from_claim = None
 
         asyncio.create_task(self._clientHandler.feed())
-        # self._streamHandler = self.stream_handler_constructor(self._transport, starttls, self)
 
     class StreamState(Enum):
         """
@@ -75,12 +73,6 @@ class XMLParser(ContentHandler):
 
             self._clientHandler.put(elem)
 
-            # self._transport.write(Stream.responseStream(attrs, self.server))
-            # signal = self._streamHandler.handle_open_stream()
-            # if signal and signal == Signal.DONE:
-            #     self._stanzaHandler = self.stanza_handler_constructor(self._transport)
-            #     self._state = self.StreamState.READY
-
         else:
             raise Exception()
 
@@ -106,18 +98,6 @@ class XMLParser(ContentHandler):
             if name[1] in ["starttls", "auth"]:
                 self.transport.pause_reading()
             self._clientHandler.put(elem)
-            # if self._state == self.StreamState.READY:  # Ready to process stanzas
-            #     self._stanzaHandler.feed(elem)
-            # else:
-            #     signal = self._streamHandler.handle_open_stream(elem)
-            #     if signal == Signal.DONE:
-            #         self._stanzaHandler = self.stanza_handler_constructor(self._transport)
-            #         self._state = self.StreamState.READY
-            #     elif signal == Signal.RESET and "stream" in self._stack[-1].tag:
-            #         self._stack.clear()
-            #     elif signal == Signal.FORCE_CLOSE:
-            #         self._stack.clear()
-            #         self._stack.append(b'</stream:stream>')
 
     def characters(self, content: str) -> None:
         if not self._stack:
