@@ -1,11 +1,6 @@
-.. raw:: html
-
-    <h1 style="text-align: center">PyJabber</h1>
-
-.. image:: https://raw.githubusercontent.com/DinoThor/PyJabber/refs/heads/master/logo.png
-        :width: 300px
-        :alt: Logo
-        :align: center
+===================================
+PyJabber: The Python XMPP Server
+===================================
 
 .. image:: https://img.shields.io/pypi/v/pyjabber.svg
         :target: https://pypi.org/project/pyjabber/
@@ -39,9 +34,8 @@
 
 
 |
-| PyJabber is a server for Jabber/XMPP entirely written in Python, with minimal reliance on external libraries.
-| It strives to provide a simple, lightweight, and comprehensible codebase, featuring a modular structure that
-        facilitates extension through the implementation of necessary XEPs for specific use cases.
+| **PyJabber** is an asyncio server for Jabber/XMPP entirely written in Python, with minimal reliance on external libraries.
+| It strives to provide a simple, lightweight, and comprehensible codebase, featuring a modular structure.
 | While initially designed to fulfill the requirements of the multi-agent system `SPADE <https://github.com/javipalanca/spade>`_, it can be easily customized to suit any other purpose.
 |
 
@@ -66,7 +60,7 @@ The process of starting the server returns a coroutine, leaving it to the user t
 
 .. code-block:: python
 
-    from pyjabber import Server
+    from pyjabber.server import Server
 
     my_server = Server()
     asyncio.run(my_server.start())
@@ -91,42 +85,7 @@ This allows PyJabber to be treated as a regular task and integrated seamlessly i
 
 CLI
 ---
-The CLI launcher provides access to all the configuration options available in the programmatic version (when launched from a Python script).
-
-
-.. code-block:: python
-
-
-        $ pyjabber --help
-
-
-.. code-block::
-
-
-       Usage: python -m pyjabber [OPTIONS]
-
-        Options:
-          --host TEXT                Host name  [default: localhost]
-          --client_port INTEGER      Server-to-client port  [default: 5222]
-          --server_port INTEGER      Server-to-server port  [default: 5269]
-          --server_out_port INTEGER  Server-to-server port (Out coming connection)
-                                     [default: 5269]
-          --family [ipv4|ipv6]       (ipv4 / ipv6)  [default: ipv4]
-          --timeout INTEGER          Timeout for connection  [default: 60]
-          --database_path TEXT       Path for database file  [default: */pyjabber.db]
-          --database_purge           Restore database file to default state (empty)
-          --database_in_memory       Database in memory. The data will be erased after
-                                     server shutdown
-          --message_persistence      Keep the unsent messages in memory waiting for
-                                     the receiver client to connect
-          -v, --verbose              Show verbose debug level: -v INFO -vv DEBUG, -vvv
-                                     level TRACE,
-          --log_path TEXT            Path to log dumpfile
-          -D, --debug                Enables debug mode in Asyncio
-          --help                     Show this message and exit.
-
-
-And to launch a default profile
+The CLI launcher is the fastest way to start using the server.
 
 .. code-block::
 
@@ -142,6 +101,7 @@ And to launch a default profile
         2024-12-18 09:03:22.881 - INFO: Serving admin webpage on http://localhost:9090
         2024-12-18 09:03:22.881 - INFO: Server is listening servers on [('0.0.0.0', 5269)]
         2024-12-18 09:03:22.881 - INFO: Server started...
+
 
 Features
 --------
