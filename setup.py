@@ -26,14 +26,14 @@ setup(
         "Tracker": "https://github.com/DinoThor/PyJabber/issues",
     },
     keywords=[
-        "xmpp", "jabber", "server", "asyncio", 
+        "xmpp", "jabber", "server", "asyncio",
         "python", "chat", "messaging",
     ],
     packages=find_packages(),
     install_requires=parse_requirements('requirements.txt'),
     include_package_data=True,
     classifiers=[
-        "Development Status :: O 5 - Production/Stable",
+        "Development Status :: 3 - Alpha",
         "Topic :: Communications :: Chat",
         "Topic :: Internet :: XMPP",
         "Framework :: AsyncIO",

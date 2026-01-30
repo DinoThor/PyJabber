@@ -43,7 +43,6 @@ class PubSub(metaclass=Singleton):
 
         self._nodes = None
         self._subscribers = None
-        self.update_memory_from_database()
 
         self._operations = {
             'create': self.create_node,
@@ -64,7 +63,7 @@ class PubSub(metaclass=Singleton):
             self._nodes = res.fetchall()
 
             query = select(Model.PubsubSubscribers)
-            res = con.execute(query)
+            res = await con.execute(query)
             self._subscribers = res.fetchall()
 
     async def feed(self, jid: JID, element: ET.Element):

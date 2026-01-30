@@ -7,106 +7,10 @@ from loguru import logger
 
 from pyjabber import metadata
 from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber.network.ServerConnectionType import ServerConnectionType as SCT
+from pyjabber.network.utils.Enums import ServerConnectionType as SCT
 from pyjabber.network.XMLProtocol import TransportProxy, XMLProtocol
 from pyjabber.stream.JID import JID
 from pyjabber.stream import Stream
-
-
-async def tls_worker():
-    """
-    A TLS Worker for process STARTTLS petitions.
-    A global Asyncio queue must be declared and used across the server. The main producer of the queue will be the
-    XMLProtocol class, where the transport/buffer/protocol is managed.
-    The worker is global for all the server components, and it can be duplicated across multiple workers in
-    different threads to handle a high number of new connections established within a very short period of time.
-    """
-    connection_manager = ConnectionManager()
-
-    ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    ssl_context.maximum_version = ssl.TLSVersion.TLSv1_2
-    ssl_context.load_cert_chain(
-        certfile=os.path.join(metadata.CERT_PATH, f"{metadata.HOST}_cert.pem"),
-        keyfile=os.path.join(metadata.CERT_PATH, f"{metadata.HOST}_key.pem"),
-    )
-
-
-    server_ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-    server_ssl_context.maximum_version = ssl.TLSVersion.TLSv1_2
-    server_ssl_context.load_cert_chain(
-        certfile=os.path.join(metadata.CERT_PATH, f"{metadata.HOST}_cert.pem"),
-        keyfile=os.path.join(metadata.CERT_PATH, f"{metadata.HOST}_key.pem"),
-    )
-
-    # server_ssl_context.check_hostname = True
-    # server_ssl_context.verify_mode = ssl.CERT_REQUIRED
-
-    loop = asyncio.get_running_loop()
-    tls_queue = metadata.TLS_QUEUE
-    try:
-        while True:
-            data = await tls_queue.get()
-
-            if len(data) == 4:
-                transport, protocol, parser, server_outgoing_host = data
-                peer = transport.get_extra_info("peername")
-
-                try:
-                    server_host = connection_manager.get_server_host(peer)
-
-                    new_transport = await loop.start_tls(
-                        transport=transport.originalTransport,
-                        protocol=protocol,
-                        sslcontext=server_ssl_context,
-                        server_hostname=server_host,
-                        server_side=False)
-
-                    new_transport = TransportProxy(new_transport, peer, True)
-                    protocol.transport = new_transport
-                    parser.transport = new_transport
-                    connection_manager.update_transport_server(new_transport=new_transport, peer=peer)
-
-                    logger.debug(f"Done TLS for <{peer}>")
-
-                    initial_stream = Stream.Stream(
-                        from_=metadata.HOST,
-                        to="xmpp2.test",
-                        xmlns=Stream.Namespaces.SERVER.value
-                    ).open_tag()
-                    new_transport.write(initial_stream)
-
-                except ConnectionResetError as e:
-                    logger.error(f"ERROR DURING TLS UPGRADE WITH <{peer}>")
-                    connection_manager.close_server(peer)
-
-            else:
-                transport, protocol, parser = data
-                peer = transport.get_extra_info("peername")
-
-                try:
-                    new_transport = await loop.start_tls(
-                        transport=transport.originalTransport,
-                        protocol=protocol,
-                        sslcontext=ssl_context,
-                        server_side=True)
-
-                    new_transport = TransportProxy(new_transport, peer, False)
-                    protocol.transport = new_transport
-                    parser.transport = new_transport
-                    if protocol.namespace == 'jabber:client':
-                        connection_manager.update_buffer(new_transport=new_transport, peer=peer)
-                    else:
-                        connection_manager.update_transport_server(new_transport=new_transport, peer=peer)
-
-                    logger.debug(f"Done TLS for <{peer}>")
-
-                except ConnectionResetError as e:
-                    logger.error(f"ERROR DURING TLS UPGRADE WITH <{peer}>")
-                    connection_manager.close(peer)
-
-    except asyncio.CancelledError:
-        pass
-
 
 async def queue_worker():
     """

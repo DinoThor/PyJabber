@@ -58,7 +58,7 @@ def test_handle_auth_failure(sasl):
 
     result = sasl.handle_auth(element)
 
-    assert result == SE.not_authorized()
+    assert result == SE.not_authorized_sasl()
 
 
 def test_handle_iq_register_conflict(sasl):

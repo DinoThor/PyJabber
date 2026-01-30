@@ -1,20 +1,16 @@
 import asyncio
 import xml.etree.ElementTree as ET
 from asyncio import Transport
-from typing import Coroutine
 
 from loguru import logger
 
 from pyjabber import metadata
 from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.utils.Exceptions import InternalServerError
 from pyjabber.utils import ClarkNotation as CN
 from pyjabber.stream.JID import JID
 from pyjabber.plugins.PluginManager import PluginManager
-
-
-class InternalServerError(Exception):
-    pass
 
 
 class StanzaHandler:

@@ -6,13 +6,13 @@ from xml.etree import ElementTree as ET
 from pyjabber.stanzas.error import StanzaError as SE
 
 
-class RPC(metaclass=Singleton):
+class RPC():
     __slots__ = ('_connections',)
 
     def __init__(self):
         self._connections = ConnectionManager()
 
-    def feed(self, _, element: ET.Element):
+    async def feed(self, _, element: ET.Element):
         try:
             type_iq = element.attrib.get('type')
 

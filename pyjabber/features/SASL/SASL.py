@@ -3,12 +3,10 @@ import base64
 import binascii
 import hashlib
 import hmac
-from asyncio import Transport
 
 import bcrypt
 
-from enum import Enum
-from typing import List, Tuple, Union
+from typing import Union
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
@@ -18,19 +16,14 @@ from sqlalchemy import insert, select
 from pyjabber import metadata
 from pyjabber.db.model import Model
 from pyjabber.db.database import DB
+from pyjabber.features.SASL.Mechanism import MECHANISM
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
-from pyjabber.stream.Signal import Signal
 from pyjabber.stream.Stage import Stage
 from pyjabber.utils import ClarkNotation as CN
-
-
-class MECHANISM(Enum):
-    PLAIN = "PLAIN"
-    SCRAM_SHA_1 = "SCRAM-SHA-1"
-    EXTERNAL = "EXTERNAL"
+from pyjabber.utils.Exceptions import BadRequestException, InternalServerError
 
 
 class SASL:
@@ -40,12 +33,14 @@ class SASL:
         An instance of this class will manage the authentication from new connections,
         during the stream negotiation process.
     """
-    def __init__(self, transport, parser, from_claim = None):
+    def __init__(self, transport, parser, peer, from_claim = None):
         self._handlers = {
             "iq": self.handle_IQ,
             "auth": self.handle_auth
         }
         self._connection_manager = ConnectionManager()
+        self._peer = peer
+
         self._from_claim = from_claim
 
         self._transport = transport
@@ -56,7 +51,7 @@ class SASL:
         self._semaphore = metadata.SEMAPHORE
         self._pool_executor = metadata.PROCESS_POOL_EXE
 
-    async def feed(self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
+    async def feed(self, element: ET.Element) -> Union[Stage, None]:
         _, tag = CN.deglose(element.tag)
         return await self._handlers[tag](element)
 
@@ -70,15 +65,15 @@ class SASL:
                 "from": metadata.HOST})
         return ET.tostring(iq)
 
-    async def handle_IQ(self, element: ET.Element) -> bytes | None:
+    async def handle_IQ(self, element: ET.Element) -> None:
         query = element.find("{jabber:iq:register}query")
         if query is None:
-            return SE.bad_request()
+            raise BadRequestException()
 
         if element.attrib.get("type") == IQ.TYPE.SET.value:
             new_jid = query.find("{jabber:iq:register}username")
             if new_jid is None:
-                self._transport.write(SE.bad_request())
+                raise BadRequestException()
 
             new_jid = new_jid.text
 
@@ -110,27 +105,24 @@ class SASL:
 
             self._transport.write(ET.tostring(iq))
 
-        return None
-
-    async def handle_auth(self, element: ET.Element) -> Union[Tuple[Signal, bytes], bytes]:
+    async def handle_auth(self, element: ET.Element) -> Union[Stage, None]:
         mechanism = element.attrib.get("mechanism")
 
         if mechanism == MECHANISM.EXTERNAL.value:
             if not self._from_claim:
-                raise Exception()  # TODO: handler error properly
+                raise BadRequestException()
 
-            cert = self._connection_manager.get_connection_certificate_server(self._transport.get("peername"))
+            cert = self._connection_manager.get_connection_certificate_server(self._peer)
             if not cert:
-                logger.error(f"Error retrieving TLS cert from {self._transport.get("peername")}. Closing connection for server safety")
-                self._connection_manager.close(self._transport.get("peername"))
+                logger.error(f"Error retrieving TLS cert from {self._peer}. Closing connection for server safety")
+                raise InternalServerError()
 
             if not self.validate_cert(self._from_claim, cert):
-                logger.error(f"Host claim cannot be verified with presented cert. Verify host used on stream or cert: {self._transport.get("peername")}")
-                self._connection_manager.close(self._transport.get("peername"))
+                logger.error(f"Host claim cannot be verified with presented cert. Verify host used on stream or cert: {self._peer}")
+                raise InternalServerError()
 
             self._transport.write(b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")
             self._parser.reset_stack()
-            return None
 
         try:
             data = base64.b64decode(element.text).split("\x00".encode())
@@ -143,26 +135,26 @@ class SASL:
                 hashed_pwd = hashed_pwd.fetchone()
 
             if not hashed_pwd:
-                self._transport.write(SE.not_authorized())
-                return Signal.FORCE_CLOSE
+                self._transport.write(SE.not_authorized_sasl())
+                self._connection_manager.close(self._peer)
 
             authorized = await self._verify_password_async(
                 stored_password=hashed_pwd[0],
                 provided_password=pwd
             )
             if authorized:
-                self._connection_manager.set_jid(self._transport.get_extra_info("peername"), JID(user=jid, domain=metadata.HOST))
+                self._connection_manager.set_jid(self._peer, JID(user=jid, domain=metadata.HOST))
                 self._transport.write(b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")
                 self._parser.reset_stack()
                 self._transport.resume_reading()
                 return Stage.AUTH
             else:
-                self._transport.write(SE.not_authorized())
-                self._transport.write(b'</stream:stream>')
+                self._transport.write(SE.not_authorized_sasl())
+                self._connection_manager.close(self._peer)
 
         except Exception as e:
             logger.error(f"Exception during auth process for {element.attrib.get('from')}: {e}")
-            self._transport.write(SE.not_authorized())
+            self._transport.write(SE.not_authorized_sasl())
 
     ###############################################################################################
 
@@ -262,26 +254,3 @@ class SASL:
         hash_hex = binascii.hexlify(hashed_pwd).decode('ascii')
 
         return f"sha256${iterations}${salt_hex}${hash_hex}"
-
-
-def SASLFeature(mechanism_list: List[MECHANISM] = None) -> ET.Element:
-    """ SASL    Feature Stream message.
-
-        Indicates to the client the methods available to authenticate.
-
-        :param mechanism_list: List of Mechanism selected for the stream session. Default is PLAIN
-    """
-    mechanism_list = mechanism_list or [MECHANISM.PLAIN]
-
-    element = ET.Element(
-        "mechanisms",
-        attrib={
-            "xmlns": "urn:ietf:params:xml:ns:xmpp-sasl"
-        }
-    )
-
-    for m in mechanism_list:
-        mechanism = ET.SubElement(element, "mechanism")
-        mechanism.text = m.value
-
-    return element

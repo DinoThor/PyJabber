@@ -4,7 +4,7 @@ import os
 import sqlalchemy
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, MetaData, Engine, StaticPool, event, QueuePool
+from sqlalchemy import StaticPool, event
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
 from pyjabber import metadata
@@ -47,7 +47,7 @@ class DB:
         read via the metadata class
         :return: SQLAlchemy Engine
         """
-        if not metadata.VERBOSE:
+        if not metadata.DATABASE_DEBUG:
             logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
             logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
             logging.getLogger("sqlite3").setLevel(logging.WARNING)
@@ -59,7 +59,7 @@ class DB:
                 url="sqlite+aiosqlite:///:memory:",
                 isolation_level="AUTOCOMMIT",
                 poolclass=StaticPool,
-                echo=metadata.VERBOSE
+                echo=metadata.DATABASE_DEBUG
             )
 
             @event.listens_for(DB._engine.sync_engine, "connect")
@@ -75,14 +75,14 @@ class DB:
         if os.path.isfile(metadata.DATABASE_PATH):
             DB._engine = create_async_engine(
                 url="sqlite+aiosqlite:///tickets.db",
-                echo=metadata.VERBOSE
+                echo=metadata.DATABASE_DEBUG
             )
 
         else:
             logger.info("No database found. Initializing one...")
             DB._engine = create_async_engine(
                 f"sqlite+aiosqlite:///{metadata.DATABASE_PATH}",
-                echo=metadata.VERBOSE
+                echo=metadata.DATABASE_DEBUG
             )
 
         @event.listens_for(DB._engine.sync_engine, "connect")

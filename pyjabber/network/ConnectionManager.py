@@ -1,10 +1,10 @@
-import asyncio
 import re
 from typing import List, Optional
 from asyncio import Transport
 from typing import Dict, Union, Tuple
 from loguru import logger
 
+from pyjabber.network.utils.TransportProxy import TransportProxy
 from pyjabber.stream.JID import JID
 from pyjabber.utils import Singleton
 
@@ -64,7 +64,6 @@ class ConnectionManager(metaclass=Singleton):
 
             :param peer: The peer value in the tuple format ({IP}, {PORT})
         """
-
         try:
             self._peerList.pop(peer)
         except KeyError:
@@ -73,11 +72,10 @@ class ConnectionManager(metaclass=Singleton):
     def online(self, jid: JID, online: bool = True):
         """
             Set a client connection status to Online.
+            Useful for presence behavior
 
-            Useful for presence behaviour
-
-        :param jid: JID of the client to update status
-        :param online: New status. True by default
+            :param jid: JID of the client to update status
+            :param online: New status. True by default
         """
         for k, v in self._peerList.items():
             if v[0] == jid and v[2][0] != online:
@@ -100,14 +98,12 @@ class ConnectionManager(metaclass=Singleton):
     def get_buffer(self, jid: JID) -> List[Tuple[JID, Transport, bool]]:
         """
             Get all the available buffers associated with a JID.
-
                 - If the JID is in the full format <username@domain/resource>, it will only return one buffer or none
                 - If the JID is in the bare format <username@domain>, it will return a list of the buffers for each resource available.
-
             Both cases return a list.
 
             :param jid: The jid to get the buffers for. It can be a full jid or a bare jid
-            :return: (JID, TRANSPORT) tuple
+            :return: (JID, TRANSPORT) tuple list
         """
         if jid.resource:
             return [(jid_stored, buffer, online[0])
@@ -122,10 +118,8 @@ class ConnectionManager(metaclass=Singleton):
         """
             Get all the available buffers associated with a JID
             that are ready to receive messages (online).
-
-            - If the JID is in the full format <username@domain/resource>, it will only return one buffer or none.
-            - If the JID is in the bare format <username@domain>, it will return a list of the buffers for each resource available.
-
+                - If the JID is in the full format <username@domain/resource>, it will only return one buffer or none.
+                - If the JID is in the bare format <username@domain>, it will return a list of the buffers for each resource available.
             Both cases return a list.
 
             :param jid: The jid to get the buffers for. It can be a full jid or a bare jid
@@ -141,10 +135,11 @@ class ConnectionManager(metaclass=Singleton):
                     if re.match(f"{str(jid)}/*", str(jid_stored))
                     and online[0] is True]
 
-    def update_buffer(self, new_transport: Transport, peer: Tuple[str, int] = None, jid: JID = None):
+    def update_buffer(self, new_transport: Union[Transport, TransportProxy], peer: Tuple[str, int] = None, jid: JID = None):
         if not peer and not jid:
             logger.warning(
-                "Missing peer OR jid parameter to update transport in client connection. No action will be performed")
+                "Missing peer OR jid parameter to update transport in client connection. No action will be performed"
+            )
             return
 
         if peer:
@@ -153,12 +148,10 @@ class ConnectionManager(metaclass=Singleton):
                 self._peerList[peer] = (jid, new_transport, online)
                 return
             except KeyError:
-                logger.warning("Unable to find client with given peer. Check this inconsistency")
-                return
+                raise KeyError("Unable to find client with given peer. Check this inconsistency")
 
         if jid.resource is None:
-            logger.warning("JID must have a resource to update transport")
-            return
+            raise ValueError("JID must have a resource to update transport")
 
         match = next(((k, v) for k, v in self._peerList.items() if v[0] == jid), None)
         if match:
@@ -166,17 +159,6 @@ class ConnectionManager(metaclass=Singleton):
             self._peerList[match[0]] = (jid, new_transport, online)
         else:
             logger.warning("Unable to find client with given JID. Check this inconsistency")
-
-    # def get_connection_certificate(self, peer: Tuple[str, int]):
-    #     """
-    #         Return the SSL certificate used in the STARTTLS process
-    #         If no certificated is bounded with the connection, returns None
-    #     """
-    #     return next(self._peerList.get(peer)[1].get_extra_info("ssl_object"), None)
-
-    ###########
-    ### JID ###
-    ###########
 
     def get_jid(self, peer: Tuple[str, int]) -> Union[JID, None]:
         """
@@ -203,13 +185,13 @@ class ConnectionManager(metaclass=Singleton):
             _, old_transport, online = self._peerList[peer]
             self._peerList[peer] = (jid, transport or old_transport, online)
         except KeyError:
-            logger.error(f"Unable to find {peer} during jid/transport update")
+            raise KeyError(f"Unable to find {peer} during jid/transport update")
 
     def update_resource(self, peer: Tuple[str, int], resource: str):
         try:
             self._peerList[peer][0].resource = resource
         except KeyError:
-            logger.error(f"Unable to find {peer} during resource update")
+            raise KeyError(f"Unable to find {peer} during resource update")
 
     ###########################################################################
     ############################# REMOTE SERVER ###############################

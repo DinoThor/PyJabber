@@ -1,16 +1,16 @@
 import asyncio
-from asyncio import Transport
-from typing import Union, List
+from typing import Union
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
-from pyjabber.features import InBandRegistration as IBR
-from pyjabber.features.StartTLSFeature import StartTLSFeature, proceed_response
+from pyjabber.features.Features import start_tls_feature, start_tls_proceed_response, SASL_feature, \
+    in_band_registration_feature, resource_binding_feature
+from pyjabber.features.SASL.SASL import SASL
 from pyjabber.features.StreamFeature import StreamFeature
-from pyjabber.features.SASLFeature import SASLFeature, SASL, MECHANISM
-from pyjabber.features.ResourceBinding import ResourceBinding
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber import metadata
+from pyjabber.utils import Exceptions as EX
+from pyjabber.network.utils.TransportProxy import TransportProxy
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stream.Stage import Stage
@@ -18,8 +18,9 @@ from pyjabber.stream.Signal import Signal
 
 from loguru import logger
 
+from pyjabber.stream.StanzaHandler import InternalServerError
 from pyjabber.stream.Stream import Stream
-from pyjabber.utils.TransportProxy import TransportProxy
+from pyjabber.utils.Exceptions import NotAuthorizerStreamNegotiationException
 
 
 class StreamHandler:
@@ -27,6 +28,7 @@ class StreamHandler:
         self._host = metadata.HOST
 
         self._transport = transport
+        self._peer = transport.get_extra_info("peername")
         self._protocol = protocol
         self._parser = parser
         self._ssl_context = metadata.SSL_CONTEXT
@@ -38,7 +40,6 @@ class StreamHandler:
         self._ibr_feature = 'jabber:iq:register' in metadata.PLUGINS
 
         self._sasl = None
-        self._sasl_mechanisms: List[MECHANISM] = []
 
         self._stages_handlers = {
             Stage.CONNECTED: self._handle_init,
@@ -54,88 +55,97 @@ class StreamHandler:
             if elem.tag == '{http://etherx.jabber.org/streams}stream':
                 self._transport.write(Stream.responseStream(elem.attrib))
             return await self._stages_handlers[self._stage](elem)
-        except Exception as e:
+        except EX.NotAuthorizerStreamNegotiationException:
+            self._transport.write(SE.not_authorized())
+            self._connection_manager.close(self._peer)
+        except EX.BadRequestException:
+            self._transport.write(SE.bad_request())
+            self._connection_manager.close(self._peer)
+        except InternalServerError:
             self._transport.write(SE.internal_server_error())
+            self._connection_manager.close(self._peer)
+        except Exception as e:
+            logger.error(e)
 
     async def _handle_init(self, _):
         self._streamFeature.reset()
-        self._streamFeature.register(StartTLSFeature())
+        self._streamFeature.register(start_tls_feature())
         self._transport.write(self._streamFeature.to_bytes())
 
         self._stage = Stage.OPENED
-        return
 
     async def _handle_tls(self, element: ET.Element):
-        if "starttls" in element.tag:
-            self._transport.write(proceed_response())
+        if element.tag == "{urn:ietf:params:xml:ns:xmpp-tls}starttls":
+            self._transport.write(start_tls_proceed_response())
             self._transport.pause_reading()
 
-            peer = self._transport.get_extra_info("peername")
+            if isinstance(self._transport, TransportProxy):
+                original_transport = self._transport.original_transport
+            else:
+                original_transport = self._transport
+
             try:
-                new_transport = await asyncio.get_running_loop().start_tls(
-                    transport=self._transport.originalTransport,
+                loop = asyncio.get_running_loop()
+                new_transport = await loop.start_tls(
+                    transport=original_transport,
                     protocol=self._protocol,
                     sslcontext=self._ssl_context,
                     server_side=True
                 )
 
-                new_transport = TransportProxy(new_transport, peer)
+                new_transport = TransportProxy(new_transport, self._peer)
                 self._transport = new_transport
                 self._protocol.transport = new_transport
                 self._parser.transport = new_transport
-                if self._protocol.namespace == 'jabber:client':
-                    self._connection_manager.update_buffer(new_transport=new_transport, peer=peer)
-                else:
-                    self._connection_manager.update_transport_server(new_transport=new_transport, peer=peer)
+                self._connection_manager.update_buffer(new_transport=new_transport, peer=self._peer)
 
-                logger.debug(f"Done TLS for <{peer}>")
+                logger.debug(f"Done TLS for <{self._peer}>")
                 self._stage = Stage.SSL
                 self._parser.reset_stack()
                 self._transport.resume_reading()
                 return Signal.RESET
 
             except ConnectionResetError as e:
-                logger.error(f"ERROR DURING TLS UPGRADE WITH <{peer}>")
-                self._connection_manager.close(peer)
+                logger.error(f"Error during TLS upgrade with <{self._peer}>")
+                self._connection_manager.close(self._peer)
                 return Signal.FORCE_CLOSE
 
         else:
-            raise Exception()
+            raise NotAuthorizerStreamNegotiationException()
 
     async def _handle_init_ssl(self, _):
         self._streamFeature.reset()
 
         if self._ibr_feature:
-            self._streamFeature.register(IBR.InBandRegistration())
-        self._streamFeature.register(SASLFeature(mechanism_list=self._sasl_mechanisms))
+            self._streamFeature.register(in_band_registration_feature())
+
+        self._streamFeature.register(SASL_feature())
         self._transport.write(self._streamFeature.to_bytes())
 
         self._stage = Stage.SASL
-        return
 
     async def _handle_ssl(self, element: ET.Element):
         if self._sasl is None:
-            self._sasl = SASL(self._transport, self._parser)
+            self._sasl = SASL(self._transport, self._parser, self._peer)
 
         res = await self._sasl.feed(element)
 
         if res and res == Stage.AUTH:
             self._stage = Stage.AUTH
-        return
 
     async def _handle_init_resource_bind(self, _):
         self._streamFeature.reset()
-        self._streamFeature.register(ResourceBinding())
+        self._streamFeature.register(resource_binding_feature())
         self._transport.write(self._streamFeature.to_bytes())
 
         self._stage = Stage.BIND
-        return
 
     async def _handle_resource_bind(self, element: ET.Element):
         if (element.tag == "{jabber:client}iq"
             and len(element) > 0
             and element[0].tag == "{urn:ietf:params:xml:ns:xmpp-bind}bind"
             and element.attrib.get("type") == "set"):
+
                 resource_id = str(uuid4())
 
                 iq_res = IQ(type_=IQ.TYPE.RESULT, id_=element.get('id') or str(uuid4()))
@@ -146,14 +156,10 @@ class StreamHandler:
                 new_jid.resource = resource_id
 
                 ET.SubElement(bind_res, 'jid').text = str(new_jid)
-
                 self._transport.write(ET.tostring(iq_res))
 
-                # Stream is negotiated.
-                # Update the connection register with the jid and transport
                 self._connection_manager.set_jid(peername, new_jid, self._transport)
                 return Signal.DONE
 
         else:
-            self._transport.write(SE.invalid_xml())
-            return Signal.FORCE_CLOSE
+            raise NotAuthorizerStreamNegotiationException()

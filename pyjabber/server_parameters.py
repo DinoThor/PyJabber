@@ -18,6 +18,7 @@ class Parameters:
     database_path: str = os.path.join(os.getcwd(), "pyjabber.db")
     database_purge: bool = False
     database_in_memory: bool = False
+    database_debug: bool = False
     cert_path: str = None
     message_persistence: bool = True
     verbose: bool = False
@@ -74,6 +75,7 @@ class Parameters:
                 database_path=loaded.get('database_path', os.path.join(os.getcwd(), "pyjabber.db")),
                 database_purge=loaded.get('database_purge', False),
                 database_in_memory=loaded.get('database_in_memory', False),
+                database_debug=loaded.get('database_debug', False),
                 cert_path=loaded.get('cert_path', None),
                 message_persistence=loaded.get('message_persistence', True),
                 verbose=loaded.get('verbose', False),
@@ -100,6 +102,7 @@ class Parameters:
                 database_path=loaded.get('database_path', os.path.join(os.getcwd(), "pyjabber.db")),
                 database_purge=loaded.get('database_purge', False),
                 database_in_memory=loaded.get('database_in_memory', False),
+                database_debug=loaded.get('database_debug', False),
                 cert_path=loaded.get('cert_path', None),
                 message_persistence=loaded.get('message_persistence', True),
                 verbose=loaded.get('verbose', False),

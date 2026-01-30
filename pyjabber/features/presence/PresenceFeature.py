@@ -10,24 +10,12 @@ from sqlalchemy import select, delete
 from pyjabber import metadata
 from pyjabber.db.database import DB
 from pyjabber.db.model import Model
+from pyjabber.features.presence.Enums import PresenceType, PresenceShow
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
 from pyjabber.utils import Singleton
-
-
-class PresenceShow(Enum):
-    EXTENDED_AWAY = "xa"
-    AWAY = "away"
-    CHAT = "chat"
-    DND = "dnd"
-    NONE = "none"
-
-
-class PresenceType(Enum):
-    AVAILABLE = "available"
-    UNAVAILABLE = "unavailable"
 
 
 class Presence(metaclass=Singleton):
