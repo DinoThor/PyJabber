@@ -22,10 +22,10 @@ jobs:
           enable-cache: true
 
       - name: Install Test dependencies
-        run: uv pip install tox tox-uv
+        run: uv pip install --system tox tox-uv
 
-      - name: Run Tox (Lint & Tests)
-        run: uv run tox
+      - name: Run Tox
+        run: tox
 
   test:
     runs-on: ${{ matrix.os }}
