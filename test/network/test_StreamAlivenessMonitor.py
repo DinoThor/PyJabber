@@ -1,6 +1,8 @@
 import asyncio
-import pytest
 from unittest.mock import Mock
+
+import pytest
+
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 
 pytestmark = pytest.mark.asyncio

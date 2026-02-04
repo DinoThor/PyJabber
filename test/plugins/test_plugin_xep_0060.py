@@ -1,9 +1,9 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
 import pytest
-from sqlalchemy import create_engine, insert, delete, select, and_
+from sqlalchemy import and_, create_engine, insert, select
 
 from pyjabber.db.model import Model
 from pyjabber.plugins.xep_0060.xep_0060 import PubSub

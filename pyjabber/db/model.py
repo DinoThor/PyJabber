@@ -1,4 +1,4 @@
-from sqlalchemy import Table, MetaData, Column, Integer, String
+from sqlalchemy import Column, Integer, MetaData, String, Table
 
 
 class Model:

@@ -1,17 +1,16 @@
 import asyncio
 from asyncio import Transport
 from typing import Union
-
-from loguru import logger
 from xml import sax
 from xml.etree.ElementTree import Element
+
+from loguru import logger
 
 from pyjabber import metadata
 from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber.network.utils.Enums import ServerConnectionType as SCT
-from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.parsers.XMLParser import XMLParser
+from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.utils.TransportProxy import TransportProxy
 from pyjabber.stream.StanzaHandler import InternalServerError
 
@@ -34,7 +33,7 @@ class XMLProtocol(asyncio.Protocol):
         self._connection_manager = ConnectionManager()
         self._presence_manager = Presence()
 
-        self._transport = None
+        self._transport: Union[Transport, TransportProxy, None] = None
         self._peer = None
         self._xml_parser = None
         self._timeout_monitor = None
@@ -123,7 +122,7 @@ class XMLProtocol(asyncio.Protocol):
         :param data: Chunk of data received
         :type data: Byte array
         """
-        logger.debug(f"Data received {self._peer}: {data.decode(errors="ignore")}")
+        logger.debug(f"Data received {self._peer}: {data.decode(errors='ignore')}")
 
         if self._timeout_monitor:
             self._timeout_monitor.reset()
@@ -147,16 +146,10 @@ class XMLProtocol(asyncio.Protocol):
         """
         Called when the stream is not responding for a long time
         """
-        logger.info(f"Connection timeout {self._logger_tag} {self._peer}")
+        if not self._transport:
+            return
 
-        try:
+        logger.info(f"Connection timeout {self._logger_tag} {self._peer}")
+        if not self._transport.is_closing():
             self._transport.write("<connection-timeout/>".encode())
             self._transport.close()
-        except:
-            logger.warning(f"Connection {self._logger_tag} {self._peer} is already closed. Removing from online list")
-
-        self._connection_manager.disconnection(self._peer)
-
-        self._transport = None
-        self._xml_parser = None
-        self._timeout_flag = True

@@ -1,5 +1,8 @@
 import pytest
-from pyjabber.utils.ClarkNotation import deglose, clarkFromTuple, isClark
+
+from pyjabber.utils.ClarkNotation import clarkFromTuple, deglose, isClark
+
+
 def test_deglose():
     assert deglose("{namespace}tag") == ("namespace", "tag")
     assert deglose("{http://example.com}element") == ("http://example.com", "element")

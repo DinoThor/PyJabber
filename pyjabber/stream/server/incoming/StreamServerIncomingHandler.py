@@ -1,7 +1,6 @@
-from pyjabber.features.SASL import SASL
 from pyjabber.features.SASL.Mechanism import MECHANISM
 from pyjabber.stream.Signal import Signal
-from pyjabber.stream.StreamHandler import StreamHandler, Stage
+from pyjabber.stream.StreamHandler import Stage, StreamHandler
 
 
 class StreamServerIncomingHandler(StreamHandler):

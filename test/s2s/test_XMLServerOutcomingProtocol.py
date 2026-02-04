@@ -1,9 +1,14 @@
-import pytest
-from unittest.mock import MagicMock, patch
 import asyncio
 import ssl
-from pyjabber.network.server.outgoing.XMLServerOutcomingProtocol import XMLServerOutcomingProtocol
+from unittest.mock import MagicMock, patch
+
+import pytest
+from pyjabber.network.server.outgoing.XMLServerOutcomingProtocol import (
+    XMLServerOutcomingProtocol,
+)
+
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
+
 
 @pytest.fixture
 def setup_protocol():

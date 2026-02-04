@@ -4,12 +4,11 @@ import os
 import sqlalchemy
 from alembic import command
 from alembic.config import Config
+from loguru import logger
 from sqlalchemy import StaticPool, event
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
 from pyjabber import metadata
-from loguru import logger
-
 from pyjabber.db.model import Model
 
 

@@ -1,6 +1,5 @@
-import unittest
-from xml.etree import ElementTree as ET
 from pyjabber.stanzas.Message import Message
+
 
 def test_message_creation():
     mto = "user@domain.com"

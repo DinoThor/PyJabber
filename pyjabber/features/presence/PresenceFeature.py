@@ -1,16 +1,15 @@
 import asyncio
 import xml.etree.ElementTree as ET
-from enum import Enum
-from typing import Any, Dict, Tuple, List, Union
+from typing import List, Tuple, Union
 from uuid import uuid4
 from xml.etree.ElementTree import Element
 
-from sqlalchemy import select, delete
+from sqlalchemy import delete, select
 
 from pyjabber import metadata
 from pyjabber.db.database import DB
 from pyjabber.db.model import Model
-from pyjabber.features.presence.Enums import PresenceType, PresenceShow
+from pyjabber.features.presence.Enums import PresenceShow, PresenceType
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.stanzas.IQ import IQ

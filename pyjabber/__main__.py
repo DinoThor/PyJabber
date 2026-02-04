@@ -2,6 +2,7 @@ import logging
 import os
 import socket
 import sys
+
 import click
 
 from pyjabber.server_parameters import Parameters
@@ -12,6 +13,7 @@ else:
     from winloop import run
 
 from loguru import logger
+
 from pyjabber.server import Server
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))

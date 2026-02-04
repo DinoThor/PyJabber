@@ -1,10 +1,9 @@
 from typing import Tuple
 from uuid import uuid4
+from xml.etree import ElementTree as ET
 
 from pyjabber import metadata
 from pyjabber.stanzas.IQ import IQ
-
-from xml.etree import ElementTree as ET
 
 
 def success_response(element: ET.Element, owner: bool = False) -> Tuple[IQ, ET.Element]:

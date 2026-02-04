@@ -1,10 +1,11 @@
-import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 from xml.etree import ElementTree as ET
 
-from pyjabber.utils import ClarkNotation as CN
-from pyjabber.stream.StreamHandler import Signal
+import pytest
+
 from pyjabber.network.parsers.XMLParser import XMLParser
+from pyjabber.stream.StreamHandler import Signal
+from pyjabber.utils import ClarkNotation as CN
 
 
 @pytest.fixture

@@ -1,15 +1,14 @@
+import xml.etree.ElementTree as ET
 from unittest.mock import MagicMock, patch
 from xml.etree.ElementTree import Element
-import xml.etree.ElementTree as ET
-import pickle
 
 import pytest
 
-from pyjabber.stream.server.incoming.StanzaServerIncomingHandler import StanzaServerIncomingHandler
 from pyjabber.features.presence.PresenceFeature import PresenceType
 from pyjabber.stream.JID import JID
-from pyjabber.stanzas.error import StanzaError as SE
-from pyjabber.stream.StanzaHandler import StanzaHandler, InternalServerError
+from pyjabber.stream.server.incoming.StanzaServerIncomingHandler import (
+    StanzaServerIncomingHandler,
+)
 
 
 @pytest.fixture(scope='function')

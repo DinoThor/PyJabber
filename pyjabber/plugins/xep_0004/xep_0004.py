@@ -1,11 +1,10 @@
 from enum import Enum
 from typing import List
-
 from xml.etree import ElementTree as ET
 
 from pyjabber.plugins.xep_0004.field import FieldRequest, FieldResponse, FieldTypes
-from pyjabber.utils import ClarkNotation as CN
 from pyjabber.stanzas.error import StanzaError as SE
+from pyjabber.utils import ClarkNotation as CN
 
 
 class MissingDataForms(Exception):

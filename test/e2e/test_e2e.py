@@ -1,15 +1,13 @@
 import asyncio
-import pytest
 import ssl
+
+import pytest
 from slixmpp import ClientXMPP
 from slixmpp.exceptions import IqError
-from unittest.mock import patch
-from xml.etree import ElementTree as ET
 
+from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.server import Server
 from pyjabber.server_parameters import Parameters
-from pyjabber.features.presence.PresenceFeature import Presence
-from pyjabber.stream.StanzaHandler import StanzaHandler
 
 
 class DummyClient(ClientXMPP):

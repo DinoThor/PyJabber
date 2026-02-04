@@ -69,12 +69,12 @@ class UploadHttpServer:
             and self._slots[slot_id][SlotIndex.CONTENT_LENGTH]
             and content_length != self._slots[slot_id][SlotIndex.CONTENT_LENGTH]
         ):
-            return web.Response(text=f'Invalid content-length', status=400)
+            return web.Response(text='Invalid content-length', status=400)
         if (content_type
             and self._slots[slot_id][SlotIndex.CONTENT_TYPE]
             and content_type != self._slots[slot_id][SlotIndex.CONTENT_TYPE]
         ):
-            return web.Response(text=f'Invalid file type', status=400)
+            return web.Response(text='Invalid file type', status=400)
 
         save_path = os.path.join(TEMP_DIR, slot_id, file_name)
 

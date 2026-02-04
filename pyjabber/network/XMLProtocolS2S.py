@@ -2,11 +2,11 @@ from xml import sax
 
 from loguru import logger
 
-from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
-from pyjabber.network.XMLProtocol import XMLProtocol
 from pyjabber import metadata
 from pyjabber.network.parsers.XMLServerIncomingParser import XMLServerIncomingParser
+from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.utils.TransportProxy import TransportProxy
+from pyjabber.network.XMLProtocol import XMLProtocol
 
 
 class XMLProtocolS2S(XMLProtocol):
@@ -66,23 +66,3 @@ class XMLProtocolS2S(XMLProtocol):
         self._timeout_monitor.cancel()
 
         self._connection_manager.disconnection_server(self._peer)
-
-    def connection_timeout(self):
-        """
-        Called when the stream is not responding for a long time
-        """
-        logger.info(f"Connection timeout {self._peer}")
-
-        try:
-            self._transport.write("<connection-timeout/>".encode())
-            self._transport.close()
-        except:
-            logger.warning(
-                f"Connection {self._logger_tag} {self._peer} is already closed. Removing from online list"
-            )
-
-        self._connection_manager.disconnection_server(self._peer)
-
-        self._transport = None
-        self._xml_parser = None
-        self._timeout_flag = True

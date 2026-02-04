@@ -3,19 +3,17 @@ import base64
 import binascii
 import hashlib
 import hmac
-
-import bcrypt
-
 from typing import Union
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
+import bcrypt
 from loguru import logger
 from sqlalchemy import insert, select
 
 from pyjabber import metadata
-from pyjabber.db.model import Model
 from pyjabber.db.database import DB
+from pyjabber.db.model import Model
 from pyjabber.features.SASL.Mechanism import MECHANISM
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stanzas.error import StanzaError as SE

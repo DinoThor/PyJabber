@@ -1,18 +1,18 @@
-import xml.etree.ElementTree as ET
 import re
+import xml.etree.ElementTree as ET
 from typing import Dict
 
 from pyjabber import metadata
+
+# Plugins
+from pyjabber.plugins.roster.Roster import Roster
+from pyjabber.plugins.xep_0030.xep_0030 import Disco
+from pyjabber.plugins.xep_0060.xep_0060 import PubSub
+from pyjabber.plugins.xep_0199.xep_0199 import Ping
 from pyjabber.plugins.xep_0363.xep_0363 import HTTPFieldUpload
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stream.JID import JID
 from pyjabber.utils import ClarkNotation as CN
-
-# Plugins
-from pyjabber.plugins.roster.Roster import Roster
-from pyjabber.plugins.xep_0199.xep_0199 import Ping
-from pyjabber.plugins.xep_0030.xep_0030 import Disco
-from pyjabber.plugins.xep_0060.xep_0060 import PubSub
 
 
 class PluginManager:

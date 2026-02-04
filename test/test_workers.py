@@ -1,14 +1,12 @@
 import asyncio
 import os.path
-import ssl
-from ssl import SSLContext
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from pyjabber.network.XMLProtocol import TransportProxy
 from pyjabber.stream.JID import JID
-from pyjabber.workers import tls_worker, queue_worker
+from pyjabber.workers import queue_worker, tls_worker
 
 
 @pytest.mark.asyncio

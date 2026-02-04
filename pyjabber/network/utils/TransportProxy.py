@@ -1,5 +1,6 @@
 from loguru import logger
 
+
 class TransportProxy:
     __slots__ = ('_transport', '_peer', '_server')
 

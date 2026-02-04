@@ -1,8 +1,8 @@
 import asyncio
 import ssl
+from concurrent.futures import ProcessPoolExecutor
 from socket import AddressFamily
 from typing import List
-from concurrent.futures import ProcessPoolExecutor
 
 HOST = None
 IP = None

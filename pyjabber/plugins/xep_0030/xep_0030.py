@@ -1,11 +1,11 @@
-from typing import Dict, Callable
+from typing import Callable, Dict
 from xml.etree import ElementTree as ET
 
 from pyjabber import metadata
 from pyjabber.plugins.xep_0004.field import FieldRequest, FieldTypes
-from pyjabber.plugins.xep_0030.utils import iq_skeleton, server_items, server_info
-from pyjabber.plugins.xep_0060.xep_0060 import PubSub, NodeAttrib
-from pyjabber.plugins.xep_0004.xep_0004 import generate_form, FormType
+from pyjabber.plugins.xep_0004.xep_0004 import FormType, generate_form
+from pyjabber.plugins.xep_0030.utils import iq_skeleton, server_info, server_items
+from pyjabber.plugins.xep_0060.xep_0060 import NodeAttrib, PubSub
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stream.JID import JID
 from pyjabber.utils import Singleton

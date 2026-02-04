@@ -1,12 +1,16 @@
 import os
+from unittest.mock import MagicMock, mock_open, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, mock_open
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
-from pyjabber.network.CertGenerator import check_hostname_cert_exists, \
-    generate_hostname_cert
+
+from pyjabber.network.CertGenerator import (
+    check_hostname_cert_exists,
+    generate_hostname_cert,
+)
 
 CERTS_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../pyjabber/network/certs'))
 

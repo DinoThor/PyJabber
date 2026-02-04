@@ -3,10 +3,11 @@ from uuid import uuid4
 
 from pyjabber import metadata
 from pyjabber.plugins.xep_0363.upload_server import UploadHttpServer
+from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
 from pyjabber.utils import Singleton
-from pyjabber.stanzas.error import StanzaError as SE
+
 
 class HTTPFieldUpload(metaclass=Singleton):
     __slots__ = ('_host', '_max_size', '_http_app_instance')

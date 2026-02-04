@@ -1,7 +1,7 @@
 import re
-from typing import List, Optional
 from asyncio import Transport
-from typing import Dict, Union, Tuple
+from typing import Dict, List, Optional, Tuple, Union
+
 from loguru import logger
 
 from pyjabber.network.utils.TransportProxy import TransportProxy
@@ -92,7 +92,7 @@ class ConnectionManager(metaclass=Singleton):
             _, buffer, _ = self._peerList.pop(peer)
             buffer.write('</stream:stream>'.encode())
             self.disconnection(peer)
-        except KeyError as e:
+        except KeyError:
             logger.error(f"{peer} not present in the online list")
 
     def get_buffer(self, jid: JID) -> List[Tuple[JID, Transport, bool]]:
@@ -239,7 +239,7 @@ class ConnectionManager(metaclass=Singleton):
             _, buffer = self._remoteList.pop(peer)
             buffer.write('</stream:stream>'.encode())
             self.disconnection_server(peer)
-        except KeyError as e:
+        except KeyError:
             logger.error(f"{peer} not present in the online list")
 
     def get_server_buffer(self, peer: Optional[Tuple[str, int]] = None, host: Optional[str] = None) -> Union[

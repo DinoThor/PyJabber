@@ -3,10 +3,12 @@ from xml.etree import ElementTree as ET
 
 from pyjabber import metadata
 from pyjabber.network.parsers.XMLParser import XMLParser
-from pyjabber.stream import Stream
-from pyjabber.stream.StreamHandler import Signal
 from pyjabber.stanzas.error import StanzaError as SE
-from pyjabber.stream.server.outgoing.StreamServerOutgoingHandler import StreamServerOutgoingHandler
+from pyjabber.stream import Stream
+from pyjabber.stream.server.outgoing.StreamServerOutgoingHandler import (
+    StreamServerOutgoingHandler,
+)
+from pyjabber.stream.StreamHandler import Signal
 from pyjabber.utils import ClarkNotation as CN
 
 

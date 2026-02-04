@@ -2,9 +2,8 @@ import json
 import os
 import pickle
 import socket
-from dataclasses import dataclass, replace, field
-
-from typing import List, Dict
+from dataclasses import dataclass, field, replace
+from typing import Dict, List
 
 
 @dataclass(frozen=True)

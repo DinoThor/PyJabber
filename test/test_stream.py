@@ -1,5 +1,5 @@
-import pytest
 from xml.etree.ElementTree import Element
+
 from pyjabber.stream.Stream import Stream
 
 

@@ -1,5 +1,7 @@
 from xml.etree import ElementTree as ET
+
 from pyjabber import metadata
+
 """
 <stanza-kind from='intended-recipient' to='sender' type='error'>
     [OPTIONAL to include sender XML here]
@@ -76,7 +78,7 @@ def internal_server_error() -> bytes: # pragma: no cover
             xmlns='urn:ietf:params:xml:ns:xmpp-streams'/>
     </stream:error>
     """
-    return f"<stream:error><internal-server-error xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error>".encode()
+    return "<stream:error><internal-server-error xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error>".encode()
 
 def item_not_found() -> bytes: # pragma: no cover
     """

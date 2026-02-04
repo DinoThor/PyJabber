@@ -7,20 +7,19 @@ from concurrent.futures.process import ProcessPoolExecutor
 
 from loguru import logger
 
+from pyjabber import metadata
 from pyjabber.db.database import DB
 from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.http_server import HttpServer
 from pyjabber.network import CertGenerator
 from pyjabber.network.XMLProtocol import XMLProtocol
 from pyjabber.network.XMLProtocolS2S import XMLProtocolS2S
-from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.plugins.xep_0060.xep_0060 import PubSub
 from pyjabber.plugins.xep_0363.upload_server import UploadHttpServer
 from pyjabber.plugins.xep_0363.xep_0363 import HTTPFieldUpload
 from pyjabber.server_parameters import Parameters
-from pyjabber.utils.ServerUtils import setup_query_local_ip, setup_ip_by_host
+from pyjabber.utils.ServerUtils import setup_ip_by_host, setup_query_local_ip
 from pyjabber.webpage.adminPage import api_adminpage_app
-from pyjabber import metadata
 from pyjabber.workers import queue_worker, s2s_outgoing_connection_worker
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))

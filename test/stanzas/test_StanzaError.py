@@ -1,9 +1,10 @@
+import xml.etree.ElementTree as ET
 from unittest.mock import patch
 
 import pytest
-import xml.etree.ElementTree as ET
 
 from pyjabber.stanzas.error.StanzaError import (
+    XMLNS,
     bad_request,
     conflict_error,
     feature_not_implemented,
@@ -12,7 +13,6 @@ from pyjabber.stanzas.error.StanzaError import (
     not_acceptable,
     not_authorized_sasl,
     service_unavaliable,
-    XMLNS
 )
 
 

@@ -1,6 +1,10 @@
-import pytest
 from unittest.mock import MagicMock, patch
-from pyjabber.network.server.incoming.XMLServerIncomingProtocol import XMLServerIncomingProtocol
+
+import pytest
+from pyjabber.network.server.incoming.XMLServerIncomingProtocol import (
+    XMLServerIncomingProtocol,
+)
+
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 
 

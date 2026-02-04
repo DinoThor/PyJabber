@@ -1,16 +1,12 @@
 import asyncio
-import os
-import ssl
 from typing import Dict, List
-
-from loguru import logger
 
 from pyjabber import metadata
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.utils.Enums import ServerConnectionType as SCT
-from pyjabber.network.XMLProtocol import TransportProxy, XMLProtocol
+from pyjabber.network.XMLProtocol import XMLProtocol
 from pyjabber.stream.JID import JID
-from pyjabber.stream import Stream
+
 
 async def queue_worker():
     """

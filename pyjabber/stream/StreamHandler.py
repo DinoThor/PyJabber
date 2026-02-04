@@ -3,23 +3,27 @@ from typing import Union
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
-from pyjabber.features.Features import start_tls_feature, start_tls_proceed_response, SASL_feature, \
-    in_band_registration_feature, resource_binding_feature
+from loguru import logger
+
+from pyjabber import metadata
+from pyjabber.features.Features import (
+    SASL_feature,
+    in_band_registration_feature,
+    resource_binding_feature,
+    start_tls_feature,
+    start_tls_proceed_response,
+)
 from pyjabber.features.SASL.SASL import SASL
 from pyjabber.features.StreamFeature import StreamFeature
 from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber import metadata
-from pyjabber.utils import Exceptions as EX
 from pyjabber.network.utils.TransportProxy import TransportProxy
-from pyjabber.stanzas.IQ import IQ
 from pyjabber.stanzas.error import StanzaError as SE
-from pyjabber.stream.Stage import Stage
+from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.Signal import Signal
-
-from loguru import logger
-
+from pyjabber.stream.Stage import Stage
 from pyjabber.stream.StanzaHandler import InternalServerError
 from pyjabber.stream.Stream import Stream
+from pyjabber.utils import Exceptions as EX
 from pyjabber.utils.Exceptions import NotAuthorizerStreamNegotiationException
 
 
@@ -105,7 +109,7 @@ class StreamHandler:
                 self._transport.resume_reading()
                 return Signal.RESET
 
-            except ConnectionResetError as e:
+            except ConnectionResetError:
                 logger.error(f"Error during TLS upgrade with <{self._peer}>")
                 self._connection_manager.close(self._peer)
                 return Signal.FORCE_CLOSE

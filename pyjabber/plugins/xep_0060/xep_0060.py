@@ -1,25 +1,29 @@
 from asyncio import Transport
 from itertools import chain
-from typing import List, Tuple, Optional, Union
+from typing import List, Optional, Tuple
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
 from loguru import logger
-from sqlalchemy import select, insert, delete, update, and_
+from sqlalchemy import and_, delete, insert, select, update
 
 from pyjabber import metadata
 from pyjabber.db.database import DB
 from pyjabber.db.model import Model
 from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber.plugins.xep_0060.enum import NodeAttrib, SubscribersAttrib, Subscription, Affiliation
-from pyjabber.plugins.xep_0060.error import ErrorType
-from pyjabber.plugins.xep_0060.error import error_response
+from pyjabber.plugins.xep_0060.enum import (
+    Affiliation,
+    NodeAttrib,
+    SubscribersAttrib,
+    Subscription,
+)
+from pyjabber.plugins.xep_0060.error import ErrorType, error_response
 from pyjabber.plugins.xep_0060.utils import success_response
-from pyjabber.stanzas.IQ import IQ
-from pyjabber.stanzas.Message import Message
 from pyjabber.stanzas.error import StanzaError
+from pyjabber.stanzas.Message import Message
 from pyjabber.stream.JID import JID
-from pyjabber.utils import Singleton, ClarkNotation as CN
+from pyjabber.utils import ClarkNotation as CN
+from pyjabber.utils import Singleton
 
 
 class PubSub(metaclass=Singleton):

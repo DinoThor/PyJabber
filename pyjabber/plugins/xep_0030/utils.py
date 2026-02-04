@@ -1,8 +1,8 @@
 from typing import Literal
+from xml.etree import ElementTree as ET
 
 from pyjabber import metadata
 from pyjabber.stanzas.IQ import IQ
-from xml.etree import ElementTree as ET
 
 
 def iq_skeleton(element: ET.Element, disco_type: Literal['info', 'items']):

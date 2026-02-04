@@ -1,7 +1,7 @@
 # https://sabre.io/xml/clark-notation/
 import re
-from xml.etree.ElementTree import Element
 from typing import Tuple
+from xml.etree.ElementTree import Element
 
 
 def deglose(tag: str):

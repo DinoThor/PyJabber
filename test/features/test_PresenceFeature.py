@@ -1,15 +1,13 @@
 import os
+import xml.etree.ElementTree as ET
+from unittest.mock import MagicMock, patch
 
 import pytest
-from unittest.mock import patch, MagicMock
-import xml.etree.ElementTree as ET
-
-from sqlalchemy import create_engine, MetaData, Table, Column, String
+from sqlalchemy import create_engine
 
 from pyjabber.db.model import Model
 from pyjabber.features.presence.PresenceFeature import Presence, PresenceType
 from pyjabber.stream.JID import JID
-from test import Model_test
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 

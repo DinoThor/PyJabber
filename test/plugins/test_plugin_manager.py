@@ -1,9 +1,9 @@
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from xml.etree.ElementTree import Element, SubElement
+
+import pytest
+
 from pyjabber.plugins.PluginManager import PluginManager
-from pyjabber.plugins.roster.Roster import Roster
-from pyjabber.plugins.xep_0199.xep_0199 import Ping
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stream.JID import JID
 

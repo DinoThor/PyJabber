@@ -1,15 +1,14 @@
+import base64
 from sqlite3 import Connection
+from unittest.mock import patch
+from xml.etree import ElementTree as ET
 
 import bcrypt
 import pytest
-import base64
-from xml.etree import ElementTree as ET
-from unittest.mock import patch
-
+from pyjabber.features.SASLFeature import MECHANISM, SASL, SASLFeature, Signal
 from sqlalchemy import create_engine, insert
 
 from pyjabber.db.model import Model
-from pyjabber.features.SASLFeature import SASL, SASLFeature, Signal, MECHANISM
 from pyjabber.stanzas.error import StanzaError as SE
 
 

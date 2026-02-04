@@ -1,8 +1,9 @@
 import asyncio
+from xml.etree import ElementTree as ET
 
 from pyjabber.stream.StanzaHandler import StanzaHandler
-from pyjabber.stream.StreamHandler import StreamHandler, Signal
-from xml.etree import ElementTree as ET
+from pyjabber.stream.StreamHandler import Signal, StreamHandler
+
 
 class ClientHandle:
     def __init__(self, transport, protocol, parser):

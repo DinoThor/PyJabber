@@ -1,10 +1,10 @@
-import pytest
-from unittest.mock import MagicMock, patch
-from pyjabber.network.ConnectionManager import ConnectionManager
 from asyncio import Transport
+from unittest.mock import MagicMock, patch
 
+import pytest
 from loguru import logger
 
+from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stream.JID import JID
 
 

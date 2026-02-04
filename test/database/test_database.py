@@ -1,7 +1,6 @@
 import os
 import shutil
-from sqlite3 import Connection
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import MagicMock, call, patch
 
 from sqlalchemy import create_engine
 
@@ -99,7 +98,7 @@ def test_setup_database_new_file():
 def test_migration():
     expected_calls = [
         call("script_location", os.path.join("..", '..', 'alembic_local')),
-        call("sqlalchemy.url", f"sqlite:///absolute_path"),
+        call("sqlalchemy.url", "sqlite:///absolute_path"),
     ]
 
     with patch('pyjabber.db.database.Config') as mock_config, \

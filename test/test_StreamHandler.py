@@ -1,12 +1,13 @@
-import pytest
-from unittest.mock import Mock, MagicMock, patch
-from xml.etree import ElementTree as ET
 from base64 import b64encode
 from hashlib import sha256
+from unittest.mock import MagicMock, Mock, patch
+from xml.etree import ElementTree as ET
+
+import pytest
 
 from pyjabber.stream.JID import JID
+from pyjabber.stream.StreamHandler import Signal, Stage, StreamHandler
 from pyjabber.utils import ClarkNotation as CN
-from pyjabber.stream.StreamHandler import Stage, Signal, StreamHandler
 
 
 @pytest.fixture
@@ -86,7 +87,6 @@ def test_handle_open_stream_ssl(setup):
     assert handler._stage == Stage.SASL
     handler._transport.write.assert_called_once()
 
-from pyjabber.features.SASLFeature import SASL, SASLFeature
 
 
 def test_handle_open_stream_sasl_continue(setup):

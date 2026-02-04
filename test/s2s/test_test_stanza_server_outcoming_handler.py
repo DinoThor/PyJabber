@@ -1,6 +1,7 @@
-import pytest
-from unittest.mock import Mock, MagicMock
 import xml.etree.ElementTree as ET
+from unittest.mock import MagicMock, Mock
+
+import pytest
 
 # Ensure this path is correct
 from pyjabber.stanzas.error import StanzaError as SE

@@ -1,8 +1,8 @@
 from xml.etree import ElementTree as ET
 
+from pyjabber import metadata
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
-from pyjabber import metadata
 
 
 class Ping:

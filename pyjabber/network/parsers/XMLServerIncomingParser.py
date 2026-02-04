@@ -1,6 +1,10 @@
 from pyjabber.network.parsers.XMLParser import XMLParser
-from pyjabber.stream.server.incoming.StanzaServerIncomingHandler import StanzaServerIncomingHandler
-from pyjabber.stream.server.incoming.StreamServerIncomingHandler import StreamServerIncomingHandler
+from pyjabber.stream.server.incoming.StanzaServerIncomingHandler import (
+    StanzaServerIncomingHandler,
+)
+from pyjabber.stream.server.incoming.StreamServerIncomingHandler import (
+    StreamServerIncomingHandler,
+)
 
 
 class XMLServerIncomingParser(XMLParser):
