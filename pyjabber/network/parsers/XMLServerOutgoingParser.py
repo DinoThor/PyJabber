@@ -1,7 +1,7 @@
 import asyncio
 from xml.etree import ElementTree as ET
 
-from pyjabber import metadata
+from pyjabber.AppConfig import AppConfig
 from pyjabber.network.parsers.XMLParser import XMLParser
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stream import Stream
@@ -65,7 +65,7 @@ class XMLServerOutgoingParser(XMLParser):
 
     def initial_stream(self):
         initial_stream = Stream.Stream(
-            from_=metadata.HOST,
+            from_=AppConfig.host,
             to=self._remote_host,
             xmlns=Stream.Namespaces.SERVER.value
         )

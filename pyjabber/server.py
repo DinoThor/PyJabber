@@ -7,7 +7,7 @@ from concurrent.futures.process import ProcessPoolExecutor
 
 from loguru import logger
 
-from pyjabber import metadata
+from pyjabber.AppConfig import AppConfig
 from pyjabber.db.database import DB
 from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.http_server import HttpServer
@@ -23,7 +23,7 @@ from pyjabber.webpage.adminPage import api_adminpage_app
 from pyjabber.workers import queue_worker, s2s_outgoing_connection_worker
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
-
+app_config = Optional[AppConfig] = None
 
 class Server:
     """Server class
@@ -65,7 +65,13 @@ class Server:
         )
 
         # Global constants to use across the server modules/classes
-        metadata.init_config(
+        global app_config
+
+        if app_config is not None:
+            raise RuntimeError("App configuration already initialized")
+
+
+        AppConfig(
             host=param.host,
             ip=[self._host_ip, self._public_ip],
             ssl_context=ssl_context,
@@ -80,7 +86,7 @@ class Server:
             cert_path=cert_path,
             root_path=SERVER_FILE_PATH,
             message_persistence=param.message_persistence or False,
-            semaphone=asyncio.Semaphore(multiprocessing.cpu_count()),
+            semaphore=asyncio.Semaphore(multiprocessing.cpu_count()),
             process_pool_exe=ProcessPoolExecutor(multiprocessing.cpu_count()),
             verbose=param.verbose,
             plugins=param.plugins,

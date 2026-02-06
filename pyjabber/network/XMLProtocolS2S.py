@@ -2,7 +2,7 @@ from xml import sax
 
 from loguru import logger
 
-from pyjabber import metadata
+from pyjabber.AppConfig import AppConfig
 from pyjabber.network.parsers.XMLServerIncomingParser import XMLServerIncomingParser
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.utils.TransportProxy import TransportProxy
@@ -25,7 +25,7 @@ class XMLProtocolS2S(XMLProtocol):
             self._peer = transport.get_extra_info('peername')
             logger.info(f"Connection {self._logger_tag} {self._peer}")
 
-            if metadata.VERBOSE:
+            if AppConfig.verbose:
                 self._transport = TransportProxy(transport, self._peer)
             else:
                 self._transport = transport

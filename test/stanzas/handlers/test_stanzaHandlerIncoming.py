@@ -23,7 +23,7 @@ def setup():
          patch('pyjabber.stream.StanzaHandler.logger') as mock_logger: \
 
         MockConnectionsManager.get_jid.return_value = 'user@localhost'
-        mock_metadata.HOST = 'localhost'
+        mock_AppConfig.host = 'localhost'
 
         handler = StanzaServerIncomingHandler(mock_buffer)
         handler._functions = {

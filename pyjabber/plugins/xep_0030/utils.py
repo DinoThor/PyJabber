@@ -1,7 +1,7 @@
 from typing import Literal
 from xml.etree import ElementTree as ET
 
-from pyjabber import metadata
+from pyjabber.AppConfig import AppConfig
 from pyjabber.stanzas.IQ import IQ
 
 
@@ -24,7 +24,7 @@ def server_info(element: ET.Element):
         '{http://jabber.org/protocol/disco#info}identity',
         attrib={'category': 'server', 'type': 'im', 'name': 'PyJabber Server'})
 
-    for feature in metadata.PLUGINS:
+    for feature in AppConfig.plugins:
         ET.SubElement(
             query,
             '{http://jabber.org/protocol/disco#info}feature',
@@ -41,8 +41,8 @@ def server_items(element: ET.Element):
         '{http://jabber.org/protocol/disco#items}identity',
         attrib={'category': 'server', 'type': 'im', 'name': 'PyJabber Server'})
 
-    for key, info in metadata.ITEMS.items():
-        jid = key.replace('$', metadata.HOST) if '$' in key else key
+    for key, info in AppConfig.items.items():
+        jid = key.replace('$', AppConfig.host) if '$' in key else key
         ET.SubElement(
             query,
             '{http://jabber.org/protocol/disco#items}item',

@@ -11,7 +11,7 @@ import bcrypt
 from loguru import logger
 from sqlalchemy import insert, select
 
-from pyjabber import metadata
+from pyjabber.AppConfig import AppConfig
 from pyjabber.db.database import DB
 from pyjabber.db.model import Model
 from pyjabber.features.SASL.Mechanism import MECHANISM
@@ -48,6 +48,7 @@ class SASL:
 
         self._semaphore = metadata.SEMAPHORE
         self._pool_executor = metadata.PROCESS_POOL_EXE
+        self._semaphore = AppConfig.semaphore
 
     async def feed(self, element: ET.Element) -> Union[Stage, None]:
         _, tag = CN.deglose(element.tag)
@@ -60,7 +61,7 @@ class SASL:
             attrib={
                 "type": "result",
                 "id": iq_id or str(uuid4()),
-                "from": metadata.HOST})
+                "from": AppConfig.host})
         return ET.tostring(iq)
 
     async def handle_IQ(self, element: ET.Element) -> None:
@@ -141,7 +142,7 @@ class SASL:
                 provided_password=pwd
             )
             if authorized:
-                self._connection_manager.set_jid(self._peer, JID(user=jid, domain=metadata.HOST))
+                self._connection_manager.set_jid(self._peer, JID(user=jid, domain=AppConfig.host))
                 self._transport.write(b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")
                 self._parser.reset_stack()
                 self._transport.resume_reading()
@@ -187,7 +188,7 @@ class SASL:
         hashed_pwd = await self._hash_scram_async(
             password=password,
             iterations=100000,
-            salt=bcrypt.gensalt(rounds=8) if metadata.DATABASE_IN_MEMORY else bcrypt.gensalt()
+            salt=bcrypt.gensalt(rounds=8) if AppConfig.database_in_memory else bcrypt.gensalt()
         )
 
         async with await DB.connection_async() as con:

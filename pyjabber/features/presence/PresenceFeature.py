@@ -6,7 +6,7 @@ from xml.etree.ElementTree import Element
 
 from sqlalchemy import delete, select
 
-from pyjabber import metadata
+from pyjabber.AppConfig import AppConfig
 from pyjabber.db.database import DB
 from pyjabber.db.model import Model
 from pyjabber.features.presence.Enums import PresenceShow, PresenceType
@@ -55,7 +55,7 @@ class Presence(metaclass=Singleton):
         async with await DB.connection_async() as con:
             query = delete(Model.PendingSubs).where(Model.PendingSubs.c.jid == jid)
             await con.execute(query)
-            if not metadata.DATABASE_IN_MEMORY:
+            if not AppConfig.database_in_memory:
                 await con.commit()
 
         self._pending[jid].pop()
@@ -102,7 +102,7 @@ class Presence(metaclass=Singleton):
             contact_jid = item.attrib.get("jid")
 
             if len(contact_jid.split("@")) < 2:
-                contact_jid = JID(contact_jid + f"@{metadata.HOST}")
+                contact_jid = JID(contact_jid + f"@{AppConfig.host}")
             else:
                 contact_jid = JID(contact_jid)
 
@@ -174,7 +174,7 @@ class Presence(metaclass=Singleton):
             contact_jid = item.attrib.get("jid")
 
             if len(contact_jid.split("@")) < 2:
-                contact_jid = JID(contact_jid + f"@{metadata.HOST}")
+                contact_jid = JID(contact_jid + f"@{AppConfig.host}")
             else:
                 contact_jid = JID(contact_jid)
 
@@ -227,7 +227,7 @@ class Presence(metaclass=Singleton):
             element.attrib["from"] = str(jid)
 
         # Handle local presence. Receiver client connected to the server
-        if to.domain == metadata.HOST:
+        if to.domain == AppConfig.host:
             roster = self._roster.roster_by_jid(jid)
 
             item = [item for item in roster
@@ -291,7 +291,7 @@ class Presence(metaclass=Singleton):
             element.attrib["from"] = str(jid)
 
         # Handle local presence. Receiver client connected to the server
-        if to.domain == metadata.HOST:
+        if to.domain == AppConfig.host:
             roster_sender = self._roster.roster_by_jid(to)
             roster_receiver = self._roster.roster_by_jid(jid)
 
@@ -328,7 +328,7 @@ class Presence(metaclass=Singleton):
                     new_item_sender.attrib["subscription"] = "to"
                     self._roster.update_item(new_item_sender, item_id)
 
-                    new_item_sender.attrib['jid'] = new_item_sender.attrib['jid'] + f"@{metadata.HOST}"
+                    new_item_sender.attrib['jid'] = new_item_sender.attrib['jid'] + f"@{AppConfig.host}"
                     roster_push_sender = new_item_sender
 
                 elif et_item_sender.attrib.get("subscription") == "from":
@@ -339,7 +339,7 @@ class Presence(metaclass=Singleton):
                     new_item_sender.attrib["subscription"] = "both"
                     self._roster.update_item(new_item_sender, item_id)
 
-                    new_item_sender.attrib['jid'] = new_item_sender.attrib['jid'] + f"@{metadata.HOST}"
+                    new_item_sender.attrib['jid'] = new_item_sender.attrib['jid'] + f"@{AppConfig.host}"
                     roster_push_sender = new_item_sender
 
                 else:
@@ -355,7 +355,7 @@ class Presence(metaclass=Singleton):
                     new_item_receiver.attrib["subscription"] = "from"
                     self._roster.update_item(new_item_receiver, item_id)
 
-                    new_item_receiver.attrib['jid'] = new_item_receiver.attrib['jid'] + f"@{metadata.HOST}"
+                    new_item_receiver.attrib['jid'] = new_item_receiver.attrib['jid'] + f"@{AppConfig.host}"
                     roster_push_receiver = new_item_receiver
 
                 elif et_item_receiver.attrib["subscription"] == "to":
@@ -363,7 +363,7 @@ class Presence(metaclass=Singleton):
                     new_item_receiver.attrib["subscription"] = "both"
                     self._roster.update_item(new_item_receiver, item_id)
 
-                    new_item_receiver.attrib['jid'] = new_item_receiver.attrib['jid'] + f"@{metadata.HOST}"
+                    new_item_receiver.attrib['jid'] = new_item_receiver.attrib['jid'] + f"@{AppConfig.host}"
                     roster_push_receiver = new_item_receiver
 
                 else:
@@ -406,7 +406,7 @@ class Presence(metaclass=Singleton):
             element.attrib["from"] = str(jid)
 
         # Handle locally
-        if to.domain == metadata.HOST:
+        if to.domain == AppConfig.host:
             roster = self._roster.roster_by_jid(jid)
             item = [item for item in roster
                     if ET.fromstring(item.get("item")).attrib.get("jid") in [to.bare(), to.user]]
@@ -456,7 +456,7 @@ class Presence(metaclass=Singleton):
         for item in roster:
             to = ET.fromstring(item[-1]).attrib.get('jid')
 
-            if to.split("@")[1] == metadata.HOST:
+            if to.split("@")[1] == AppConfig.host:
                 presence = element.__copy__()
                 presence.attrib["to"] = to
 

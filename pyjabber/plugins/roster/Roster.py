@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 
 from sqlalchemy import and_, delete, insert, select, update
 
-from pyjabber import metadata
+from pyjabber.AppConfig import AppConfig
 from pyjabber.db.database import DB
 from pyjabber.db.model import Model
 from pyjabber.stanzas.error import StanzaError as SE
@@ -42,7 +42,7 @@ class Roster:
         return await self._handlers[element.attrib.get("type")](jid, element)
 
     def handle_get(self, jid: JID, element: ET.Element):
-        if jid.domain == metadata.HOST:
+        if jid.domain == AppConfig.host:
             jid = jid.user
         else:
             jid = jid.bare()
@@ -62,7 +62,7 @@ class Roster:
         if query is None:
             return SE.invalid_xml()
 
-        jid = jid.user if jid.domain == metadata.HOST else jid.bare()
+        jid = jid.user if jid.domain == AppConfig.host else jid.bare()
         new_item = query.findall("{jabber:iq:roster}item")
 
         if len(new_item) != 1:
@@ -84,7 +84,7 @@ class Roster:
                             )
                         )
                         await con.execute(query)
-                        if not metadata.DATABASE_IN_MEMORY:
+                        if not AppConfig.database_in_memory:
                             await con.commit()
 
                 else:  # UPDATE FIELDS OF ENTRY
@@ -96,7 +96,7 @@ class Roster:
                             )
                         ).values({"roster_item": ET.tostring(new_item).decode()})
                         await con.execute(query)
-                        if not metadata.DATABASE_IN_MEMORY:
+                        if not AppConfig.database_in_memory:
                             await con.commit()
 
             else:  # CREATE NEW ENTRY
@@ -107,7 +107,7 @@ class Roster:
                             "roster_item": ET.tostring(new_item).decode()
                         })
                         await con.execute(query)
-                        if not metadata.DATABASE_IN_MEMORY:
+                        if not AppConfig.database_in_memory:
                             await con.commit()
 
         else:
@@ -117,7 +117,7 @@ class Roster:
                     "roster_item": ET.tostring(new_item).decode()
                 })
                 await con.execute(query)
-                if not metadata.DATABASE_IN_MEMORY:
+                if not AppConfig.database_in_memory:
                     await con.commit()
 
         await self._update_roster()
@@ -137,7 +137,7 @@ class Roster:
             type_=IQ.TYPE.SET
         )
         query = ET.SubElement(iq, "{jabber:iq:roster}query")
-        if to.domain == metadata.HOST:
+        if to.domain == AppConfig.host:
             ET.SubElement(query, "{jabber:iq:roster}item", attrib={"jid": to.user, "subscription": "none"})
         else:
             ET.SubElement(query, "{jabber:iq:roster}item", attrib={"jid": to.bare(), "subscription": "none"})
@@ -152,7 +152,7 @@ class Roster:
                 "item":  ET.tostring(item).decode()
             })
             await con.execute(query)
-            if not metadata.DATABASE_IN_MEMORY:
+            if not AppConfig.database_in_memory:
                 await con.commit()
 
     async def update_item(self, item: ET.Element, id_: int):
@@ -161,7 +161,7 @@ class Roster:
                 "roster_item": ET.tostring(item).decode()
             })
             await con.execute(query)
-            if not metadata.DATABASE_IN_MEMORY:
+            if not AppConfig.database_in_memory:
                 await con.commit()
 
         await self._update_roster()
@@ -183,6 +183,6 @@ class Roster:
             self._roster_in_memory[jid].append({"id": id_, "item": item})
 
     def roster_by_jid(self, jid: JID):
-        if jid.domain == metadata.HOST:
+        if jid.domain == AppConfig.host:
             return self._roster_in_memory.get(jid.user) or []
         return self._roster_in_memory.get(jid.bare()) or []

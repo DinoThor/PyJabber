@@ -6,7 +6,7 @@ from xml.etree.ElementTree import Element
 
 from loguru import logger
 
-from pyjabber import metadata
+from pyjabber.AppConfig import AppConfig
 from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.parsers.XMLParser import XMLParser
@@ -69,7 +69,7 @@ class XMLProtocol(asyncio.Protocol):
             self._peer = transport.get_extra_info('peername')
             logger.info(f"Connection from <{self._peer}>")
 
-            if metadata.VERBOSE:
+            if AppConfig.verbose:
                 self._transport = TransportProxy(transport, self._peer)
             else:
                 self._transport = transport

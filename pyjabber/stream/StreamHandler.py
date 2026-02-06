@@ -5,7 +5,7 @@ from xml.etree import ElementTree as ET
 
 from loguru import logger
 
-from pyjabber import metadata
+from pyjabber.AppConfig import AppConfig
 from pyjabber.features.Features import (
     SASL_feature,
     in_band_registration_feature,
@@ -29,19 +29,19 @@ from pyjabber.utils.Exceptions import NotAuthorizerStreamNegotiationException
 
 class StreamHandler:
     def __init__(self, transport, protocol, parser) -> None:
-        self._host = metadata.HOST
+        self._host = AppConfig.host
 
         self._transport = transport
         self._peer = transport.get_extra_info("peername")
         self._protocol = protocol
         self._parser = parser
-        self._ssl_context = metadata.SSL_CONTEXT
+        self._ssl_context = AppConfig.ssl_context
 
         self._streamFeature = StreamFeature()
         self._connection_manager: ConnectionManager = ConnectionManager()
         self._stage = Stage.CONNECTED
 
-        self._ibr_feature = 'jabber:iq:register' in metadata.PLUGINS
+        self._ibr_feature = 'jabber:iq:register' in AppConfig.plugins
 
         self._sasl = None
 

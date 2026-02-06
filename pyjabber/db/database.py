@@ -8,7 +8,7 @@ from loguru import logger
 from sqlalchemy import StaticPool, event
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
-from pyjabber import metadata
+from pyjabber.AppConfig import AppConfig
 from pyjabber.db.model import Model
 
 
@@ -46,19 +46,19 @@ class DB:
         read via the metadata class
         :return: SQLAlchemy Engine
         """
-        if not metadata.DATABASE_DEBUG:
+        if not AppConfig.database_debug:
             logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
             logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
             logging.getLogger("sqlite3").setLevel(logging.WARNING)
             logging.getLogger("aiosqlite").setLevel(logging.WARNING)
 
-        if metadata.DATABASE_IN_MEMORY:
+        if AppConfig.database_in_memory:
             logger.info("Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!")
             DB._engine = create_async_engine(
                 url="sqlite+aiosqlite:///:memory:",
                 isolation_level="AUTOCOMMIT",
                 poolclass=StaticPool,
-                echo=metadata.DATABASE_DEBUG
+                echo=AppConfig.database_debug
             )
 
             @event.listens_for(DB._engine.sync_engine, "connect")
@@ -71,17 +71,17 @@ class DB:
             await DB._init_metadata(DB._engine)
             return DB._engine
 
-        if os.path.isfile(metadata.DATABASE_PATH):
+        if os.path.isfile(AppConfig.database_path):
             DB._engine = create_async_engine(
                 url="sqlite+aiosqlite:///tickets.db",
-                echo=metadata.DATABASE_DEBUG
+                echo=AppConfig.database_debug
             )
 
         else:
             logger.info("No database found. Initializing one...")
             DB._engine = create_async_engine(
-                f"sqlite+aiosqlite:///{metadata.DATABASE_PATH}",
-                echo=metadata.DATABASE_DEBUG
+                f"sqlite+aiosqlite:///{AppConfig.database_path}",
+                echo=AppConfig.database_debug
             )
 
         @event.listens_for(DB._engine.sync_engine, "connect")
@@ -106,6 +106,6 @@ class DB:
     @staticmethod
     def run_db_migrations() -> None:
         cfg = Config()
-        cfg.set_main_option("script_location", os.path.join(metadata.ROOT_PATH, '..', 'alembic_local'))
-        cfg.set_main_option("sqlalchemy.url", f"sqlite:///{metadata.DATABASE_PATH}")
+        cfg.set_main_option("script_location", os.path.join(AppConfig.root_path, '..', 'alembic_local'))
+        cfg.set_main_option("sqlalchemy.url", f"sqlite:///{AppConfig.database_path}")
         command.upgrade(cfg, "head")

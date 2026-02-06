@@ -2,7 +2,7 @@ import re
 import xml.etree.ElementTree as ET
 from typing import Dict
 
-from pyjabber import metadata
+from pyjabber.AppConfig import AppConfig
 
 # Plugins
 from pyjabber.plugins.roster.Roster import Roster
@@ -27,9 +27,9 @@ class PluginManager:
             'urn:xmpp:http:upload:0': HTTPFieldUpload()
         }
 
-        if any(p.startswith('http://jabber.org/protocol/disco') for p in metadata.PLUGINS):
+        if any(p.startswith('http://jabber.org/protocol/disco') for p in AppConfig.plugins):
             self._plugins['http://jabber.org/protocol/disco*'] = Disco()
-        if any(p.startswith('http://jabber.org/protocol/pubsub') for p in metadata.PLUGINS):
+        if any(p.startswith('http://jabber.org/protocol/pubsub') for p in AppConfig.plugins):
             self._plugins['http://jabber.org/protocol/pubsub*'] = PubSub()
 
     async def feed(self, element: ET.Element):
