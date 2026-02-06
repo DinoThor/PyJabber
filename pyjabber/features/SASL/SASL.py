@@ -19,7 +19,7 @@ from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
-from pyjabber.stream.Stage import Stage
+from pyjabber.stream.utils.Enums import Stage
 from pyjabber.utils import ClarkNotation as CN
 from pyjabber.utils.Exceptions import BadRequestException, InternalServerError
 
@@ -46,9 +46,8 @@ class SASL:
 
         self._loop = asyncio.get_running_loop()
 
-        self._semaphore = metadata.SEMAPHORE
-        self._pool_executor = metadata.PROCESS_POOL_EXE
         self._semaphore = AppConfig.semaphore
+        self._pool_executor = AppConfig.process_pool_exe
 
     async def feed(self, element: ET.Element) -> Union[Stage, None]:
         _, tag = CN.deglose(element.tag)

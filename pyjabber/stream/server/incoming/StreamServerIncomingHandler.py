@@ -1,5 +1,5 @@
 from pyjabber.features.SASL.Mechanism import MECHANISM
-from pyjabber.stream.Signal import Signal
+from pyjabber.stream.utils.Enums import Signal
 from pyjabber.stream.StreamHandler import Stage, StreamHandler
 
 

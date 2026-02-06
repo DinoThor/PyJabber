@@ -19,8 +19,7 @@ from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.utils.TransportProxy import TransportProxy
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
-from pyjabber.stream.Signal import Signal
-from pyjabber.stream.Stage import Stage
+from pyjabber.stream.utils.Enums import Stage, Signal
 from pyjabber.stream.StanzaHandler import InternalServerError
 from pyjabber.stream.Stream import Stream
 from pyjabber.utils import Exceptions as EX

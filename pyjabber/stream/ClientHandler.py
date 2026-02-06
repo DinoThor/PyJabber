@@ -2,7 +2,8 @@ import asyncio
 from xml.etree import ElementTree as ET
 
 from pyjabber.stream.StanzaHandler import StanzaHandler
-from pyjabber.stream.StreamHandler import Signal, StreamHandler
+from pyjabber.stream.StreamHandler import StreamHandler
+from pyjabber.stream.utils.Enums import Signal
 
 
 class ClientHandle:
