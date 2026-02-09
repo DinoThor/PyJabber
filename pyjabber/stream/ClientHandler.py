@@ -41,7 +41,8 @@ class ClientHandle:
                 else:
                     res = await self._stream_handler.handle_open_stream(element)
                     if res == Signal.DONE:
-                        self._stanza_handler = None
+                        self._stanza_handler = StanzaHandler(self._transport)
+                        self._stream_handler = None
                         self._stream_ready = True
 
         except asyncio.CancelledError:
