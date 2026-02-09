@@ -16,11 +16,19 @@ class ClientHandle:
 
         self._queue = asyncio.Queue()
 
-        self._stream_handler = StreamHandler(transport, protocol, parser)
-        self._stanza_handler = StanzaHandler(transport)
+        self._stream_handler = StreamHandler(transport, protocol, parser, self)
+        self._stanza_handler = None
 
     def put(self, element: ET.Element):
         self._queue.put_nowait(element)
+
+    @property
+    def transport(self):
+        return self._transport
+
+    @transport.setter
+    def transport(self, transport):
+        self._transport = transport
 
     async def feed(self):
         try:

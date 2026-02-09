@@ -27,14 +27,15 @@ from pyjabber.utils.Exceptions import NotAuthorizerStreamNegotiationException
 
 
 class StreamHandler:
-    def __init__(self, transport, protocol, parser) -> None:
-        self._host = AppConfig.host
+    def __init__(self, transport, protocol, parser, client_handler) -> None:
+        self._host = AppConfig.app_config.host
 
         self._transport = transport
         self._peer = transport.get_extra_info("peername")
         self._protocol = protocol
         self._parser = parser
-        self._ssl_context = AppConfig.ssl_context
+        self._client_handler = client_handler
+        self._ssl_context = AppConfig.app_config.ssl_context
 
         self._streamFeature = StreamFeature()
         self._connection_manager: ConnectionManager = ConnectionManager()
@@ -100,6 +101,7 @@ class StreamHandler:
                 self._transport = new_transport
                 self._protocol.transport = new_transport
                 self._parser.transport = new_transport
+                self._client_handler.transport = new_transport
                 self._connection_manager.update_buffer(new_transport=new_transport, peer=self._peer)
 
                 logger.debug(f"Done TLS for <{self._peer}>")
