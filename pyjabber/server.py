@@ -52,7 +52,7 @@ class Server:
         cert_path = param.cert_path or os.path.join(SERVER_FILE_PATH, "network", "certs")
         try:
             if not CertGenerator.check_hostname_cert_exists(param.host, cert_path):
-                CertGenerator.generate_hostname_cert(param.host, param.cert_path)
+                CertGenerator.generate_hostname_cert(param.host, cert_path)
         except FileNotFoundError as e:
             logger.error(f"{e.__class__.__name__}: Pass an existing directory in your system to load the certs. "
                          f"Closing protocols")
