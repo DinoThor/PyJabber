@@ -15,7 +15,7 @@ def check_hostname_cert_exists(host: str, cert_path: str):
         os.chdir(cert_path)
 
         res = True
-        for file in [f"{host}_key.pem", f"{host}_csr.pem", f"{host}_cert.pem"]:
+        for file in [f"{host}_key.pem", f"{host}_cert.pem"]:
             if not os.path.isfile(file):
                 logger.debug("Missing hostname certificate")
                 res = False
