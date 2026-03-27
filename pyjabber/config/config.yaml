@@ -1,0 +1,62 @@
+connection:
+    host: localhost
+    client_port: 5222
+    server_port: 5269
+    family: ipv4
+    timeout: 60
+
+modules:
+      - http://jabber.org/protocol/disco#info
+      - http://jabber.org/protocol/disco#items
+      - http://jabber.org/protocol/pubsub
+      - http://jabber.org/protocol/pubsub#publish
+      - http://jabber.org/protocol/pubsub#subscribe
+      - http://jabber.org/protocol/pubsub#config-node
+      - http://jabber.org/protocol/pubsub#create-nodes
+      - http://jabber.org/protocol/pubsub#delete-nodes
+      - jabber:iq:register
+      - jabber:x:data
+      - urn:xmpp:ping
+      - jabber:iq:rpc
+      - urn:xmpp:http:upload:0
+
+items:
+    pubsub.$:
+        name: Pubsub Service
+        category: pubsub
+        type: service
+        var: http://jabber.org/protocol/pubsub
+        # extra: --
+    upload.$:
+        name: HTTP File Upload
+        category: store
+        type: file,
+        var: urn:xmpp:http:upload:0
+        extra:
+            max-size: 5242880
+
+database:
+#    database_path: /path/to/database
+
+logs:
+#    Possible values: [INFO, DEBUG, TRACE]
+    verbosity: INFO
+#    output_path: /path/to/file
+
+flags:
+#    Creates a database in memory, and uses it instead of the database_path.
+#    It’s volatile, so any data will be lost after the shutdown of the server
+#
+#    - database_in_memory
+#
+#    Deletes the content of the database file
+#
+#    - database_purge
+#
+#    Enables message persistence.
+#    If a client sends a message to an offline client, the server will keep it
+#    and forward it when the client connects.
+#    It will keep the message in between server execution
+
+#    - message_persistence
+#    - asyncio_debug
