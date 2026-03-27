@@ -38,7 +38,7 @@ class InterceptHandler(logging.Handler):
         logger.opt(depth=depth, exception=record.exc_info).log(lvl, record.getMessage())
 
 
-def load_config(path="./pyjabber/config/config.yaml"):
+def load_config(path=os.path.join(FILE_PATH, "config/config.yaml")):
     try:
         with open(path, 'r') as f:
             raw_config = yaml.safe_load(f) or {}
