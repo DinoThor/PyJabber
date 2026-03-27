@@ -16,9 +16,9 @@ def SASL_feature(mechanism_list: Optional[List[MECHANISM]]=None):
     if mechanism_list is None:
         mechanism_list = [MECHANISM.PLAIN]
 
-    element = ET.Element("{http://jabber.org/features/sasl}SASL")
+    element = ET.Element("{urn:ietf:params:xml:ns:xmpp-sasl}mechanisms")
     for m in mechanism_list:
-        mechanism = ET.SubElement(element, "mechanism")
+        mechanism = ET.SubElement(element, "{urn:ietf:params:xml:ns:xmpp-sasl}mechanism")
         mechanism.text = m.value
 
     return element

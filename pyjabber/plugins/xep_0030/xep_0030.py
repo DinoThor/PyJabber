@@ -1,7 +1,7 @@
 from typing import Callable, Dict
 from xml.etree import ElementTree as ET
 
-from pyjabber.AppConfig import AppConfig
+from pyjabber import AppConfig
 from pyjabber.plugins.xep_0004.field import FieldRequest, FieldTypes
 from pyjabber.plugins.xep_0004.xep_0004 import FormType, generate_form
 from pyjabber.plugins.xep_0030.utils import iq_skeleton, server_info, server_items
@@ -19,17 +19,17 @@ class Disco(metaclass=Singleton):
             "info": self.handle_info,
             "items": self.handle_items
         }
-        self._config_path: str = AppConfig.config_path
+        self._config_path: str = AppConfig.app_config.config_path
 
-        if 'http://jabber.org/protocol/pubsub' in AppConfig.plugins:
-            self._pubsub_jid = next((s for s in AppConfig.items if 'pubsub' in s), None)
-            self._pubsub_jid = self._pubsub_jid.replace('$', AppConfig.host)
+        if 'http://jabber.org/protocol/pubsub' in AppConfig.app_config.plugins:
+            self._pubsub_jid = next((s for s in AppConfig.app_config.items if 'pubsub' in s), None)
+            self._pubsub_jid = self._pubsub_jid.replace('$', AppConfig.app_config.host)
             self._pubsub = PubSub()
 
-        if 'urn:xmpp:http:upload:0' in AppConfig.plugins:
-            self._0363_jid = next((s for s in AppConfig.items if 'upload' in s), None)
-            self._0363_max_size = AppConfig.items[self._0363_jid]["extra"]["max-size"]
-            self._0363_jid = self._0363_jid.replace('$', AppConfig.host)
+        if 'urn:xmpp:http:upload:0' in AppConfig.app_config.plugins:
+            self._0363_jid = next((s for s in AppConfig.app_config.items if 'upload' in s), None)
+            self._0363_max_size = AppConfig.app_config.items[self._0363_jid]["extra"]["max-size"]
+            self._0363_jid = self._0363_jid.replace('$', AppConfig.app_config.host)
 
 
     async def feed(self, jid: JID, element: ET.Element):

@@ -1,7 +1,7 @@
 from enum import Enum
 from xml.etree import ElementTree as ET
 
-from pyjabber.AppConfig import AppConfig
+from pyjabber import AppConfig
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
 
@@ -23,7 +23,7 @@ class ErrorType(Enum):
 
 
 def error_response(element: ET.Element, jid: JID, error: ErrorType):
-    iq_res = IQ(type_=IQ.TYPE.ERROR, from_=AppConfig.host, to=str(jid), id_=element.attrib.get('id'))
+    iq_res = IQ(type_=IQ.TYPE.ERROR, from_=AppConfig.app_config.host, to=str(jid), id_=element.attrib.get('id'))
     auth_error = ET.fromstring(error.value)
     iq_res.append(auth_error)
     return ET.tostring(iq_res)

@@ -32,14 +32,14 @@ class RPC:
         if not to:
             return SE.invalid_xml()
 
-        buffer = self._connections.get_buffer(JID(to))
+        buffer = self._connections.get_transport(JID(to))
         for b in buffer:
-            b[1].write(ET.tostring(element))
+            b.transport.write(ET.tostring(element))
         return None
 
     @staticmethod
     def validate_res_stanza(element: ET.Element):
-        ns, tag = CN.deglose(element[0].tag)
+        ns, tag = CN.break_down(element[0].tag)
         if tag != 'query' or ns != 'jabber:iq:rpc':
             return "Malformed response"
 
@@ -58,7 +58,7 @@ class RPC:
 
     @staticmethod
     def validate_set_stanza(element: ET.Element):
-        ns, tag = CN.deglose(element[0].tag)
+        ns, tag = CN.break_down(element[0].tag)
         if tag != 'query' or ns != 'jabber:iq:rpc':
             return "Malformed response"
 

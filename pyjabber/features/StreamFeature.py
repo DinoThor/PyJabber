@@ -11,7 +11,7 @@ class NonUniqueFeature(Exception):
 
 class StreamFeature(ET.Element):
     """
-    Class to manage server features
+    Class to manage protocols features
     """
     def __init__(
         self,

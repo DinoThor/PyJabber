@@ -34,7 +34,7 @@ def parse_form(element: ET.Element):
         Supposing element is an IQ stanza, it should be in a second-level child
         """
         forms = element[0][0]
-        ns, tag = CN.deglose(forms.tag)
+        ns, tag = CN.break_down(forms.tag)
         if tag != 'x' or ns != 'jabber:x:data':
             raise MissingDataForms
         data = forms
@@ -44,7 +44,7 @@ def parse_form(element: ET.Element):
         """
         try:
             forms = element[0]
-            ns, tag = CN.deglose(forms.tag)
+            ns, tag = CN.break_down(forms.tag)
             if tag != 'x' or ns != 'jabber:x:data':
                 raise MissingDataForms
             data = forms

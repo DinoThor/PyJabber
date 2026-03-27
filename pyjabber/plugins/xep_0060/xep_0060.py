@@ -7,7 +7,7 @@ from xml.etree import ElementTree as ET
 from loguru import logger
 from sqlalchemy import and_, delete, insert, select, update
 
-from pyjabber.AppConfig import AppConfig
+from pyjabber import AppConfig
 from pyjabber.db.database import DB
 from pyjabber.db.model import Model
 from pyjabber.network.ConnectionManager import ConnectionManager
@@ -36,11 +36,11 @@ class PubSub(metaclass=Singleton):
 
         pubsub_item = next(
             ((key, item) for key, item
-             in AppConfig.items.items()
+             in AppConfig.app_config.items.items()
              if 'pubsub' in key), None
         )
 
-        self._jid = pubsub_item[0].replace('$', AppConfig.host)
+        self._jid = pubsub_item[0].replace('$', AppConfig.app_config.host)
         self._category = pubsub_item[1]['category']
         self._var = pubsub_item[1]['var']
 
@@ -72,12 +72,12 @@ class PubSub(metaclass=Singleton):
 
     async def feed(self, jid: JID, element: ET.Element):
         try:
-            _, tag = CN.deglose(element[0].tag)
+            _, tag = CN.break_down(element[0].tag)
 
             if tag != 'pubsub':
                 return StanzaError.invalid_xml()
 
-            _, operation = CN.deglose(element[0][0].tag)
+            _, operation = CN.break_down(element[0][0].tag)
             return self._operations[operation](element, jid)
         except KeyError as e:
             logger.error(f"Pubsub operation not supported: {e}")
@@ -137,7 +137,7 @@ class PubSub(metaclass=Singleton):
         async with await DB.connection_async() as con:
             query = insert(Model.Pubsub).values(item)
             await con.execute(query)
-            if not AppConfig.database_in_memory:
+            if not AppConfig.app_config.database_in_memory:
                 await con.commit()
 
         self.update_memory_from_database()
@@ -169,12 +169,12 @@ class PubSub(metaclass=Singleton):
         async with await DB.connection_async() as con:
             query = delete(Model.Pubsub).where(Model.Pubsub.c.node == del_node)
             await con.execute(query)
-            if not AppConfig.database_in_memory:
+            if not AppConfig.app_config.database_in_memory:
                 await con.commit()
 
             query = delete(Model.PubsubItems).where(Model.PubsubItems.c.node == del_node)
             await con.execute(query)
-            if not AppConfig.database_in_memory:
+            if not AppConfig.app_config.database_in_memory:
                 await con.commit()
 
         self.update_memory_from_database()
@@ -291,7 +291,7 @@ class PubSub(metaclass=Singleton):
         async with await DB.connection_async() as con:
             query = insert(Model.PubsubSubscribers).values(item)
             await con.execute(query)
-            if not AppConfig.database_in_memory:
+            if not AppConfig.app_config.database_in_memory:
                 await con.commit()
 
         self.update_memory_from_database()
@@ -365,7 +365,7 @@ class PubSub(metaclass=Singleton):
 
         async with await DB.connection_async() as con:
             await con.execute(query)
-            if not AppConfig.database_in_memory:
+            if not AppConfig.app_config.database_in_memory:
                 await con.commit()
 
         self.update_memory_from_database()
@@ -451,7 +451,7 @@ class PubSub(metaclass=Singleton):
         async with await DB.connection_async() as con:
             query = delete(Model.PubsubItems).where(Model.PubsubItems.c.node == node)
             await con.execute(query)
-            if not AppConfig.database_in_memory:
+            if not AppConfig.app_config.database_in_memory:
                 await con.commit()
 
         iq_res, _ = success_response(element, True)
@@ -491,7 +491,7 @@ class PubSub(metaclass=Singleton):
                 )
             )
             await con.execute(query)
-            if not AppConfig.database_in_memory:
+            if not AppConfig.app_config.database_in_memory:
                 await con.commit()
 
         iq_res, pubsub_iq = success_response(element)
@@ -557,7 +557,7 @@ class PubSub(metaclass=Singleton):
                         })
 
                     await con.execute(query)
-                    if not AppConfig.database_in_memory:
+                    if not AppConfig.app_config.database_in_memory:
                         await con.commit()
 
                 else:
@@ -569,7 +569,7 @@ class PubSub(metaclass=Singleton):
                         "payload": ET.tostring(payload)
                     })
                     await con.execute(query)
-                    if not AppConfig.database_in_memory:
+                    if not AppConfig.app_config.database_in_memory:
                         await con.commit()
 
         self.send_notification(node=target_node[0][NodeAttrib.NODE.value], payload=payload)
@@ -586,7 +586,7 @@ class PubSub(metaclass=Singleton):
                      and s[SubscribersAttrib.AFFILIATION.value] in [Affiliation.MEMBER, Affiliation.PUBLISHER, Affiliation.OWNER]]
 
         receivers_jid = [r[1] for r in receivers]
-        receivers_buffer = [self._connections.get_buffer(JID(user=r, domain=AppConfig.host)) for r in receivers_jid]
+        receivers_buffer = [self._connections.get_transport(JID(user=r, domain=AppConfig.app_config.host)) for r in receivers_jid]
         receivers_buffer_single_iterator: List[Tuple[JID, Transport]] = list(chain.from_iterable(receivers_buffer))
 
         event = ET.Element('event', attrib={'xmlns': 'http://jabber.org/protocol/pubsub#event'})
@@ -607,7 +607,7 @@ class PubSub(metaclass=Singleton):
         for jid, buffer, _ in receivers_buffer_single_iterator:
             message = Message(
                 mto=jid.bare(),
-                mfrom=AppConfig.host,
+                mfrom=AppConfig.app_config.host,
                 id=str(uuid4()),
                 mtype=None,
                 body=event

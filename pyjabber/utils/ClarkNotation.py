@@ -4,7 +4,7 @@ from typing import Tuple
 from xml.etree.ElementTree import Element
 
 
-def deglose(tag: str):
+def break_down(tag: str):
     """
     Return the namespace and tag separated in a 2-tuple
     :return: (namespace, tag)
@@ -14,7 +14,7 @@ def deglose(tag: str):
     return namespace, tag
 
 
-def clarkFromTuple(tuple: Tuple[str, str]):
+def clark_from_tuple(tuple: Tuple[str, str]):
     """
     Generate a clark notaion from a tuple in the format (namespace, tag).
     It's also possible to pass a tuple form of only a tag element (tag)
@@ -24,13 +24,13 @@ def clarkFromTuple(tuple: Tuple[str, str]):
     return f"{{{tuple[0]}}}{tuple[1]}"
 
 def update_namespace(ns: str, element: Element):
-    _, tag = deglose(element.tag)
+    _, tag = break_down(element.tag)
     element.tag = f'{{{ns}}}{tag}'
 
     for child in element:
         update_namespace(ns, child)
 
-def isClark(tag: str) -> bool:
+def is_clark(tag: str) -> bool:
     """
     Regex to check if a string is in the clark notation format
     """

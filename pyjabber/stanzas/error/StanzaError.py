@@ -1,6 +1,6 @@
 from xml.etree import ElementTree as ET
 
-from pyjabber.AppConfig import AppConfig
+from pyjabber import AppConfig
 
 """
 <stanza-kind from='intended-recipient' to='sender' type='error'>
@@ -35,7 +35,7 @@ def conflict_error(id: str) -> bytes:
         attrib={
             "id": id,
             "type": "error",
-            "from": AppConfig.host})
+            "from": AppConfig.app_config.host})
     error = ET.SubElement(iq, "error", attrib={"type": "cancel"})
     ET.SubElement(
         error, "conflict", attrib={
@@ -74,11 +74,11 @@ def invalid_xml() -> bytes: # pragma: no cover
 def internal_server_error() -> bytes: # pragma: no cover
     """
     <stream:error>
-        <internal-server-error
+        <internal-protocols-error
             xmlns='urn:ietf:params:xml:ns:xmpp-streams'/>
     </stream:error>
     """
-    return "<stream:error><internal-server-error xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error>".encode()
+    return "<stream:error><internal-protocols-error xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error>".encode()
 
 def item_not_found() -> bytes: # pragma: no cover
     """

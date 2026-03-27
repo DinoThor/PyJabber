@@ -27,7 +27,7 @@ class StreamAlivenessMonitor:
 
     def reset(self):
         """
-            Reset the timer. Called always after received a message from the client/server
+            Reset the timer. Called always after received a message from the client/protocols
         """
         if self._timeout_task is not None:
             self._reset_event.set()

@@ -2,10 +2,11 @@ import re
 import xml.etree.ElementTree as ET
 from typing import Dict
 
-from pyjabber.AppConfig import AppConfig
+from pyjabber import AppConfig
 
 # Plugins
 from pyjabber.plugins.roster.Roster import Roster
+from pyjabber.plugins.xep_0009.xep_0009 import RPC
 from pyjabber.plugins.xep_0030.xep_0030 import Disco
 from pyjabber.plugins.xep_0060.xep_0060 import PubSub
 from pyjabber.plugins.xep_0199.xep_0199 import Ping
@@ -24,12 +25,13 @@ class PluginManager:
         self._plugins: Dict[str, object] = {
             'jabber:iq:roster': Roster(),
             'urn:xmpp:ping': Ping,
-            'urn:xmpp:http:upload:0': HTTPFieldUpload()
+            'urn:xmpp:http:upload:0': HTTPFieldUpload(),
+            'jabber:iq:rpc': RPC()
         }
 
-        if any(p.startswith('http://jabber.org/protocol/disco') for p in AppConfig.plugins):
+        if any(p.startswith('http://jabber.org/protocol/disco') for p in AppConfig.app_config.plugins):
             self._plugins['http://jabber.org/protocol/disco*'] = Disco()
-        if any(p.startswith('http://jabber.org/protocol/pubsub') for p in AppConfig.plugins):
+        if any(p.startswith('http://jabber.org/protocol/pubsub') for p in AppConfig.app_config.plugins):
             self._plugins['http://jabber.org/protocol/pubsub*'] = PubSub()
 
     async def feed(self, element: ET.Element):
@@ -41,7 +43,7 @@ class PluginManager:
             else:
                 return SE.bad_request()
 
-        ns, tag = CN.deglose(child.tag)
+        ns, tag = CN.break_down(child.tag)
 
         try:
             ns = list(filter(lambda regex: re.search(regex, ns), list(self._plugins.keys())))[-1]

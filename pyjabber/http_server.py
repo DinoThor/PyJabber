@@ -6,7 +6,7 @@ from aiohttp import web
 from aiohttp.web_app import Application
 from loguru import logger
 
-from pyjabber.AppConfig import AppConfig
+from pyjabber import AppConfig
 from pyjabber.webpage.adminPage import get_index, get_static
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -27,17 +27,17 @@ class HttpServer:
     async def start(self):
         runner = web.AppRunner(self._mainApp)
         await runner.setup()
-        site = web.TCPSite(runner, AppConfig.host, 9090)
+        site = web.TCPSite(runner, AppConfig.app_config.host, 9090)
         try:
             await site.start()
         except OSError as e:
             logger.error(e)
             return
 
-        logger.info(f"Serving admin webpage on http://{AppConfig.host}:9090")
+        logger.info(f"Serving admin webpage on http://{AppConfig.app_config.host}:9090")
         try:
             while True:
-                await asyncio.sleep(3600)  # Keep alive the server
+                await asyncio.sleep(3600)  # Keep alive the protocols
         except asyncio.CancelledError:
             await runner.cleanup()
 

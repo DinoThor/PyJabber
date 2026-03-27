@@ -4,24 +4,24 @@ import binascii
 import hashlib
 import hmac
 from typing import Union
-from uuid import uuid4
 from xml.etree import ElementTree as ET
 
 import bcrypt
 from loguru import logger
 from sqlalchemy import insert, select
 
-from pyjabber.AppConfig import AppConfig
+from pyjabber import AppConfig
 from pyjabber.db.database import DB
 from pyjabber.db.model import Model
 from pyjabber.features.SASL.Mechanism import MECHANISM
+from pyjabber.features.SASL.utils import validate_cert, iq_register_result, not_authorized_response, success_response
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
 from pyjabber.stream.utils.Enums import Stage
 from pyjabber.utils import ClarkNotation as CN
-from pyjabber.utils.Exceptions import BadRequestException, InternalServerError
+from pyjabber.utils.Exceptions import BadRequestException, InternalServerError, NotAuthorizerStreamNegotiationException
 
 
 class SASL:
@@ -29,41 +29,33 @@ class SASL:
         SASL Class.
 
         An instance of this class will manage the authentication from new connections,
-        during the stream negotiation process.
+        during the stream negotiators process.
     """
+    __slots__ = ("_transport", "_parser", "_peer", "_from_claim", "_connection_manager",
+                 "_loop", "_semaphore", "_pool_executor", "_handlers")
+
     def __init__(self, transport, parser, peer, from_claim = None):
-        self._handlers = {
-            "iq": self.handle_IQ,
-            "auth": self.handle_auth
-        }
-        self._connection_manager = ConnectionManager()
-        self._peer = peer
-
-        self._from_claim = from_claim
-
         self._transport = transport
         self._parser = parser
+        self._peer = peer
+        self._from_claim = from_claim
 
+        self._connection_manager = ConnectionManager()
         self._loop = asyncio.get_running_loop()
 
-        self._semaphore = AppConfig.semaphore
-        self._pool_executor = AppConfig.process_pool_exe
+        self._semaphore = AppConfig.app_config.semaphore
+        self._pool_executor = AppConfig.app_config.process_pool_exe
+
+        self._handlers = {
+            "iq": self.handle_iq,
+            "auth": self.handle_auth
+        }
 
     async def feed(self, element: ET.Element) -> Union[Stage, None]:
-        _, tag = CN.deglose(element.tag)
+        _, tag = CN.break_down(element.tag)
         return await self._handlers[tag](element)
 
-    @staticmethod
-    def iq_register_result(iq_id: str) -> bytes:
-        iq = ET.Element(
-            "iq",
-            attrib={
-                "type": "result",
-                "id": iq_id or str(uuid4()),
-                "from": AppConfig.host})
-        return ET.tostring(iq)
-
-    async def handle_IQ(self, element: ET.Element) -> None:
+    async def handle_iq(self, element: ET.Element) -> None:
         query = element.find("{jabber:iq:register}query")
         if query is None:
             raise BadRequestException()
@@ -89,7 +81,7 @@ class SASL:
             else:
                 pwd = query.find("{jabber:iq:register}password").text
                 await self._store_hash_task(pwd, new_jid)
-                self._transport.write(self.iq_register_result(element.attrib["id"]))
+                self._transport.write(iq_register_result(element.attrib["id"]))
 
         elif element.attrib.get("type") == IQ.TYPE.GET.value:
             iq = IQ(
@@ -106,23 +98,28 @@ class SASL:
     async def handle_auth(self, element: ET.Element) -> Union[Stage, None]:
         mechanism = element.attrib.get("mechanism")
 
-        if mechanism == MECHANISM.EXTERNAL.value:
+        if mechanism == MECHANISM.EXTERNAL.value:   # S2S SASL process
             if not self._from_claim:
                 raise BadRequestException()
 
-            cert = self._connection_manager.get_connection_certificate_server(self._peer)
+            cert = self._connection_manager.get_connection_ssl_certificate(self._peer)
             if not cert:
-                logger.error(f"Error retrieving TLS cert from {self._peer}. Closing connection for server safety")
-                raise InternalServerError()
+                logger.error(f"Error retrieving TLS cert from {self._peer}")
+                self._transport.write(not_authorized_response())
+                return
 
-            if not self.validate_cert(self._from_claim, cert):
-                logger.error(f"Host claim cannot be verified with presented cert. Verify host used on stream or cert: {self._peer}")
-                raise InternalServerError()
+            if not validate_cert(self._from_claim, cert):
+                logger.error(
+                    f"Host claim cannot be verified with presented cert. Verify host used on stream or cert: {self._peer}"
+                )
+                self._transport.write(not_authorized_response())
+                return
 
-            self._transport.write(b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")
+            self._transport.write(success_response())
             self._parser.reset_stack()
+            return Stage.AUTH
 
-        try:
+        try:    # C2S SASL process
             data = base64.b64decode(element.text).split("\x00".encode())
             jid = data[1].decode()
             pwd = data[2].decode()
@@ -141,8 +138,8 @@ class SASL:
                 provided_password=pwd
             )
             if authorized:
-                self._connection_manager.set_jid(self._peer, JID(user=jid, domain=AppConfig.host))
-                self._transport.write(b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")
+                self._connection_manager.set_jid(self._peer, JID(user=jid, domain=AppConfig.app_config.host))
+                self._transport.write(success_response())
                 self._parser.reset_stack()
                 self._transport.resume_reading()
                 return Stage.AUTH
@@ -155,24 +152,6 @@ class SASL:
             self._transport.write(SE.not_authorized_sasl())
 
     ###############################################################################################
-
-    @staticmethod
-    def validate_cert(from_claim, cert):
-        peer_cert = cert.getpeercert()
-        cert_names = []
-
-        subject = peer_cert.get("subject", [])
-        for attr in subject:
-            for (key, value) in attr:
-                if key == "commonName":
-                    cert_names.append(value)
-
-        for typ, value in peer_cert.get("subjectAltName", []):
-            if typ == "DNS":
-                cert_names.append(value)
-
-        return from_claim in cert_names
-
     async def _store_hash_task(self, password: str, jid_str: str):
         """Handles the full user registration process by hashing the password and storing credentials.
 
@@ -187,7 +166,7 @@ class SASL:
         hashed_pwd = await self._hash_scram_async(
             password=password,
             iterations=100000,
-            salt=bcrypt.gensalt(rounds=8) if AppConfig.database_in_memory else bcrypt.gensalt()
+            salt=bcrypt.gensalt(rounds=8) if AppConfig.app_config.database_in_memory else bcrypt.gensalt()
         )
 
         async with await DB.connection_async() as con:

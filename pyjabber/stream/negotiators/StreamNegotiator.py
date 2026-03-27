@@ -5,7 +5,7 @@ from xml.etree import ElementTree as ET
 
 from loguru import logger
 
-from pyjabber.AppConfig import AppConfig
+from pyjabber import AppConfig
 from pyjabber.features.Features import (
     SASL_feature,
     in_band_registration_feature,
@@ -20,28 +20,30 @@ from pyjabber.network.utils.TransportProxy import TransportProxy
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.utils.Enums import Stage, Signal
-from pyjabber.stream.StanzaHandler import InternalServerError
-from pyjabber.stream.Stream import Stream
+from pyjabber.stream.handlers.StanzaHandler import InternalServerError
+from pyjabber.stream.utils.Stream import Stream
 from pyjabber.utils import Exceptions as EX
 from pyjabber.utils.Exceptions import NotAuthorizerStreamNegotiationException
 
 
-class StreamHandler:
-    def __init__(self, transport, protocol, parser, client_handler) -> None:
+class StreamNegotiator:
+    __slots__ = ("_host", "_transport", "_peer", "_protocol", "_parser", "_handler", "_stream_feature",
+                 "_connection_manager", "_stage", "_ibr_feature", "_sasl", "_stages_handlers")
+
+    def __init__(self, transport, protocol, parser, handler) -> None:
         self._host = AppConfig.app_config.host
 
         self._transport = transport
         self._peer = transport.get_extra_info("peername")
         self._protocol = protocol
         self._parser = parser
-        self._client_handler = client_handler
-        self._ssl_context = AppConfig.app_config.ssl_context
+        self._handler = handler
 
-        self._streamFeature = StreamFeature()
+        self._stream_feature = StreamFeature()
         self._connection_manager: ConnectionManager = ConnectionManager()
         self._stage = Stage.CONNECTED
 
-        self._ibr_feature = 'jabber:iq:register' in AppConfig.plugins
+        self._ibr_feature = 'jabber:iq:register' in AppConfig.app_config.plugins
 
         self._sasl = None
 
@@ -72,9 +74,9 @@ class StreamHandler:
             logger.error(e)
 
     async def _handle_init(self, _):
-        self._streamFeature.reset()
-        self._streamFeature.register(start_tls_feature())
-        self._transport.write(self._streamFeature.to_bytes())
+        self._stream_feature.reset()
+        self._stream_feature.register(start_tls_feature())
+        self._transport.write(self._stream_feature.to_bytes())
 
         self._stage = Stage.OPENED
 
@@ -83,7 +85,9 @@ class StreamHandler:
             self._transport.write(start_tls_proceed_response())
             self._transport.pause_reading()
 
-            if isinstance(self._transport, TransportProxy):
+            transport_proxy_is_used = isinstance(self._transport, TransportProxy)
+
+            if transport_proxy_is_used:
                 original_transport = self._transport.original_transport
             else:
                 original_transport = self._transport
@@ -93,16 +97,18 @@ class StreamHandler:
                 new_transport = await loop.start_tls(
                     transport=original_transport,
                     protocol=self._protocol,
-                    sslcontext=self._ssl_context,
+                    sslcontext=AppConfig.app_config.ssl_context,
                     server_side=True
                 )
 
-                new_transport = TransportProxy(new_transport, self._peer)
+                if transport_proxy_is_used:
+                    new_transport = TransportProxy(new_transport, self._peer)
+
                 self._transport = new_transport
                 self._protocol.transport = new_transport
                 self._parser.transport = new_transport
-                self._client_handler.transport = new_transport
-                self._connection_manager.update_buffer(new_transport=new_transport, peer=self._peer)
+                self._handler.transport = new_transport
+                self._connection_manager.update_transport_peer(new_transport, self._peer)
 
                 logger.debug(f"Done TLS for <{self._peer}>")
                 self._stage = Stage.SSL
@@ -110,8 +116,8 @@ class StreamHandler:
                 self._transport.resume_reading()
                 return Signal.RESET
 
-            except ConnectionResetError:
-                logger.error(f"Error during TLS upgrade with <{self._peer}>")
+            except ConnectionResetError as e:
+                logger.error(f"Error during TLS upgrade with <{self._peer}> Reason: {e}")
                 self._connection_manager.close(self._peer)
                 return Signal.FORCE_CLOSE
 
@@ -119,13 +125,13 @@ class StreamHandler:
             raise NotAuthorizerStreamNegotiationException()
 
     async def _handle_init_ssl(self, _):
-        self._streamFeature.reset()
+        self._stream_feature.reset()
 
         if self._ibr_feature:
-            self._streamFeature.register(in_band_registration_feature())
+            self._stream_feature.register(in_band_registration_feature())
 
-        self._streamFeature.register(SASL_feature())
-        self._transport.write(self._streamFeature.to_bytes())
+        self._stream_feature.register(SASL_feature())
+        self._transport.write(self._stream_feature.to_bytes())
 
         self._stage = Stage.SASL
 
@@ -139,9 +145,9 @@ class StreamHandler:
             self._stage = Stage.AUTH
 
     async def _handle_init_resource_bind(self, _):
-        self._streamFeature.reset()
-        self._streamFeature.register(resource_binding_feature())
-        self._transport.write(self._streamFeature.to_bytes())
+        self._stream_feature.reset()
+        self._stream_feature.register(resource_binding_feature())
+        self._transport.write(self._stream_feature.to_bytes())
 
         self._stage = Stage.BIND
 

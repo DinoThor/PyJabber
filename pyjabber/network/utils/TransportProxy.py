@@ -14,7 +14,7 @@ class TransportProxy:
         return self._transport
 
     def write(self, data):
-        logger.trace(f"Sending to {'server ' if self._server else ''}{self._peer}: {data}")
+        logger.trace(f"Sending to {'protocols ' if self._server else ''}{self._peer}: {data}")
         return self._transport.write(data)
 
     def __getattr__(self, name):
