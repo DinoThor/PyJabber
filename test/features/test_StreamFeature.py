@@ -1,8 +1,8 @@
-import pytest
 from xml.etree import ElementTree as ET
-from unittest.mock import MagicMock
 
-from pyjabber.features.StreamFeature import  StreamFeature,NonUniqueFeature
+import pytest
+
+from pyjabber.features.StreamFeature import NonUniqueFeature, StreamFeature
 
 
 def test_initialization():

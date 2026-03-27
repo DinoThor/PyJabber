@@ -3,7 +3,7 @@ name: PyPy publish on tag
 on:
   push:
     tags:
-      - 'v*'  # Esto se activará solo para tags que empiecen con 'v', como 'v1.0.0'
+      - 'v*'
 
 jobs:
   publish:
@@ -13,29 +13,22 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: '3.x'
+          enable-cache: true
+          version: "latest"
 
-      - name: Set PyJabber version
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          VERSION=${VERSION#v}
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+      - name: Set up Python
+        run: uv python install 3.12
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install setuptools wheel twine
+      -  name: Build the package
+         run: |
+           uv build
 
-      - name: Build the package
-        run: |
-          python setup.py sdist bdist_wheel
+      -  name: Publish the package to PyPI
+         env:
+           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+         run: |
+           uv publish
 
-      - name: Publish the package to PyPI
-        env:
-          TWINE_USERNAME: "__token__"
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-        run: |
-          twine upload dist/*

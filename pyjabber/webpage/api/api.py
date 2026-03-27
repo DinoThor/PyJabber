@@ -1,17 +1,18 @@
 import hashlib
 import json
-from contextlib import closing
 
 from aiohttp import web
 from loguru import logger
+from sqlalchemy import select, delete, insert
 
 from pyjabber.db.database import DB
+from pyjabber.db.model import Model
 
 
-async def handleUser(request):
+async def handleUser(_):
     with DB.connection() as con:
-        res = con.execute("SELECT id, jid FROM credentials")
-        res = res.fetchall()
+        query = select(Model.Credentials.c.id, Model.Credentials.c.jid)
+        res = con.execute(query).fetchall()
 
     users = [{"id": i, "jid": v} for i, v in res]
     return web.Response(text=json.dumps(users))
@@ -22,14 +23,16 @@ async def handleRoster(request):
         user_id = int(request.match_info['id'])
 
         with DB.connection() as con:
-            res = con.execute("SELECT jid FROM credentials WHERE id = ?", (user_id,))
-            user_jid = res.fetchone()[0]
+            user_jid = con.execute(
+                select(Model.Credentials.c.jid).where(Model.Credentials.c.id == user_id)
+            ).fetchone()[0]
 
             if not user_jid:
                 return web.json_response({"status": "error", "message": "User not found"}, status=404)
 
-            res = con.execute("SELECT rosterItem FROM roster WHERE jid LIKE ?", (f"{user_jid}%",))
-            roster = res.fetchall()
+            roster = con.execute(
+                select(Model.Roster.c.roster_item).where(Model.Roster.c.jid.like(f"{user_jid}%"))
+            ).fetchall()
 
             response = [{"item": r[0]} for r in roster]
 
@@ -51,17 +54,23 @@ async def handleDelete(request):
         user_id = int(request.match_info['id'])
 
         with DB.connection() as con:
-            res = con.execute("SELECT id FROM credentials")
-            res = res.fetchall()
+            res = con.execute(
+                select(Model.Credentials.c.id)
+            ).fetchall()
 
             if user_id not in [r[0] for r in res]:
                 return web.json_response({"status": "error", "message": "User not found"}, status=404)
 
-            res = con.execute("SELECT jid FROM credentials WHERE id = ?", (user_id,))
-            user_jid = res.fetchone()[0]
+            user_jid = con.execute(
+                select(Model.Credentials.c.jid).where(Model.Credentials.c.id == user_id)
+            ).fetchone()[0]
 
-            con.execute("DELETE FROM credentials WHERE id = ?", (user_id,))
-            con.execute("DELETE FROM roster WHERE jid LIKE ?", (f"{user_jid}%",))
+            con.execute(
+                delete(Model.Credentials).where(Model.Credentials.c.id == user_id)
+            )
+            con.execute(
+                delete(Model.Roster).where(Model.Roster.c.jid.like(f"{user_jid}%"))
+            )
             con.commit()
 
         logger.info(f"User with ID {user_id} deleted")
@@ -82,8 +91,9 @@ async def handleRegister(request):
         data = await request.json()
 
         with DB.connection() as con:
-            res = con.execute("SELECT jid FROM credentials")
-            res = res.fetchall()
+            res = con.execute(
+                select(Model.Credentials.c.jid)
+            ).fetchall()
 
         if any(r[0] == data["jid"] for r in res):
             raise Exception("JID already in use")
@@ -91,8 +101,12 @@ async def handleRegister(request):
         hash_pwd = hashlib.sha256(data["pwd"].encode()).hexdigest()
 
         with DB.connection() as con:
-            con.execute("INSERT INTO credentials (jid, hash_pwd) VALUES (?, ?)",
-                        (data["jid"], hash_pwd))
+            con.execute(
+                insert(Model.Credentials).values({
+                    'jid': data['jid'],
+                    'hash_pwd': hash_pwd
+                })
+            )
             con.commit()
 
         response_data = {

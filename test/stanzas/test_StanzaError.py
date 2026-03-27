@@ -1,18 +1,18 @@
+import xml.etree.ElementTree as ET
 from unittest.mock import patch
 
 import pytest
-import xml.etree.ElementTree as ET
 
 from pyjabber.stanzas.error.StanzaError import (
+    XMLNS,
     bad_request,
     conflict_error,
     feature_not_implemented,
     invalid_xml,
     item_not_found,
     not_acceptable,
-    not_authorized,
+    not_authorized_sasl,
     service_unavaliable,
-    XMLNS
 )
 
 
@@ -77,7 +77,7 @@ def test_not_acceptable_without_text():
 
 def test_not_authorized():
     expected = b"<failure xmlns='urn:ietf:params:xml:ns:xmpp-sasl'><not-authorized/></failure>"
-    assert not_authorized() == expected
+    assert not_authorized_sasl() == expected
 
 
 def test_service_unavaliable():

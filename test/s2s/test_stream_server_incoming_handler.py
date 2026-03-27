@@ -1,9 +1,12 @@
 from unittest.mock import MagicMock, patch
 
 from pyjabber.features.SASLFeature import MECHANISM
+
+from pyjabber.stream.server.incoming.StreamServerIncomingHandler import (
+    StreamServerIncomingHandler,
+)
 from pyjabber.stream.Signal import Signal
 from pyjabber.stream.Stage import Stage
-from pyjabber.stream.server.incoming.StreamServerIncomingHandler import StreamServerIncomingHandler
 
 
 def test_constructor():

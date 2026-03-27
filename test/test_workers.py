@@ -1,21 +1,19 @@
 import asyncio
 import os.path
-import ssl
-from ssl import SSLContext
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from pyjabber.network.XMLProtocol import TransportProxy
+from pyjabber.network.protocols.XMLProtocol import TransportProxy
 from pyjabber.stream.JID import JID
-from pyjabber.workers import tls_worker, queue_worker
+from pyjabber.queues.workers.MessageQueueWorker import queue_worker, tls_worker
 
 
 @pytest.mark.asyncio
 async def test_tls_worker_client():
-    with patch('pyjabber.workers.metadata') as mock_metadata, \
-         patch('pyjabber.workers.asyncio.get_running_loop') as mock_get_loop, \
-         patch('pyjabber.workers.ssl') as mock_ssl:
+    with patch('pyjabber.queues.metadata') as mock_metadata, \
+         patch('pyjabber.queues.asyncio.get_running_loop') as mock_get_loop, \
+         patch('pyjabber.queues.ssl') as mock_ssl:
 
         mock_queue = MagicMock()
         mock_transport = MagicMock()
@@ -33,8 +31,8 @@ async def test_tls_worker_client():
         mock_queue.get.side_effect = [(mock_transport, mock_protocol, mock_parser), asyncio.CancelledError()]
 
         mock_metadata.TLS_QUEUE = mock_queue
-        mock_metadata.CERT_PATH = os.path.dirname(os.path.abspath(__file__))
-        mock_metadata.HOST = "localhost"
+        mock_AppConfig.app_config.cert_path = os.path.dirname(os.path.abspath(__file__))
+        mock_AppConfig.app_config.host = "localhost"
 
         mock_new_transport = MagicMock()
         mock_loop.start_tls = AsyncMock(return_value=mock_new_transport)
@@ -59,11 +57,11 @@ async def test_tls_worker_client():
 
 @pytest.mark.asyncio
 async def test_tls_worker_connection_error_client():
-    with patch('pyjabber.workers.ConnectionManager') as mock_con, \
-         patch('pyjabber.workers.metadata') as mock_metadata, \
-         patch('pyjabber.workers.asyncio.get_running_loop') as mock_get_loop, \
-         patch('pyjabber.workers.ssl') as mock_ssl, \
-         patch('pyjabber.workers.logger') as mock_logger:
+    with patch('pyjabber.queues.ConnectionManager') as mock_con, \
+         patch('pyjabber.queues.metadata') as mock_metadata, \
+         patch('pyjabber.queues.asyncio.get_running_loop') as mock_get_loop, \
+         patch('pyjabber.queues.ssl') as mock_ssl, \
+         patch('pyjabber.queues.logger') as mock_logger:
 
         mock_queue = MagicMock()
         mock_transport = MagicMock()
@@ -83,8 +81,8 @@ async def test_tls_worker_connection_error_client():
         mock_queue.get.side_effect = [(mock_transport, mock_protocol, mock_parser), asyncio.CancelledError()]
 
         mock_metadata.TLS_QUEUE = mock_queue
-        mock_metadata.CERT_PATH = ""
-        mock_metadata.HOST = "localhost"
+        mock_AppConfig.app_config.cert_path = ""
+        mock_AppConfig.app_config.host = "localhost"
 
         mock_loop.start_tls = AsyncMock()
         mock_loop.start_tls.side_effect = ConnectionResetError()
@@ -110,12 +108,12 @@ async def test_tls_worker_connection_error_client():
 @pytest.mark.skip
 @pytest.mark.asyncio
 async def test_tls_worker_connection_queue_client():
-    with patch('pyjabber.workers.ConnectionManager') as mock_con, \
-         patch('pyjabber.workers.metadata') as mock_metadata, \
-         patch('pyjabber.workers.asyncio.get_running_loop') as mock_get_loop, \
-         patch('pyjabber.workers.ssl') as mock_ssl, \
-         patch('pyjabber.workers.logger') as mock_logger, \
-         patch("pyjabber.workers.dict", return_value={"test@localhost": [b"message"]}):
+    with patch('pyjabber.queues.ConnectionManager') as mock_con, \
+         patch('pyjabber.queues.metadata') as mock_metadata, \
+         patch('pyjabber.queues.asyncio.get_running_loop') as mock_get_loop, \
+         patch('pyjabber.queues.ssl') as mock_ssl, \
+         patch('pyjabber.queues.logger') as mock_logger, \
+         patch("pyjabber.queues.dict", return_value={"test@localhost": [b"message"]}):
         jid = JID('test@localhost')
 
         mock_con_queue = MagicMock()

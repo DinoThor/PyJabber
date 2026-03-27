@@ -1,324 +1,247 @@
-import asyncio
 import re
-from typing import List, Optional
 from asyncio import Transport
-from typing import Dict, Union, Tuple
+from ssl import SSLContext
+from typing import List, Optional, Union, NamedTuple
+from xml.etree.ElementTree import Element
+
 from loguru import logger
 
+from pyjabber.network.utils.TransportProxy import TransportProxy
 from pyjabber.stream.JID import JID
 from pyjabber.utils import Singleton
 
-Peer = Tuple[str, int]
-PeerList = Dict[Peer, Tuple[Optional[JID], Transport, List[bool]]]
-RemoteList = Dict[Peer, Tuple[Optional[str], Transport]]
+
+class Peer(NamedTuple):
+    ip: str
+    port: int
+
+
+class Client(NamedTuple):
+    jid: Optional[JID]
+    transport: Transport
+    online: bool
+
+
+class Server(NamedTuple):
+    host: str
+    transport: Transport
 
 
 class ConnectionManager(metaclass=Singleton):
     """
-    A singleton class used as a repository of connections during the server's lifecycle.
+    A singleton class used as a repository of connections during the protocols' lifecycle.
 
-    It keeps track of both client and server connections using the following data structures:
-
-        peerList = {
-            ("0.0.0.0", "50000"): (<JID(demo@localhost/12341234)>, <asyncio.Transport>, <Online: bool>),
-            ("0.0.0.0", "50001"): (<JID(test@localhost/43214321)>, <asyncio.Transport>, <Online: bool>)
-        }
-
-        remoteList = {
-            ("0.0.0.0", "50000"): ("domain.es", <asyncio.Transport>),
-            ("0.0.0.0", "50001"): ("host.com", <asyncio.Transport>)
-        }
+    It keeps track of both client and protocols connections using the following data structures:
     """
-
     def __init__(self) -> None:
+        self._peerList: dict[Peer, Client] = {}
+        self._remoteList: dict[Peer, Server] = {}
+        self._remoteIncomingList: dict[Peer, Server] = {}
 
-        self._peerList: PeerList = {}
-        self._remoteList = {}
+        self._orphan_jids: dict[Peer, JID] = {}
+        self._orphan_hosts: dict[Peer, str] = {}
 
-    @property
-    def peerList(self):
-        return self._peerList
-
-    @property
-    def remoteList(self):
-        return self._remoteList
 
     ###########################################################################
     ############################## LOCAL BOUND ################################
     ###########################################################################
 
-    def connection(self, peer: Tuple[str, int], transport=None) -> None:
-        """
-            Store a new connection, without jid or transport.
-            Those will be added in the future with the set_jid method.
 
-            :param peer: The peer value in the tuple format ({IP}, {PORT})
-            :param transport: The transport object associated to the connection
-        """
+    def connection(self, peer: Peer, transport=None) -> None:
         if peer not in self._peerList:
-            self._peerList[peer] = (None, transport, [False])
+            self._peerList[peer] = Client(None, transport, False)
 
-    def disconnection(self, peer: Tuple[str, int]) -> None:
+    def close(self, peer: Peer) -> None:
+        """Closes a connection by sending a '</stream:stream> message' and
+            deletes it from the peers list
         """
-            Remove a stored connection
-
-            :param peer: The peer value in the tuple format ({IP}, {PORT})
-        """
-
         try:
-            self._peerList.pop(peer)
+            client = self._peerList.pop(peer)
+            client.transport.write('</stream:stream>'.encode())
+            if client.jid:
+                self._orphan_jids[peer] = client.jid
+
+            client.transport.close()
         except KeyError:
-            logger.warning(f"{peer} not present in the online list")
+            logger.error(f"{peer} not present in the peer list")
 
     def online(self, jid: JID, online: bool = True):
-        """
-            Set a client connection status to Online.
+        for peer, client in self._peerList.items():
+            if client.jid == jid and client.online != online:
+                self._peerList[peer] = self._peerList[peer]._replace(online=online)
 
-            Useful for presence behaviour
+    def get_transport(self, jid: JID) -> List[Client]:
+        """Get all the available buffers associated with a JID.
 
-        :param jid: JID of the client to update status
-        :param online: New status. True by default
-        """
-        for k, v in self._peerList.items():
-            if v[0] == jid and v[2][0] != online:
-                self._peerList[k] = (v[0], v[1], [online])
-
-    def close(self, peer: Tuple[str, int]) -> None:
-        """
-            Closes a connection by sending a '</stream:stream> message' and
-            deletes it from the peers list
-
-            :param peer: The peer value in the tuple format (<IP>, <PORT>)
-        """
-        try:
-            _, buffer, _ = self._peerList.pop(peer)
-            buffer.write('</stream:stream>'.encode())
-            self.disconnection(peer)
-        except KeyError as e:
-            logger.error(f"{peer} not present in the online list")
-
-    def get_buffer(self, jid: JID) -> List[Tuple[JID, Transport, bool]]:
-        """
-            Get all the available buffers associated with a JID.
-
-                - If the JID is in the full format <username@domain/resource>, it will only return one buffer or none
+                - If the JID is in the full format <username@domain/resource>, it will only return one buffer (or empty list).
                 - If the JID is in the bare format <username@domain>, it will return a list of the buffers for each resource available.
 
             Both cases return a list.
-
-            :param jid: The jid to get the buffers for. It can be a full jid or a bare jid
-            :return: (JID, TRANSPORT) tuple
         """
         if jid.resource:
-            return [(jid_stored, buffer, online[0])
-                    for jid_stored, buffer, online in self._peerList.values()
-                    if jid == jid_stored]
+            return [c for c in self._peerList.values() if jid == c.jid]
         else:
-            return [(jid_stored, buffer, online[0])
-                    for jid_stored, buffer, online in self._peerList.values()
-                    if re.match(f"{str(jid)}/*", str(jid_stored))]
+            return [c for c in self._peerList.values() if re.match(f"{str(jid)}/*", str(c.jid))]
 
-    def get_buffer_online(self, jid: JID) -> List[Tuple[JID, Transport, bool]]:
-        """
-            Get all the available buffers associated with a JID
+    def get_transport_online(self, jid: JID) -> List[Client]:
+        """Get all the available buffers associated with a JID
             that are ready to receive messages (online).
 
-            - If the JID is in the full format <username@domain/resource>, it will only return one buffer or none.
-            - If the JID is in the bare format <username@domain>, it will return a list of the buffers for each resource available.
+                - If the JID is in the full format <username@domain/resource>, it will only return one buffer (or empty list).
+                - If the JID is in the bare format <username@domain>, it will return a list of the buffers for each resource available.
 
             Both cases return a list.
-
-            :param jid: The jid to get the buffers for. It can be a full jid or a bare jid
-            :return: (JID, TRANSPORT) tuple
         """
         if jid.resource:
-            return [(jid_stored, buffer, online[0])
-                    for jid_stored, buffer, online in self._peerList.values()
-                    if jid == jid_stored and online[0] is True]
+            return [c for c in self._peerList.values() if jid == c.jid and c.online]
         else:
-            return [(jid_stored, buffer, online[0])
-                    for jid_stored, buffer, online in self._peerList.values()
-                    if re.match(f"{str(jid)}/*", str(jid_stored))
-                    and online[0] is True]
+            return [c for c in self._peerList.values()
+                    if re.match(f"{str(jid)}/*", str(c.jid)) and c.online]
 
-    def update_buffer(self, new_transport: Transport, peer: Tuple[str, int] = None, jid: JID = None):
-        if not peer and not jid:
-            logger.warning(
-                "Missing peer OR jid parameter to update transport in client connection. No action will be performed")
-            return
-
-        if peer:
-            try:
-                jid, old_transport, online = self._peerList[peer]
-                self._peerList[peer] = (jid, new_transport, online)
-                return
-            except KeyError:
-                logger.warning("Unable to find client with given peer. Check this inconsistency")
-                return
-
-        if jid.resource is None:
-            logger.warning("JID must have a resource to update transport")
-            return
-
-        match = next(((k, v) for k, v in self._peerList.items() if v[0] == jid), None)
-        if match:
-            jid, _, online = match[1]
-            self._peerList[match[0]] = (jid, new_transport, online)
-        else:
-            logger.warning("Unable to find client with given JID. Check this inconsistency")
-
-    # def get_connection_certificate(self, peer: Tuple[str, int]):
-    #     """
-    #         Return the SSL certificate used in the STARTTLS process
-    #         If no certificated is bounded with the connection, returns None
-    #     """
-    #     return next(self._peerList.get(peer)[1].get_extra_info("ssl_object"), None)
-
-    ###########
-    ### JID ###
-    ###########
-
-    def get_jid(self, peer: Tuple[str, int]) -> Union[JID, None]:
-        """
-            Return the jid associated with the peername
-
-            :param peer: The peer value in the tuple format ({IP}, {PORT})
-        """
+    def update_transport_peer(self, new_transport: Union[Transport, TransportProxy], peer: Peer):
         try:
-            return self._peerList[peer][0]
+            self._peerList[peer] = self._peerList[peer]._replace(transport=new_transport)
         except KeyError:
-            return None
+            raise KeyError("Unable to find client with given peer. Check this inconsistency")
 
-    def set_jid(self, peer: Tuple[str, int], jid: JID, transport: Transport = None) -> None:
-        """
-            Set/update the jid of a registered connection.
+    def update_transport_jid(self, new_transport: Union[Transport, TransportProxy], jid: JID):
+        if jid.resource is None:
+            raise ValueError("JID must have a resource to update transport")
+
+        match = next((peer for peer, client in self._peerList.items()
+                      if client.jid == jid), None)
+        if match:
+            self._peerList[match] = self._peerList[match]._replace(transport=new_transport)
+        else:
+            raise KeyError("Unable to find client with given JID. Check this inconsistency")
+
+    def get_jid(self, peer: Peer) -> Union[JID, None]:
+        try:
+            return self._peerList[peer].jid
+        except KeyError:
+            self._orphan_jids.pop(peer, None)
+
+    def set_jid(self, peer: Peer, jid: JID, transport: Transport = None) -> None:
+        """Set/update the jid of a registered connection.
 
             An optional transport argument can be provided, in order to set/update the stored buffer
-
-            :param peer: The peer value in the tuple format ({IP}, {PORT})
-            :param jid: The jid to set/update
-            :param transport: Transport to use
         """
         try:
-            _, old_transport, online = self._peerList[peer]
-            self._peerList[peer] = (jid, transport or old_transport, online)
+            self._peerList[peer] = self._peerList[peer]._replace(
+                jid=jid,
+                transport=transport if transport else self._peerList[peer].transport
+            )
         except KeyError:
-            logger.error(f"Unable to find {peer} during jid/transport update")
+            raise KeyError(f"Unable to find {peer} during jid/transport update")
 
-    def update_resource(self, peer: Tuple[str, int], resource: str):
+    def update_resource(self, peer: Peer, resource: str):
         try:
-            self._peerList[peer][0].resource = resource
+            self._peerList[peer].jid.resource = resource
         except KeyError:
-            logger.error(f"Unable to find {peer} during resource update")
+            raise KeyError(f"Unable to find {peer} during resource update")
+
 
     ###########################################################################
     ############################# REMOTE SERVER ###############################
     ###########################################################################
-    def connection_server(self, peer: Tuple[str, int], transport=None, host: str = None) -> None:
-        """
-            Store a new server connection.
 
-            :param peer: The peer value in the tuple format ({IP}, {PORT})
-            :param transport: The transport object associated to the connection
-            :param host: The host bound to the connection
-        """
+
+    def connection_server(self, peer: Peer, transport: Transport = None, host: str = None) -> None:
         if peer not in self._remoteList:
-            self._remoteList[peer] = (host, transport)
+            self._remoteList[peer] = Server(host, transport)
 
-    def disconnection_server(self, peer: Tuple[str, int]) -> None:
-        """
-            Remove a stored connection, and fires the DisconnectEvent
-
-            :param peer: The peer value in the tuple format ({IP}, {PORT})
-        """
-
-        try:
-            self._remoteList.pop(peer)
-        except KeyError:
-            logger.warning(f"Server {peer} not present in the online list")
-
-    def update_host(self, peer: Tuple[str, int], host: str) -> None:
-        try:
-            _, transport = self._remoteList[peer]
-            self._remoteList[peer] = (host, transport)
-            return
-        except KeyError:
-            logger.warning("Unable to find server with given peer during host update. Check this inconsistency")
-            return
-
-    def close_server(self, peer: Tuple[str, int]) -> None:
-        """
-            Closes a connection by sending a '</stream:stream> message' and
+    def close_server(self, peer: Peer) -> None:
+        """Closes a connection by sending a '</stream:stream> message' and
             deletes it from the remote list
-
-            :param peer: The peer value in the tuple format ({IP}, {PORT})
         """
         try:
-            _, buffer = self._remoteList.pop(peer)
-            buffer.write('</stream:stream>'.encode())
-            self.disconnection_server(peer)
-        except KeyError as e:
-            logger.error(f"{peer} not present in the online list")
+            client = self._remoteList.pop(peer)
+            client.transport.write('</stream:stream>'.encode())
+            if client.host:
+                self._orphan_hosts[peer] = client.host
+        except KeyError:
+            logger.error(f"{peer} not present in the remote list")
 
-    def get_server_buffer(self, peer: Optional[Tuple[str, int]] = None, host: Optional[str] = None) -> Union[
-        Transport, None]:
+    def get_host(self, peer: Peer) -> Union[str, None]:
+        try:
+            return self._remoteList[peer].host
+        except KeyError:
+            return self._orphan_hosts.pop(peer, None)
+
+    def set_host(self, peer: Peer, host: str, transport: Transport = None) -> None:
+        """Set/update the host of a registered server connection.
+
+            An optional transport argument can be provided, in order to set/update the stored buffer
         """
-            Return the buffer associated with the given host
-        """
-        if peer:
-            if peer not in self._remoteList:
-                logger.error("Missing peer in the connection list. Check it")
-                return None
-            return self._remoteList.get(peer)[1]
+        try:
+            self._remoteList[peer] = self._remoteList[peer]._replace(
+                host=host,
+                transport=transport if transport else self._remoteList[peer].transport
+            )
+        except KeyError:
+            raise KeyError(f"Unable to find {peer} during host/transport update")
 
-        if host:
-            try:
-                return [buffer[1] for buffer in self._remoteList.values() if buffer[0] == host].pop()
-            except IndexError:
-                pass
+    def update_host(self, peer: Peer, host: str) -> None:
+        try:
+            self._remoteList[peer] = self._remoteList[peer]._replace(host=host)
+        except KeyError:
+            logger.warning("Unable to find protocols with given peer during host update. Check this inconsistency")
 
-        logger.error("Missing peer OR host to search for server transport. Returning None")
-        return None
-
-    def update_transport_server(self, new_transport: Transport, peer: Tuple[str, int] = None, host: str = None):
-        if not peer and not host:
-            logger.warning(
-                "Missing peer OR jid parameter to update transport in server connection. No action will be performed")
-            return
-
-        if peer:
-            try:
-                host, _ = self._remoteList[peer]
-                self._remoteList[peer] = (host, new_transport)
-                return
-            except KeyError:
-                logger.warning("Unable to find server with given peer. Check this inconsistency")
-                return
-
-        match = next(((k, v) for k, v in self._remoteList.items() if v[0] == host), None)
-        if match:
-            host, _ = match[1]
-            self._remoteList[match[0]] = (host, new_transport)
-        else:
-            logger.warning("Unable to find server with given host. Check this inconsistency")
-
-    def get_server_host(self, peer: Tuple[str, int]):
-        """
-            Return the host associated with the given peer.
-            :return: Hostname
-        """
-        return self._remoteList.get(peer)[0] if self._remoteList.get(peer) else None
-
-    def set_host_server(self, peer: Tuple[str, int], host: str):
-        entry = self._peerList.get(peer)
-        if entry:
-            self._remoteList[peer] = (host, entry[1])
-
-    def get_connection_certificate_server(self, peer: Tuple[str, int]):
-        """
-            Return the SSL certificate used in the STARTTLS process
-            If no certificated is bounded with the connection, returns None
-        """
-        if peer not in self._remoteList:
+    def get_server_transport_peer(self, peer: Peer = None, host: str = None) -> Union[Transport, None]:
+        try:
+            return self._remoteList.get(peer).transport
+        except KeyError:
             return None
-        return self._remoteList.get(peer)[1].get_extra_info("ssl_object")
+
+    def get_server_transport_host(self, host: str = None) -> Union[Transport, None]:
+        return next((s.transport for s in self._remoteList.values() if s.host == host), None)
+
+    def update_transport_server(self, new_transport: Transport, peer: Peer):
+        try:
+            self._remoteList[peer] = self._remoteList[peer]._replace(transport=new_transport)
+        except KeyError:
+            logger.warning("Unable to find protocols with given peer. Check this inconsistency")
+
+    def get_server_host(self, peer: Peer) -> Union[str, None]:
+        try:
+            return self._remoteList.get(peer).host
+        except KeyError:
+            return None
+
+    def set_host_server(self, peer: Peer, host: str):
+        try:
+            self._remoteList[peer] = self._remoteList[peer]._replace(host=host)
+        except KeyError:
+            raise KeyError(f"Unable to find {peer} during host update")
+
+    def get_connection_ssl_certificate(self, peer: Peer) -> Union[SSLContext, None]:
+        try:
+            self._remoteList.get(peer).transport.get_extra_info("ssl_object")
+        except KeyError:
+            return None
+
+
+    ###########################################################################
+    ############################# REMOTE SERVER ###############################
+    ###########################################################################
+
+    def connection_server_incoming(self, peer: Peer, transport: Transport = None, host: str = None) -> None:
+        if peer not in self._remoteIncomingList:
+            self._remoteIncomingList[peer] = Server(host, transport)
+
+    def close_server_incoming(self, peer: Peer) -> None:
+        """Closes a connection by sending a '</stream:stream> message' and
+            deletes it from the remote incoming list
+        """
+        try:
+            client = self._remoteIncomingList.pop(peer)
+            client.transport.write('</stream:stream>'.encode())
+
+            if client.host:
+                self._presence_manager.put_nowait(
+                    (client.host, Element("presence", attrib={"type": "INTERNAL"}))
+                )
+
+            client.transport.close()
+        except KeyError:
+            logger.error(f"{peer} not present in the remote incoming list")

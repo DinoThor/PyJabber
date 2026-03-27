@@ -1,3 +1,8 @@
-import pyjabber
+__version__ = "0.4.0"
+__author__ = "Aaron Raya"
+__email__ = "aaron.raya.lopez@gmail.com"
 
-__version__ = "0.3.0"
+from .server import Server
+from .server_parameters import Parameters
+
+__all__ = ['Server', 'Parameters']

@@ -1,5 +1,6 @@
-import pytest
 import xml.etree.ElementTree as ET
+
+import pytest
 
 from pyjabber.stanzas.Presence import Presence
 

@@ -1,9 +1,13 @@
-import pytest
 from unittest.mock import MagicMock, patch
 from xml.etree.ElementTree import Element
-from pyjabber.network.server.XMLServerOutcomingParser import XMLServerOutcomingParser
-from pyjabber.stream.StreamHandler import Signal
-from pyjabber.stream.server.outgoing.StreamServerOutgoingHandler import StreamServerOutcomingHandler
+
+import pytest
+from pyjabber.network.protocols.XMLServerOutcomingParser import XMLServerOutcomingParser
+
+from pyjabber.stream.negotiators.ServerStreamNegotiator import (
+    StreamServerOutcomingHandler,
+)
+from pyjabber.stream.negotiators.StreamNegotiator import Signal
 from pyjabber.utils import ClarkNotation as CN
 
 
@@ -26,7 +30,7 @@ def test_initialization(setup_parser):
     assert isinstance(parser._streamHandler, StreamServerOutcomingHandler)
 
 
-@patch('pyjabber.network.server.outgoing.XMLServerOutcomingParser.Stream')
+@patch('pyjabber.network.protocols.outgoing.XMLServerOutcomingParser.Stream')
 def test_initial_stream(mock_stream, setup_parser):
     parser, buffer, _ = setup_parser
     mock_stream.Stream.return_value.open_tag.return_value = b'<stream>'
@@ -80,12 +84,12 @@ def test_end_element_ns_invalid_stanza(setup_parser):
         parser.endElementNS(name, None)
 
 
-@patch('pyjabber.stream.server.outgoing.StreamServerOutcomingHandler.StreamServerOutcomingHandler.handle_open_stream')
+@patch('pyjabber.stream.protocols.outgoing.StreamServerOutcomingHandler.StreamServerOutcomingHandler.handle_open_stream')
 def test_end_element_ns_reset_signal(mock_handle_open_stream, setup_parser):
     parser, _, _ = setup_parser
     parser._stack.append(Element('{http://etherx.jabber.org/streams}stream'))
     parser._state = parser.StreamState.CONNECTED
-    elem = Element(CN.clarkFromTuple(("namespace", "element")))
+    elem = Element(CN.clark_from_tuple(("namespace", "element")))
     parser._stack.append(elem)
 
     mock_handle_open_stream.return_value = Signal.RESET

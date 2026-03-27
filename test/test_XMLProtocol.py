@@ -1,10 +1,12 @@
 import asyncio
-import pytest
 from unittest.mock import MagicMock, patch
 from xml import sax
 
-from pyjabber.network.XMLProtocol import XMLProtocol
-from pyjabber.network.ServerConnectionType import ServerConnectionType as SCT
+import pytest
+
+from pyjabber.network.utils.Enums import ServerConnectionType as SCT
+from pyjabber.network.protocols.XMLProtocol import XMLProtocol
+
 
 @pytest.fixture
 def setup():

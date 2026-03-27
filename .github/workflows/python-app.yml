@@ -1,13 +1,9 @@
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
-
 name: Python application
 
 on:
   push:
     branches: [ "master", "develop"]
-    tags:
-      - "*"
+    tags: ["*"]
   pull_request:
     branches: [ "master", "develop"]
 
@@ -15,157 +11,62 @@ permissions:
   contents: read
 
 jobs:
-
   tox:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v3
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
         with:
-          python-version: "3.10"
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install tox virtualenv
-      - name: Tox
-        run: "tox"
+          enable-cache: true
+
+      - name: Install Test dependencies
+        run: uv pip install --system tox tox-uv
+
+      - name: Run Tox
+        run: tox
 
   test:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        name:
-          - "ubuntu-py38"
-          - "ubuntu-py39"
-          - "ubuntu-py310"
-          - "ubuntu-py311"
-          - "ubuntu-py312"
-
-          - "macos-py38"
-          - "macos-py39"
-          - "macos-py310"
-          - "macos-py311"
-          - "macos-py312"
-
-          - "windows-py38"
-          - "windows-py39"
-          - "windows-py310"
-          - "windows-py311"
-          - "windows-py312"
-
-        include:
-          - name: "ubuntu-py38"
-            python: "3.8"
-            os: ubuntu-latest
-            tox_env: "py38"
-          - name: "ubuntu-py39"
-            python: "3.9"
-            os: ubuntu-latest
-            tox_env: "py39"
-          - name: "ubuntu-py310"
-            python: "3.10"
-            os: ubuntu-latest
-            tox_env: "py310"
-          - name: "ubuntu-py311"
-            python: "3.11"
-            os: ubuntu-latest
-            tox_env: "py311"
-          - name: "ubuntu-py312"
-            python: "3.12"
-            os: ubuntu-latest
-            tox_env: "py312"
-
-          - name: "macos-py38"
-            python: "3.8"
-            os: macos-latest
-            tox_env: "py38"
-          - name: "macos-py39"
-            python: "3.9"
-            os: macos-latest
-            tox_env: "py39"
-          - name: "macos-py310"
-            python: "3.10"
-            os: macos-latest
-            tox_env: "py310"
-          - name: "macos-py311"
-            python: "3.11"
-            os: macos-latest
-            tox_env: "py311"
-          - name: "macos-py312"
-            python: "3.12"
-            os: macos-latest
-            tox_env: "py312"
-
-          - name: "windows-py38"
-            python: "3.8"
-            os: windows-latest
-            tox_env: "py38"
-          - name: "windows-py39"
-            python: "3.9"
-            os: windows-latest
-            tox_env: "py39"
-          - name: "windows-py310"
-            python: "3.10"
-            os: windows-latest
-            tox_env: "py310"
-          - name: "windows-py311"
-            python: "3.11"
-            os: windows-latest
-            tox_env: "py311"
-          - name: "windows-py312"
-            python: "3.12"
-            os: windows-latest
-            tox_env: "py312"
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python }}
-      uses: actions/setup-python@v3
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
       with:
-        python-version: ${{ matrix.python }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install -r requirements_dev.txt
-        python -m pip install -r requirements.txt
+        enable-cache: true
+
+    - name: Set up Python ${{ matrix.python }}
+      run: uv python install ${{ matrix.python }}
+
+    - name: Install dependencies and Project
+      run: uv sync --extra test
+
     - name: Test with pytest
-      run: |
-        pytest
+      run: uv run pytest
 
   coverage:
+    needs: test
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install -r requirements_dev.txt
-        python -m pip install -r requirements.txt
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+
     - name: Run coverage
       run: |
-        coverage erase
-        coverage run --source=. --rcfile=.coveragerc -m pytest
-    - name: Upload coverage to Coveralls
-      uses: coverallsapp/github-action@v2.2.0
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Send coverage report to Codecov
-      uses: codecov/codecov-action@v1
+        uv sync --extra test
+        uv run pytest --cov=pyjabber --cov-report=xml
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
       with:
           token: ${{ secrets.CODECOV_TOKEN }}
-
-  coveralls_finish:
-    needs: coverage
-    runs-on: ubuntu-latest
-    steps:
-    - name: Coveralls Finished
-      run: echo "Coverage reporting finished."

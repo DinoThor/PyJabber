@@ -1,11 +1,10 @@
 from enum import Enum
 from typing import List
-
 from xml.etree import ElementTree as ET
 
 from pyjabber.plugins.xep_0004.field import FieldRequest, FieldResponse, FieldTypes
-from pyjabber.utils import ClarkNotation as CN
 from pyjabber.stanzas.error import StanzaError as SE
+from pyjabber.utils import ClarkNotation as CN
 
 
 class MissingDataForms(Exception):
@@ -35,7 +34,7 @@ def parse_form(element: ET.Element):
         Supposing element is an IQ stanza, it should be in a second-level child
         """
         forms = element[0][0]
-        ns, tag = CN.deglose(forms.tag)
+        ns, tag = CN.break_down(forms.tag)
         if tag != 'x' or ns != 'jabber:x:data':
             raise MissingDataForms
         data = forms
@@ -45,7 +44,7 @@ def parse_form(element: ET.Element):
         """
         try:
             forms = element[0]
-            ns, tag = CN.deglose(forms.tag)
+            ns, tag = CN.break_down(forms.tag)
             if tag != 'x' or ns != 'jabber:x:data':
                 raise MissingDataForms
             data = forms
@@ -80,9 +79,11 @@ def generate_form(form_type: FormType, title: str = None, instructions: str = No
 
     for f in fields:
         field = ET.Element('field', attrib={
-            'type': f.type.value,
             'var': f.var
         })
+
+        if f.type:
+            field.attrib['type'] = f.type.value
 
         if f.label:
             field.attrib['label'] = f.label

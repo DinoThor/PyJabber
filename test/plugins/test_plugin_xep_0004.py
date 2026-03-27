@@ -1,7 +1,7 @@
 from xml.etree import ElementTree as ET
 
-from pyjabber.plugins.xep_0004.field import FieldTypes, FieldRequest
-from pyjabber.plugins.xep_0004.xep_0004 import parse_form, FormType, generate_form
+from pyjabber.plugins.xep_0004.field import FieldRequest, FieldTypes
+from pyjabber.plugins.xep_0004.xep_0004 import FormType, generate_form, parse_form
 
 """
 <message>

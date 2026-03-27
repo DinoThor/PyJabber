@@ -1,5 +1,6 @@
 import pytest
 
+
 @pytest.fixture
 def message_queue():
     pass

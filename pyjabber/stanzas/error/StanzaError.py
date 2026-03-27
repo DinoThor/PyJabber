@@ -1,5 +1,7 @@
 from xml.etree import ElementTree as ET
-from pyjabber import metadata
+
+from pyjabber import AppConfig
+
 """
 <stanza-kind from='intended-recipient' to='sender' type='error'>
     [OPTIONAL to include sender XML here]
@@ -33,7 +35,7 @@ def conflict_error(id: str) -> bytes:
         attrib={
             "id": id,
             "type": "error",
-            "from": metadata.HOST})
+            "from": AppConfig.app_config.host})
     error = ET.SubElement(iq, "error", attrib={"type": "cancel"})
     ET.SubElement(
         error, "conflict", attrib={
@@ -72,12 +74,11 @@ def invalid_xml() -> bytes: # pragma: no cover
 def internal_server_error() -> bytes: # pragma: no cover
     """
     <stream:error>
-        <internal-server-error
+        <internal-protocols-error
             xmlns='urn:ietf:params:xml:ns:xmpp-streams'/>
     </stream:error>
-    </stream:stream>
     """
-    return f"<stream:error><internal-server-error xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error></stream:stream>".encode()
+    return "<stream:error><internal-protocols-error xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error>".encode()
 
 def item_not_found() -> bytes: # pragma: no cover
     """
@@ -106,13 +107,22 @@ def not_acceptable(text: str = None) -> bytes:
         return "<error type='modify'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>".encode()
 
 
-def not_authorized() -> bytes: # pragma: no cover
+def not_authorized_sasl() -> bytes: # pragma: no cover
     """
     <failure xmlns='urn:ietf:params:xml:ns:xmpp-sasl'>
         <not-authorized/>
     </failure>
     """
     return "<failure xmlns='urn:ietf:params:xml:ns:xmpp-sasl'><not-authorized/></failure>".encode()
+
+
+def not_authorized() -> bytes:
+    """
+    <stream:error>
+      <not-authorized xmlns='urn:ietf:params:xml:ns:xmpp-streams'/>
+    </stream:error>
+    """
+    return "<stream:error><not-authorized xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error>".encode()
 
 
 def not_well_formed() -> bytes:

@@ -1,10 +1,11 @@
-import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 from xml.etree import ElementTree as ET
 
-from pyjabber.utils import ClarkNotation as CN
-from pyjabber.stream.StreamHandler import Signal
+import pytest
+
 from pyjabber.network.parsers.XMLParser import XMLParser
+from pyjabber.stream.negotiators.StreamNegotiator import Signal
+from pyjabber.utils import ClarkNotation as CN
 
 
 @pytest.fixture
@@ -45,7 +46,7 @@ def test_start_element_ns_stream(setup):
 
     assert handler._transport.write.call_count == 2
     assert len(handler._stack) == 1
-    assert handler._stack[0].tag == CN.clarkFromTuple(("http://etherx.jabber.org/streams", "stream"))
+    assert handler._stack[0].tag == CN.clark_from_tuple(("http://etherx.jabber.org/streams", "stream"))
 
 
 def test_start_element_ns_normal_element(setup):
@@ -56,8 +57,8 @@ def test_start_element_ns_normal_element(setup):
 
     handler.startElementNS(("namespace", "element"), "element", attrs)
     assert len(handler._stack) == 2
-    assert handler._stack[-1].tag == CN.clarkFromTuple(("namespace", "element"))
-    assert handler._stack[-1].attrib == {CN.clarkFromTuple(("namespace", "attr")): "value"}
+    assert handler._stack[-1].tag == CN.clark_from_tuple(("namespace", "element"))
+    assert handler._stack[-1].attrib == {CN.clark_from_tuple(("namespace", "attr")): "value"}
 
 
 def test_start_element_ns_invalid(setup):
@@ -80,8 +81,8 @@ def test_end_element_ns_stream(setup):
 def test_end_element_ns_normal_element(setup):
     handler = setup
 
-    parent = ET.Element(CN.clarkFromTuple(("namespace", "parent")))
-    child = ET.Element(CN.clarkFromTuple(("namespace", "child")))
+    parent = ET.Element(CN.clark_from_tuple(("namespace", "parent")))
+    child = ET.Element(CN.clark_from_tuple(("namespace", "child")))
 
     handler._stack.append(parent)
     handler._stack.append(child)
@@ -90,7 +91,7 @@ def test_end_element_ns_normal_element(setup):
 
     assert len(handler._stack) == 1
     assert len(handler._stack[0]) == 1
-    assert handler._stack[0][0].tag == CN.clarkFromTuple(("namespace", "child"))
+    assert handler._stack[0][0].tag == CN.clark_from_tuple(("namespace", "child"))
 
 def test_end_element_ns_invalid_stack(setup):
     handler = setup
@@ -118,7 +119,7 @@ def test_end_element_ns_stream_handling(mock_plugin_manager, mock_presence, mock
     mock_plugin_manager.return_value = MagicMock()
     mock_presence.return_value = MagicMock()
 
-    elem = ET.Element(CN.clarkFromTuple(("namespace", "dummy")))
+    elem = ET.Element(CN.clark_from_tuple(("namespace", "dummy")))
     handler._stack.append(elem)
 
     mock_handle_open_stream.return_value = Signal.DONE

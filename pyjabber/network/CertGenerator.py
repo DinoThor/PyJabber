@@ -1,23 +1,22 @@
+import datetime
 import os
-from loguru import logger
 
 from cryptography import x509
-from cryptography.x509.oid import NameOID
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
-import datetime
+from cryptography.x509.oid import NameOID
+from loguru import logger
 
 
-def check_hostname_cert_exists(host: str, cert_path: os.path):
+def check_hostname_cert_exists(host: str, cert_path: str):
     previous_path = os.getcwd()
     try:
         os.chdir(cert_path)
 
         res = True
-        for file in [f"{host}_key.pem", f"{host}_csr.pem", f"{host}_cert.pem"]:
-            if os.path.isfile(file) is False:
+        for file in [f"{host}_key.pem", f"{host}_cert.pem"]:
+            if not os.path.isfile(file):
                 logger.debug("Missing hostname certificate")
                 res = False
 
@@ -29,7 +28,7 @@ def check_hostname_cert_exists(host: str, cert_path: os.path):
         return False
 
 
-def generate_hostname_cert(host: str, cert_path: os.path):
+def generate_hostname_cert(host: str, cert_path: str):
     logger.debug("Generating hostname certificate")
     previous_path = os.getcwd()
 

@@ -1,20 +1,27 @@
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from xml.etree.ElementTree import Element, SubElement
+
+import pytest
+
 from pyjabber.plugins.PluginManager import PluginManager
-from pyjabber.plugins.roster.Roster import Roster
-from pyjabber.plugins.xep_0199.xep_0199 import Ping
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stream.JID import JID
+
 
 @pytest.fixture
 def setup():
     with patch('pyjabber.plugins.PluginManager.Disco'), \
          patch('pyjabber.plugins.PluginManager.PubSub'), \
          patch('pyjabber.plugins.PluginManager.Roster'), \
-         patch('pyjabber.plugins.PluginManager.Ping'):
+         patch('pyjabber.plugins.PluginManager.Ping'), \
+         patch('pyjabber.plugins.PluginManager.metadata') as mock_meta:
+        mock_meta.PLUGINS = [
+            'http://jabber.org/protocol/pubsub',
+            'http://jabber.org/protocol/disco#info',
+        ]
 
         yield PluginManager(JID("example@domain.com"))
+
 
 def test_plugin_manager_initialization(setup):
     manager = setup

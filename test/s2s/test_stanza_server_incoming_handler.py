@@ -1,11 +1,15 @@
-import os
 import xml.etree.ElementTree as ET
+from unittest.mock import MagicMock, Mock
+
 import pytest
-from unittest.mock import Mock, MagicMock
 
 from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.stanzas.error import StanzaError as SE
-from pyjabber.stream.server.incoming.StanzaServerIncomingHandler import StanzaServerIncomingHandler
+from pyjabber.stream.server.incoming.StanzaServerIncomingHandler import (
+    StanzaServerIncomingHandler,
+)
+
+
 @pytest.fixture
 def mock_connection_manager():
     mock = Mock()

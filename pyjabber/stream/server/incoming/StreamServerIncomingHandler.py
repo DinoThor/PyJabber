@@ -1,9 +1,9 @@
-from pyjabber.features.SASLFeature import MECHANISM, SASL
-from pyjabber.stream.Signal import Signal
-from pyjabber.stream.StreamHandler import StreamHandler, Stage
+from pyjabber.features.SASL.Mechanism import MECHANISM
+from pyjabber.stream.utils.Enums import Signal
+from pyjabber.stream.negotiators.StreamNegotiator import Stage, StreamNegotiator
 
 
-class StreamServerIncomingHandler(StreamHandler):
+class StreamServerIncomingHandler(StreamNegotiator):
     def __init__(self, transport, starttls, parser_ref) -> None:
         super().__init__(transport, starttls, parser_ref)
         self._ibr_feature = False

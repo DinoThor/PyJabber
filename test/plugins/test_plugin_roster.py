@@ -1,9 +1,7 @@
+import xml.etree.ElementTree as ET
 from unittest.mock import patch
 
 import pytest
-import sqlite3
-import xml.etree.ElementTree as ET
-
 from sqlalchemy import create_engine, insert
 
 from pyjabber.db.model import Model

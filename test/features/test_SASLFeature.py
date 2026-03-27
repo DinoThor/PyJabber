@@ -1,15 +1,14 @@
+import base64
 from sqlite3 import Connection
+from unittest.mock import patch
+from xml.etree import ElementTree as ET
 
 import bcrypt
 import pytest
-import base64
-from xml.etree import ElementTree as ET
-from unittest.mock import patch
-
+from pyjabber.features.SASLFeature import MECHANISM, SASL, SASLFeature, Signal
 from sqlalchemy import create_engine, insert
 
 from pyjabber.db.model import Model
-from pyjabber.features.SASLFeature import SASL, SASLFeature, Signal, MECHANISM
 from pyjabber.stanzas.error import StanzaError as SE
 
 
@@ -46,7 +45,7 @@ def test_handle_auth_success(sasl):
     auth_text = base64.b64encode(b'\x00username\x00password').decode('ascii')
     element.text = auth_text
 
-    result = sasl.handleAuth(element)
+    result = sasl.handle_auth(element)
 
     assert result == (Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")
 
@@ -56,9 +55,9 @@ def test_handle_auth_failure(sasl):
     auth_text = base64.b64encode(b'\x00username\x00wrongpassword').decode('ascii')
     element.text = auth_text
 
-    result = sasl.handleAuth(element)
+    result = sasl.handle_auth(element)
 
-    assert result == SE.not_authorized()
+    assert result == SE.not_authorized_sasl()
 
 
 def test_handle_iq_register_conflict(sasl):
@@ -69,7 +68,7 @@ def test_handle_iq_register_conflict(sasl):
     password = ET.SubElement(query, "{jabber:iq:register}password")
     password.text = "password"
 
-    result = sasl.handleIQ(element)
+    result = sasl.handle_IQ(element)
 
     assert result == SE.conflict_error("123")
 
@@ -98,7 +97,7 @@ def test_handle_iq_register_success(sasl):
     password = ET.SubElement(query, "{jabber:iq:register}password")
     password.text = "password"
 
-    result = sasl.handleIQ(element)
+    result = sasl.handle_IQ(element)
 
     assert result == SASL.iq_register_result("123")
 

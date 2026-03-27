@@ -23,7 +23,7 @@ class Message(ET.Element):
 
         super().__init__(tag, attrib, **extra)
 
-        if type(body) == str:
+        if type(body) is str:
             body_elem = ET.Element("body")
             body_elem.text = body
             self.append(body_elem)

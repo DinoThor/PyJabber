@@ -1,22 +1,25 @@
 import pytest
-from pyjabber.utils.ClarkNotation import deglose, clarkFromTuple, isClark
+
+from pyjabber.utils.ClarkNotation import clark_from_tuple, break_down, is_clark
+
+
 def test_deglose():
-    assert deglose("{namespace}tag") == ("namespace", "tag")
-    assert deglose("{http://example.com}element") == ("http://example.com", "element")
-    assert deglose("{urn:ietf:params:xml:ns:xmpp-stanzas}message") == ("urn:ietf:params:xml:ns:xmpp-stanzas", "message")
-    assert deglose("{}empty") == ("", "empty")
+    assert break_down("{namespace}tag") == ("namespace", "tag")
+    assert break_down("{http://example.com}element") == ("http://example.com", "element")
+    assert break_down("{urn:ietf:params:xml:ns:xmpp-stanzas}message") == ("urn:ietf:params:xml:ns:xmpp-stanzas", "message")
+    assert break_down("{}empty") == ("", "empty")
 
 def test_clarkFromTuple():
-    assert clarkFromTuple(("namespace", "tag")) == "{namespace}tag"
-    assert clarkFromTuple(("http://example.com", "element")) == "{http://example.com}element"
-    assert clarkFromTuple((None, "tag")) == "tag"
+    assert clark_from_tuple(("namespace", "tag")) == "{namespace}tag"
+    assert clark_from_tuple(("http://example.com", "element")) == "{http://example.com}element"
+    assert clark_from_tuple((None, "tag")) == "tag"
 
 def test_isClark():
-    assert isClark("{namespace}tag") is True
-    assert isClark("{http://example.com}element") is True
-    assert isClark("tag") is False
-    assert isClark("{namespace} tag") is False
-    assert isClark("{namespace}") is False
+    assert is_clark("{namespace}tag") is True
+    assert is_clark("{http://example.com}element") is True
+    assert is_clark("tag") is False
+    assert is_clark("{namespace} tag") is False
+    assert is_clark("{namespace}") is False
 
 if __name__ == "__main__":
     pytest.main()

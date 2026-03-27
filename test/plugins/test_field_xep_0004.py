@@ -1,6 +1,11 @@
 import pytest
 
-from pyjabber.plugins.xep_0004.field import FieldResponse, FieldRequest, FieldTypes, Option
+from pyjabber.plugins.xep_0004.field import (
+    FieldRequest,
+    FieldResponse,
+    FieldTypes,
+    Option,
+)
 
 
 def test_field_response():

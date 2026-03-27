@@ -1,4 +1,8 @@
 class JID:
+    __slots__ =(
+        '_user',
+        '_domain',
+        '_resource',)
     def __init__(self, jid: str = None, user: str = None, domain: str = None, resource: str = None):
         if jid:
             try:

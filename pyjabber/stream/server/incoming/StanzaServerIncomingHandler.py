@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as ET
 
 from pyjabber.stream.JID import JID
-from pyjabber.stream.StanzaHandler import StanzaHandler
+from pyjabber.stream.handlers.StanzaHandler import StanzaHandler
 
 
 class StanzaServerIncomingHandler(StanzaHandler):
@@ -31,12 +31,12 @@ class StanzaServerIncomingHandler(StanzaHandler):
 
             all_resources_online = []
             for user in priority:
-                all_resources_online += self._connections.get_buffer_online(
+                all_resources_online += self._connections.get_transport_online(
                     JID(user=jid.user, domain=jid.domain, resource=user[0]))
             for buffer in all_resources_online:
                 buffer[1].write(ET.tostring(element))
         else:
-            resource_online = self._connections.get_buffer_online(jid)
+            resource_online = self._connections.get_transport_online(jid)
             if not resource_online and self._message_persistence:
                 self._message_queue.put_nowait(('MESSAGE', jid, ET.tostring(element)))
             else:
