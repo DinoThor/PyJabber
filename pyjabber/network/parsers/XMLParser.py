@@ -4,9 +4,10 @@ from enum import Enum
 from xml.etree import ElementTree as ET
 from xml.sax import ContentHandler
 
-from pyjabber.stream.ClientHandler import ClientHandle
-from pyjabber.stream.StanzaHandler import StanzaHandler
-from pyjabber.stream.StreamHandler import StreamHandler
+from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.stream.negotiators.StreamNegotiator import StreamNegotiator
+from pyjabber.stream.handlers.StanzaHandler import  StanzaHandler
+from pyjabber.stream.QueueBridge import QueueBridge
 from pyjabber.utils import ClarkNotation as CN
 
 
@@ -16,30 +17,22 @@ class XMLParser(ContentHandler):
         Inheriting from sax.ContentHandler
 
         :param transport: Transport instance of the connected client. Used to send replays
-        :param starttls: Coroutine launched when server and client start the connection upgrade process to TLS
     """
-    stanza_handler_constructor = StanzaHandler
-    stream_handler_constructor = StreamHandler
-    server: bool = False
-
-    def __init__(self, transport, protocol):
+    __slots__ = ()
+    def __init__(self, transport, protocol, stream_negotiator=StreamNegotiator, stanza_handler=StanzaHandler):
         super().__init__()
         self._stack = []
 
         self._transport = transport
         self._protocol = protocol
-        self._state = self.StreamState.CONNECTED
-        self._clientHandler = ClientHandle(transport, protocol, self)
-        self._from_claim = None
+        self._stream_negotiator = QueueBridge(
+            transport, protocol, self, stream_negotiator, stanza_handler
+        )
 
-        asyncio.create_task(self._clientHandler.feed())
+        self._connection_manager = ConnectionManager()
+        self._peer = transport.get_extra_info("peername")
 
-    class StreamState(Enum):
-        """
-        Stream connection states.
-        """
-        CONNECTED = 0
-        READY = 1
+        self._queue_bridge_task = asyncio.create_task(self._stream_negotiator.feed())
 
     @property
     def transport(self) -> Transport:
@@ -49,36 +42,31 @@ class XMLParser(ContentHandler):
     def transport(self, transport: Transport):
         self._transport = transport
 
-    @property
-    def from_claim(self):
-        return self._from_claim
-
     def startElementNS(self, name, qname, attrs):
         if self._stack:  # "<stream:stream>" tag already present in the data stack
             elem = ET.Element(
-                CN.clarkFromTuple(name),
+                CN.clark_from_tuple(name),
                 attrib={
-                    CN.clarkFromTuple(key): item for key,
+                    CN.clark_from_tuple(key): item for key,
                     item in dict(attrs).items()})
             self._stack.append(elem)
 
         elif name[1] == "stream" and name[0] == "http://etherx.jabber.org/streams":
             elem = ET.Element(
-                CN.clarkFromTuple(name),
+                CN.clark_from_tuple(name),
                 attrib={
-                    CN.clarkFromTuple(key): item for key,
+                    CN.clark_from_tuple(key): item for key,
                     item in dict(attrs).items()})
-            self._from_claim = elem.attrib.get("from")
             self._stack.append(elem)
 
-            self._clientHandler.put(elem)
+            self._stream_negotiator.put(elem)
 
         else:
             raise Exception()
 
     def endElementNS(self, name, qname):
         if "stream" in name:
-            self._transport.write(b'</stream:stream>')
+            self._connection_manager.close(self._peer)
             self._stack.clear()
             return
 
@@ -87,7 +75,7 @@ class XMLParser(ContentHandler):
 
         elem = self._stack.pop()
 
-        if elem.tag != CN.clarkFromTuple(name):
+        if elem.tag != CN.clark_from_tuple(name):
             # INVALID STANZA/MESSAGE
             raise Exception()
 
@@ -95,9 +83,7 @@ class XMLParser(ContentHandler):
             self._stack[-1].append(elem)
 
         else:
-            if name[1] in ["starttls", "auth"]:
-                self.transport.pause_reading()
-            self._clientHandler.put(elem)
+            self._stream_negotiator.put(elem)
 
     def characters(self, content: str) -> None:
         if not self._stack:
@@ -113,3 +99,6 @@ class XMLParser(ContentHandler):
 
     def reset_stack(self) -> None:
         self._stack.clear()
+
+    def cancel_queue_bridge(self):
+        self._queue_bridge_task.cancel()

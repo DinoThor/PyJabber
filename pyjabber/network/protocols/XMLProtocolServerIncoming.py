@@ -2,30 +2,30 @@ from xml import sax
 
 from loguru import logger
 
-from pyjabber.AppConfig import AppConfig
-from pyjabber.network.parsers.XMLServerIncomingParser import XMLServerIncomingParser
+from pyjabber import AppConfig
+from pyjabber.network.parsers.XMLParser import XMLParser
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.utils.TransportProxy import TransportProxy
-from pyjabber.network.XMLProtocol import XMLProtocol
+from pyjabber.network.protocols.XMLProtocol import XMLProtocol
 
 
-class XMLProtocolS2S(XMLProtocol):
-    def __init__(self, namespace, host, connection_timeout):
+class XMLProtocolServerIncoming(XMLProtocol):
+    def __init__(self, namespace, connection_timeout, host):
         super().__init__(namespace, connection_timeout)
         self._host = host
 
     def connection_made(self, transport):
         """
-        Called when a client or another server opens a TCP connection to the server
+        Called when a client or another protocols opens a TCP connection to the protocols
 
         :param transport: The transport object for the connection
         :type transport: asyncio.Transport
         """
         if transport:
             self._peer = transport.get_extra_info('peername')
-            logger.info(f"Connection {self._logger_tag} {self._peer}")
+            logger.info(f"Connection {self._peer}")
 
-            if AppConfig.verbose:
+            if AppConfig.app_config.verbose:
                 self._transport = TransportProxy(transport, self._peer)
             else:
                 self._transport = transport
@@ -34,7 +34,7 @@ class XMLProtocolS2S(XMLProtocol):
             self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
             self._xml_parser.setFeature(sax.handler.feature_external_ges, False)
             self._xml_parser.setContentHandler(
-                XMLServerIncomingParser(self._transport, self)
+                XMLParser(self._transport, self)
             )
 
             if self._connection_timeout:
@@ -51,7 +51,7 @@ class XMLProtocolS2S(XMLProtocol):
 
     def connection_lost(self, exc):
         """
-        Called when a server closes a TCP connection to the server
+        Called when a protocols close a TCP connection to the protocols
 
         :param exc: Exception that caused the connection to close
         :type exc: Exception
