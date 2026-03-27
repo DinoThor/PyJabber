@@ -85,10 +85,12 @@ pyjabber = [
     "db/*.sql",
     "config/config.yaml",
     "network/certs/*.pem",
-    "webpage/build/**/*"
+    "webpage/build/**/*",
+    "../alembic_local/**/*"
 ]
 alembic = [
     "env.py",
+    "__init__.py",
     "versions/*.py"
 ]
 "*" = [
@@ -131,7 +133,7 @@ commands = ruff check pyjabber
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 pythonpath = ["."]
-norecursedirs = [".git", "s2s", "e2e", "webapp", "alembic_local"]
+norecursedirs = [".git", "s2s", "e2e", "webpage", "alembic_local"]
 testpaths = ["test"]
 
 [tool.ruff]
