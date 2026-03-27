@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 from xml.etree.ElementTree import Element
 
 import pytest
-from pyjabber.network.server.XMLServerIncomingParser import (
+from pyjabber.network.protocols.XMLServerIncomingParser import (
     Signal,
     StreamState,
     XMLServerIncomingParser,
@@ -51,7 +51,7 @@ def test_start_element_ns_nested_element(setup_parser):
 
     parser.startElementNS(name, None, attrs)
     assert len(parser._stack) == 2
-    assert parser._stack[-1].tag == CN.clarkFromTuple(name)
+    assert parser._stack[-1].tag == CN.clark_from_tuple(name)
 
 def test_start_element_ns_exception(setup_parser):
     parser, buffer, connection_manager = setup_parser
@@ -86,7 +86,7 @@ def test_end_element_ns_invalid_stanza_exception(setup_parser):
 def test_end_element_ns_append_to_stack(setup_parser):
     parser, buffer, connection_manager = setup_parser
     parent = Element('parent')
-    child = Element(CN.clarkFromTuple(("namespace", "element")))
+    child = Element(CN.clark_from_tuple(("namespace", "element")))
 
     parser._stack.append(parent)
     parser._stack.append(child)
@@ -95,14 +95,14 @@ def test_end_element_ns_append_to_stack(setup_parser):
     assert parent[0] == child
 
 
-@patch('pyjabber.stream.server.incoming.StanzaServerIncomingHandler.Presence', MagicMock())
+@patch('pyjabber.stream.protocols.incoming.StanzaServerIncomingHandler.Presence', MagicMock())
 @patch.object(StreamServerIncomingHandler, 'handle_open_stream', return_value=Signal.DONE)
 def test_end_element_ns_handle_open_stream(mock_handle_open_stream, setup_parser):
     parser, buffer, connection_manager = setup_parser
     parser._stack.append(Element('{http://etherx.jabber.org/streams}stream'))
     parser._state = StreamState.CONNECTED
 
-    elem = Element(CN.clarkFromTuple(("namespace", "element")))
+    elem = Element(CN.clark_from_tuple(("namespace", "element")))
     parser._stack.append(elem)
 
     parser.endElementNS(("namespace", "element"), None)
@@ -115,7 +115,7 @@ def test_end_element_ns_signal_reset(setup_parser):
     parser._stack.append(Element('{http://etherx.jabber.org/streams}stream'))
     parser._state = StreamState.CONNECTED
 
-    elem = Element(CN.clarkFromTuple(("namespace", "element")))
+    elem = Element(CN.clark_from_tuple(("namespace", "element")))
     parser._stack.append(elem)
 
     with patch.object(parser._streamHandler, 'handle_open_stream', return_value=Signal.RESET):
@@ -128,7 +128,7 @@ def test_end_element_ns_ready_state_feed(setup_parser):
     parser._state = StreamState.READY
     parser._stanzaHandler = MagicMock()
 
-    elem = Element(CN.clarkFromTuple(("namespace", "element")))
+    elem = Element(CN.clark_from_tuple(("namespace", "element")))
     parser._stack.append(elem)
 
     parser.endElementNS(("namespace", "element"), None)

@@ -4,7 +4,7 @@ from xml.etree import ElementTree as ET
 import pytest
 
 # Ensure this path is correct
-from pyjabber.stream.server.outgoing.StreamServerOutgoingHandler import (
+from pyjabber.stream.negotiators.ServerStreamNegotiator import (
     Signal,
     Stage,
     StreamServerOutcomingHandler,

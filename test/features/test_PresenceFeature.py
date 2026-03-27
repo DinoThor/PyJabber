@@ -87,7 +87,7 @@ def test_handle_subscribe(setup_presence):
         [{"id": 1, "item": '<item jid="user@localhost" subscription="none"/>'}],  # Initial simulation
         [{"id": 1, "item": '<item jid="user@localhost" subscription="none" ask="subscribe"/>'}]  # After update
     ]
-    mock_connections().get_buffer.return_value = [MagicMock()]
+    mock_connections().get_transport.return_value = [MagicMock()]
     jid = JID('user2@localhost')
     presence._roster = mock_roster
     result = presence.handle_subscribe(jid, element)
@@ -102,7 +102,7 @@ def test_handle_subscribe(setup_presence):
     assert args[1] == 1
 
     mock_roster.roster_by_jid.side_effect = None
-    mock_connections().get_buffer.return_value = None
+    mock_connections().get_transport.return_value = None
 
 
 def test_handle_subscribe_non_localhost(setup_presence):

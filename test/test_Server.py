@@ -8,9 +8,9 @@ from pyjabber.server_parameters import Parameters
 
 @pytest.fixture
 def setup():
-    with patch('pyjabber.server.logger') as mock_log, \
-         patch('pyjabber.server.DB') as mock_db, \
-         patch('pyjabber.server.init_utils') as mock_utils:
+    with patch('pyjabber.protocols.logger') as mock_log, \
+         patch('pyjabber.protocols.DB') as mock_db, \
+         patch('pyjabber.protocols.init_utils') as mock_utils:
         mock_utils.setup_query_local_ip.return_value = '127.0.0.1'
         # mock_utils.setup_ip_by_host.return_value =
         param = Parameters()
@@ -25,4 +25,4 @@ def test_exit_exception():
 def test_run_server(setup):
     server, log, db = setup
 
-    # assert log.call_args_list == ["Starting server...", "Client domain => localhost"]
+    # assert log.call_args_list == ["Starting protocols...", "Client domain => localhost"]

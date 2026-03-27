@@ -94,7 +94,7 @@ def test_get_buffer(connections_manager):
     connections_manager._peerList = {
         peer: (jid, transport, [False])
     }
-    buffer = connections_manager.get_buffer(jid)
+    buffer = connections_manager.get_transport(jid)
     assert buffer[0][1] == transport
     assert buffer[0][0] == jid
 
@@ -107,7 +107,7 @@ def test_get_buffer_with_resource(connections_manager):
     connections_manager._peerList = {
         peer: (jid, transport, [False])
     }
-    buffer = connections_manager.get_buffer(jid)
+    buffer = connections_manager.get_transport(jid)
     assert buffer[0][1] == transport
     assert buffer[0][0] == jid
 
@@ -122,7 +122,7 @@ def test_get_buffer_online(connections_manager):
     }
 
     connections_manager.online(jid)
-    buffer = connections_manager.get_buffer_online(jid)
+    buffer = connections_manager.get_transport_online(jid)
 
     assert buffer[0][0] == jid
     assert buffer[0][1] == transport
@@ -130,7 +130,7 @@ def test_get_buffer_online(connections_manager):
 
     connections_manager.online(jid, False)
 
-    buffer = connections_manager.get_buffer_online(jid)
+    buffer = connections_manager.get_transport_online(jid)
 
     assert len(buffer) == 0
 
@@ -144,7 +144,7 @@ def test_get_buffer_online_with_resource(connections_manager):
         peer: (jid, transport, [True])
     }
 
-    buffer = connections_manager.get_buffer_online(jid)
+    buffer = connections_manager.get_transport_online(jid)
 
     assert buffer[0][0] == jid
     assert buffer[0][1] == transport
@@ -152,7 +152,7 @@ def test_get_buffer_online_with_resource(connections_manager):
 
     connections_manager.online(jid, False)
 
-    buffer = connections_manager.get_buffer_online(jid)
+    buffer = connections_manager.get_transport_online(jid)
 
     assert len(buffer) == 0
 
@@ -181,7 +181,7 @@ def test_update_buffer_jid(connections_manager):
         peer: (jid, transport, [False])
     }
     new_transport = MagicMock
-    connections_manager.update_buffer(new_transport=new_transport, jid=jid)
+    connections_manager.update_transport_jid(new_transport, jid)
     assert connections_manager._peerList[peer][1] == new_transport
     assert connections_manager._peerList[peer][0] == jid
     assert connections_manager._peerList[peer][2] == [False]
@@ -318,7 +318,7 @@ def test_update_host_no_entry(connections_manager):
     }
     connections_manager.update_host(('127.0.0.1', 54321), "remote.es")
     assert connections_manager._remoteList[peer][0] is None
-    mock_logger.warning.assert_called_with("Unable to find server with given peer during host update. Check this inconsistency")
+    mock_logger.warning.assert_called_with("Unable to find protocols with given peer during host update. Check this inconsistency")
 
 
 def test_close_server(connections_manager):
@@ -355,8 +355,8 @@ def test_get_server_buffer_host(connections_manager):
     connections_manager._remoteList = {
         peer: ("remote.es", transport)
     }
-
     assert connections_manager.get_server_buffer(host="remote.es") == transport
+
 
 
 def test_get_server_buffer_no_entry(connections_manager):
@@ -380,4 +380,4 @@ def test_get_server_buffer_malformed(connections_manager):
     }
 
     assert connections_manager.get_server_buffer() is None
-    mock_logger.error.assert_called_with("Missing peer OR host to search for server transport. Returning None")
+    mock_logger.error.assert_called_with("Missing peer OR host to search for protocols transport. Returning None")

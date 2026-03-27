@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from pyjabber.network.XMLProtocol import TransportProxy
+from pyjabber.network.protocols.XMLProtocol import TransportProxy
 from pyjabber.stream.JID import JID
 from pyjabber.queues.workers.MessageQueueWorker import queue_worker, tls_worker
 
@@ -31,8 +31,8 @@ async def test_tls_worker_client():
         mock_queue.get.side_effect = [(mock_transport, mock_protocol, mock_parser), asyncio.CancelledError()]
 
         mock_metadata.TLS_QUEUE = mock_queue
-        mock_AppConfig.cert_path = os.path.dirname(os.path.abspath(__file__))
-        mock_AppConfig.host = "localhost"
+        mock_AppConfig.app_config.cert_path = os.path.dirname(os.path.abspath(__file__))
+        mock_AppConfig.app_config.host = "localhost"
 
         mock_new_transport = MagicMock()
         mock_loop.start_tls = AsyncMock(return_value=mock_new_transport)
@@ -81,8 +81,8 @@ async def test_tls_worker_connection_error_client():
         mock_queue.get.side_effect = [(mock_transport, mock_protocol, mock_parser), asyncio.CancelledError()]
 
         mock_metadata.TLS_QUEUE = mock_queue
-        mock_AppConfig.cert_path = ""
-        mock_AppConfig.host = "localhost"
+        mock_AppConfig.app_config.cert_path = ""
+        mock_AppConfig.app_config.host = "localhost"
 
         mock_loop.start_tls = AsyncMock()
         mock_loop.start_tls.side_effect = ConnectionResetError()

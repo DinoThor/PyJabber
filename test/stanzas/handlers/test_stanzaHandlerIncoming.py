@@ -23,7 +23,7 @@ def setup():
          patch('pyjabber.stream.StanzaHandler.logger') as mock_logger: \
 
         MockConnectionsManager.get_jid.return_value = 'user@localhost'
-        mock_AppConfig.host = 'localhost'
+        mock_AppConfig.app_config.host = 'localhost'
 
         handler = StanzaServerIncomingHandler(mock_buffer)
         handler._functions = {
@@ -42,7 +42,7 @@ def test_handleMsg_resource(setup):
     element.tag = "{jabber:server}message"
 
     mock_server_buffer = MagicMock()
-    mock_connections.return_value.get_buffer_online.return_value = [(None, mock_server_buffer, [True])]
+    mock_connections.return_value.get_transport_online.return_value = [(None, mock_server_buffer, [True])]
 
     handler.handle_msg(element)
 
@@ -56,9 +56,9 @@ def test_handleMsg_resource_queue(setup):
     element.tag = "{jabber:server}message"
 
     mock_server_buffer = MagicMock()
-    mock_connections.return_value.get_buffer_online.return_value = []
+    mock_connections.return_value.get_transport_online.return_value = []
 
-    with patch('pyjabber.stream.server.incoming.StanzaServerIncomingHandler.JID') as mock_jid:
+    with patch('pyjabber.stream.protocols.incoming.StanzaServerIncomingHandler.JID') as mock_jid:
         mock_jid.return_value = JID('user@localhost/res1')
         handler.handle_msg(element)
 
@@ -71,7 +71,7 @@ def test_handleMsg_enqueue_resource(setup):
     element = Element('message', attrib={"to": "user@localhost/res1"})
     element.tag = "{jabber:client}message"
 
-    mock_connections.return_value.get_buffer_online.return_value = []
+    mock_connections.return_value.get_transport_online.return_value = []
     mock_presence.return_value.most_priority.return_value = []
 
     handler.handle_msg(element)
@@ -90,7 +90,7 @@ def test_handleMsg_bare(setup):
     buffer_mock_1 = MagicMock()
     buffer_mock_2 = MagicMock()
 
-    mock_connections.return_value.get_buffer_online.side_effect = [
+    mock_connections.return_value.get_transport_online.side_effect = [
         [(MagicMock(), buffer_mock_1, [True])], [(MagicMock(), buffer_mock_2, [True])]
     ]
     mock_presence.return_value.most_priority.return_value = [
@@ -102,7 +102,7 @@ def test_handleMsg_bare(setup):
 
     mock_queue.put_nowait.assert_not_called()
     assert str(mock_presence.return_value.most_priority.call_args[0][0]) == 'user@localhost'
-    con_calls = mock_connections.return_value.get_buffer_online.call_args_list
+    con_calls = mock_connections.return_value.get_transport_online.call_args_list
     assert str(con_calls[0][0][0]) == 'user@localhost/res1'
     assert str(con_calls[1][0][0]) == 'user@localhost/res2'
     buffer_mock_1.write.assert_called_with(ET.tostring(element))
@@ -115,9 +115,9 @@ def test_handleMsg_bare_queue(setup):
     element.tag = "{jabber:client}message"
 
     mock_presence.return_value.most_priority.return_value = []
-    with patch('pyjabber.stream.server.incoming.StanzaServerIncomingHandler.JID') as mock_jid:
+    with patch('pyjabber.stream.protocols.incoming.StanzaServerIncomingHandler.JID') as mock_jid:
         mock_jid.return_value = JID('user@localhost')
         handler.handle_msg(element)
 
     mock_queue.put_nowait.assert_called_with(('MESSAGE', mock_jid.return_value, ET.tostring(element)))
-    mock_connections.return_value.get_buffer_online.assert_not_called()
+    mock_connections.return_value.get_transport_online.assert_not_called()

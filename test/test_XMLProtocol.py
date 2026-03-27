@@ -5,7 +5,7 @@ from xml import sax
 import pytest
 
 from pyjabber.network.utils.Enums import ServerConnectionType as SCT
-from pyjabber.network.XMLProtocol import XMLProtocol
+from pyjabber.network.protocols.XMLProtocol import XMLProtocol
 
 
 @pytest.fixture

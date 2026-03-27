@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from pyjabber.network.server.incoming.XMLServerIncomingProtocol import (
+from pyjabber.network.protocols.incoming.XMLServerIncomingProtocol import (
     XMLServerIncomingProtocol,
 )
 
@@ -53,7 +53,7 @@ def test_connection_made_without_transport(mock_make_parser, setup_protocol):
     protocol, connection_manager = setup_protocol
     transport = None
 
-    with patch('pyjabber.network.server.incoming.XMLServerIncomingProtocol.logger') as mock_logger:
+    with patch('pyjabber.network.protocols.incoming.XMLServerIncomingProtocol.logger') as mock_logger:
         protocol.connection_made(transport)
         mock_logger.error.assert_called_with("Invalid transport")
 

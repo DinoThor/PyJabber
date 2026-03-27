@@ -6,7 +6,7 @@ from xml.etree import ElementTree as ET
 import pytest
 
 from pyjabber.stream.JID import JID
-from pyjabber.stream.StreamHandler import Signal, Stage, StreamHandler
+from pyjabber.stream.negotiators.StreamNegotiator import Signal, Stage, StreamNegotiator
 from pyjabber.utils import ClarkNotation as CN
 
 
@@ -20,7 +20,7 @@ def setup():
             mock_meta_sasl.HOST = 'localhost'
             mock_protocol = MagicMock()
             mock_protocol.from_claim = None
-            yield StreamHandler(transport, starttls, mock_protocol)
+            yield StreamNegotiator(transport, starttls, mock_protocol)
 
 
 def test_stage_enum():
@@ -124,8 +124,8 @@ def test_handle_open_stream_bind(monkeypatch, setup):
     handler._stage = Stage.BIND
 
     iq_elem = ET.Element("iq", attrib={"type": "set", "id": "123"})
-    bind_elem = ET.SubElement(iq_elem, CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "bind")))
-    res_elem = ET.SubElement(bind_elem, CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "resource")))
+    bind_elem = ET.SubElement(iq_elem, CN.clark_from_tuple(("urn:ietf:params:xml:ns:xmpp-bind", "bind")))
+    res_elem = ET.SubElement(bind_elem, CN.clark_from_tuple(("urn:ietf:params:xml:ns:xmpp-bind", "resource")))
     res_elem.text = "resource_id"
 
     connections = Mock()
@@ -133,7 +133,7 @@ def test_handle_open_stream_bind(monkeypatch, setup):
     jid = JID("user@localhost")
     connections.get_jid.return_value = jid
 
-    clark_notation_bind = CN.clarkFromTuple(("urn:ietf:params:xml:ns:xmpp-bind", "bind"))
+    clark_notation_bind = CN.clark_from_tuple(("urn:ietf:params:xml:ns:xmpp-bind", "bind"))
     bind_elem_found = iq_elem.find(clark_notation_bind)
     assert bind_elem_found is not None, f"bind_elem_found should not be None, got {bind_elem_found}"
 
