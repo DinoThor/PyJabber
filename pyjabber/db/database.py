@@ -80,7 +80,7 @@ class DB:
 
         if os.path.isfile(AppConfig.app_config.database_path):
             DB._engine = create_async_engine(
-                url="sqlite+aiosqlite:///tickets.db",
+                url=f"sqlite+aiosqlite:///{AppConfig.app_config.database_path}",
                 echo=AppConfig.app_config.database_debug
             )
 

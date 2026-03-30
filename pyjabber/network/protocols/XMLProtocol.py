@@ -70,7 +70,7 @@ class XMLProtocol(asyncio.Protocol):
         :type transport: asyncio.Transport
         """
         self._peer = transport.get_extra_info('peername')
-        logger.info(f"{"Server c" if self._server_incoming else "C"}onnection from <{self._peer}>")
+        logger.info(f"{'Server c' if self._server_incoming else 'C'}onnection from <{self._peer}>")
 
         if self._connection_timeout:
             self._timeout_monitor = StreamAlivenessMonitor(
@@ -121,7 +121,7 @@ class XMLProtocol(asyncio.Protocol):
         if self._timeout_flag:
             return
 
-        logger.info(f"Connection lost <{self._peer}>{f": Reason {exc}" if exc else ""}")
+        logger.info(f"Connection lost <{self._peer}>{f'': Reason {exc}' if exc else ''}")
 
         self._transport = None
         self._xml_parser.getContentHandler().cancel_queue_bridge()
