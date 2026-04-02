@@ -8,4 +8,4 @@ class NewConnectionWrapper:
     It can be from a client or a server.
     """
     value: str
-    client: bool
+    client: bool = True
