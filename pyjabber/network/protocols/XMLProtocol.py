@@ -65,11 +65,6 @@ class XMLProtocol(asyncio.Protocol):
 
         self._server_incoming = namespace == "jabber:server"
 
-    def __del__(self):
-        logger.trace(
-            f"DEBUG: Protocol object for {self._peer or hex(id(self))} has been deleted"
-        )
-
     @property
     def transport(self):
         return self._transport
@@ -199,7 +194,7 @@ class XMLProtocol(asyncio.Protocol):
         if not self._transport:
             return
 
-        logger.info(f"Connection timeout {self._logger_tag} {self._peer}")
+        logger.info(f"Connection timeout {self._peer}")
         if not self._transport.is_closing():
             self._transport.write("<connection-timeout/>".encode())
             self._transport.close()

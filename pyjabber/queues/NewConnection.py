@@ -9,4 +9,4 @@ class NewConnectionWrapper:
     """
 
     value: str
-    client: bool
+    client: bool = True
