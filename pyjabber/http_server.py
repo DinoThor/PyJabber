@@ -11,14 +11,14 @@ from pyjabber.webpage.adminPage import get_index, get_static
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
+
 class HttpServer:
     def __init__(self, app_list: List[tuple[str, Application]]):
         self._mainApp = web.Application()
-        self._mainApp.router.add_get('/', get_index)
-        self._mainApp.router.add_static('/static', get_static())
+        self._mainApp.router.add_get("/", get_index)
+        self._mainApp.router.add_static("/static", get_static())
         for app in app_list:
             self._mainApp.add_subapp(app[0], app[1])
-
 
     @property
     def app(self):
@@ -40,4 +40,3 @@ class HttpServer:
                 await asyncio.sleep(3600)  # Keep alive the protocols
         except asyncio.CancelledError:
             await runner.cleanup()
-

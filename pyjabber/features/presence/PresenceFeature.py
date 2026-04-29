@@ -13,14 +13,22 @@ from pyjabber.features.presence.Enums import PresenceShow, PresenceType
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.queues.NewConnection import NewConnectionWrapper
-from pyjabber.queues.QueueManager import get_queue, QueueName
+from pyjabber.queues.QueueManager import QueueName, get_queue
 from pyjabber.stanzas.IQ import IQ
 from pyjabber.stream.JID import JID
 from pyjabber.utils import Singleton
 
 
 class Presence(metaclass=Singleton):
-    __slots__ = ('_handlers', '_connections', '_roster', '_pending', '_connection_queue', '_internal_queue', '_online_status')
+    __slots__ = (
+        "_handlers",
+        "_connections",
+        "_roster",
+        "_pending",
+        "_connection_queue",
+        "_internal_queue",
+        "_online_status",
+    )
 
     def __init__(self) -> None:
         self._handlers = {
@@ -28,7 +36,7 @@ class Presence(metaclass=Singleton):
             "subscribed": self._handle_subscribed,
             "unsubscribed": self._handle_unsubscribed,
             "unavailable": self._handle_global_presence,
-            "INTERNAL": self._handle_lost_connection
+            "INTERNAL": self._handle_lost_connection,
         }
 
         self._connections = ConnectionManager()
@@ -70,7 +78,11 @@ class Presence(metaclass=Singleton):
         except KeyError:
             return []
 
-    def most_priority(self, jid: JID) -> List[Tuple[str, PresenceType, Union[str, None], Union[str, None], Union[str, None]]]:
+    def most_priority(
+        self, jid: JID
+    ) -> List[
+        Tuple[str, PresenceType, Union[str, None], Union[str, None], Union[str, None]]
+    ]:
         priority = self.priority_by_jid(jid)
 
         values = [item[-1] for item in priority if item[-1] is not None]
@@ -96,11 +108,14 @@ class Presence(metaclass=Singleton):
         if jid.bare() not in self._online_status:
             return None, None
 
-        present = [(i,p) for i, p in enumerate(self._online_status[jid.bare()]) if p[0] == jid.resource]
+        present = [
+            (i, p)
+            for i, p in enumerate(self._online_status[jid.bare()])
+            if p[0] == jid.resource
+        ]
         if present:
             return present[0]
         return None, None
-
 
     def _handle_lost_connection(self, jid: Union[JID | str], element: Element):
         if isinstance(jid, JID):
@@ -109,7 +124,10 @@ class Presence(metaclass=Singleton):
 
             index, present = self._present_in_online_list(jid)
             if present:
-                if self._online_status[jid.bare()][index][1] == PresenceType.UNAVAILABLE:
+                if (
+                    self._online_status[jid.bare()][index][1]
+                    == PresenceType.UNAVAILABLE
+                ):
                     self._online_status[jid.bare()].pop(index)
                     if len(self._online_status[jid.bare()]) == 0:
                         self._online_status.pop(jid.bare())
@@ -128,19 +146,27 @@ class Presence(metaclass=Singleton):
                     contact_jid = JID(contact_jid)
 
                 if contact_jid.bare() in self._online_status:
-                    for user_connected in [i for i in self._online_status[contact_jid.bare()] if
-                                           i[1] == PresenceType.AVAILABLE]:
+                    for user_connected in [
+                        i
+                        for i in self._online_status[contact_jid.bare()]
+                        if i[1] == PresenceType.AVAILABLE
+                    ]:
                         resource = user_connected[0]
                         client = self._connections.get_transport(
-                            JID(user=contact_jid.user, domain=contact_jid.domain, resource=resource))[0]
+                            JID(
+                                user=contact_jid.user,
+                                domain=contact_jid.domain,
+                                resource=resource,
+                            )
+                        )[0]
 
                         presence = ET.Element(
                             "presence",
                             attrib={
                                 "from": str(jid),
                                 "to": client.jid.bare(),
-                                "type": PresenceType.UNAVAILABLE.value
-                            }
+                                "type": PresenceType.UNAVAILABLE.value,
+                            },
                         )
                         client.transport.write(ET.tostring(presence))
 
@@ -150,12 +176,12 @@ class Presence(metaclass=Singleton):
                     attrib={
                         "from": str(jid),
                         "to": jid.bare(),
-                        "type": PresenceType.UNAVAILABLE.value
-                    }
+                        "type": PresenceType.UNAVAILABLE.value,
+                    },
                 )
                 client.transport.write(ET.tostring(presence))
         else:
-            pass    #TODO: presence for remote server lost
+            pass  # TODO: presence for remote server lost
 
     async def _handle_lost_connection_server(self, host: str, element: Element):
         pass
@@ -164,15 +190,31 @@ class Presence(metaclass=Singleton):
         if jid.bare() not in self._online_status:
             self._online_status[jid.bare()] = []
 
-        show = next((c.text for c in element if c.tag == '{jabber:client}show' and c.text in [i.value for i in PresenceShow]), None)
-        status = next((c.text for c in element if c.tag == '{jabber:client}status'), None)
-        priority = next((c.text for c in element if c.tag == '{jabber:client}priority'), None)
+        show = next(
+            (
+                c.text
+                for c in element
+                if c.tag == "{jabber:client}show"
+                and c.text in [i.value for i in PresenceShow]
+            ),
+            None,
+        )
+        status = next(
+            (c.text for c in element if c.tag == "{jabber:client}status"), None
+        )
+        priority = next(
+            (c.text for c in element if c.tag == "{jabber:client}priority"), None
+        )
 
         index, present = await self._present_in_online_list(jid)
         if element.attrib.get("type") == PresenceType.UNAVAILABLE.value:
             if present:
                 self._online_status[jid.bare()][index] = (
-                    jid.resource, PresenceType.UNAVAILABLE, show, status, priority
+                    jid.resource,
+                    PresenceType.UNAVAILABLE,
+                    show,
+                    status,
+                    priority,
                 )
             else:
                 self._online_status[jid.bare()].append(
@@ -183,7 +225,13 @@ class Presence(metaclass=Singleton):
         else:
             if present:
                 previous_status = self._online_status[jid.bare()][index][1]
-                self._online_status[jid.bare()][index] = (jid.resource, PresenceType.AVAILABLE, show, status, priority)
+                self._online_status[jid.bare()][index] = (
+                    jid.resource,
+                    PresenceType.AVAILABLE,
+                    show,
+                    status,
+                    priority,
+                )
                 if previous_status == PresenceType.UNAVAILABLE:
                     await self._connection_queue.put(
                         NewConnectionWrapper(jid)
@@ -213,9 +261,19 @@ class Presence(metaclass=Singleton):
                 contact_jid = JID(contact_jid)
 
             if contact_jid.bare() in self._online_status:
-                for user_connected in [i for i in self._online_status[contact_jid.bare()] if i[1] == PresenceType.AVAILABLE]:
+                for user_connected in [
+                    i
+                    for i in self._online_status[contact_jid.bare()]
+                    if i[1] == PresenceType.AVAILABLE
+                ]:
                     resource = user_connected[0]
-                    online = self._connections.get_transport_online(JID(user=contact_jid.user, domain=contact_jid.domain, resource=resource))
+                    online = self._connections.get_transport_online(
+                        JID(
+                            user=contact_jid.user,
+                            domain=contact_jid.domain,
+                            resource=resource,
+                        )
+                    )
                     if online:
                         online = online.pop()
                         presence = ET.Element(
@@ -223,7 +281,7 @@ class Presence(metaclass=Singleton):
                             attrib={
                                 "from": str(jid),
                                 "to": online.jid.bare(),
-                            }
+                            },
                         )
 
                         if element.attrib.get("type") == PresenceType.UNAVAILABLE.value:
@@ -269,18 +327,22 @@ class Presence(metaclass=Singleton):
         if to.domain == AppConfig.app_config.host:
             roster = self._roster.roster_by_jid(jid)
 
-            item = [item for item in roster
-                    if ET.fromstring(item.get("item")).attrib.get("jid") == to.user
-                    or ET.fromstring(item.get("item")).attrib.get("jid") == to.bare()
-                    ]
+            item = [
+                item
+                for item in roster
+                if ET.fromstring(item.get("item")).attrib.get("jid") == to.user
+                or ET.fromstring(item.get("item")).attrib.get("jid") == to.bare()
+            ]
 
             if not item:
                 await self._roster.create_roster_entry(jid, to)
                 roster = self._roster.roster_by_jid(jid)
-                item = [item for item in roster
-                        if ET.fromstring(item.get("item")).attrib["jid"] == to.user
-                        or ET.fromstring(item.get("item")).attrib["jid"] == to.bare()
-                        ]
+                item = [
+                    item
+                    for item in roster
+                    if ET.fromstring(item.get("item")).attrib["jid"] == to.user
+                    or ET.fromstring(item.get("item")).attrib["jid"] == to.bare()
+                ]
 
             roster_item = item[0].get("item")
             et_item = ET.fromstring(roster_item)
@@ -293,11 +355,11 @@ class Presence(metaclass=Singleton):
                 petition = ET.Element(
                     "presence",
                     attrib={
-                        "from": element.attrib.get('to'),
-                        "to": element.attrib.get('from'),
-                        "id": element.attrib.get('id') or str(uuid4()),
-                        "type": "subscribed"
-                    }
+                        "from": element.attrib.get("to"),
+                        "to": element.attrib.get("from"),
+                        "id": element.attrib.get("id") or str(uuid4()),
+                        "type": "subscribed",
+                    },
                 )
                 return ET.tostring(petition)
 
@@ -310,11 +372,11 @@ class Presence(metaclass=Singleton):
                 petition = ET.Element(
                     "presence",
                     attrib={
-                        "from": element.attrib.get('from'),
-                        "to": element.attrib.get('to'),
-                        "id": element.attrib.get('id') or str(uuid4()),
-                        "type": "subscribe"
-                    }
+                        "from": element.attrib.get("from"),
+                        "to": element.attrib.get("to"),
+                        "id": element.attrib.get("id") or str(uuid4()),
+                        "type": "subscribe",
+                    },
                 )
                 client.transport.write(ET.tostring(petition))
 
@@ -343,12 +405,14 @@ class Presence(metaclass=Singleton):
             roster_push_receiver = None
 
             item_sender = [  # Sender appears in receiver roster
-                item for item in roster_sender
+                item
+                for item in roster_sender
                 if ET.fromstring(item.get("item")).attrib.get("jid") == jid.user
             ]
 
             item_receiver = [  # Receiver appears in sender roster
-                item for item in roster_receiver
+                item
+                for item in roster_receiver
                 if ET.fromstring(item.get("item")).attrib.get("jid") == to.user
             ]
 
@@ -365,7 +429,9 @@ class Presence(metaclass=Singleton):
                     new_item_sender.attrib["subscription"] = "to"
                     await self._roster.update_item(new_item_sender, item_id)
 
-                    new_item_sender.attrib['jid'] = new_item_sender.attrib['jid'] + f"@{AppConfig.app_config.host}"
+                    new_item_sender.attrib["jid"] = (
+                        new_item_sender.attrib["jid"] + f"@{AppConfig.app_config.host}"
+                    )
                     roster_push_sender = new_item_sender
 
                 elif et_item_sender.attrib.get("subscription") == "from":
@@ -376,7 +442,9 @@ class Presence(metaclass=Singleton):
                     new_item_sender.attrib["subscription"] = "both"
                     await self._roster.update_item(new_item_sender, item_id)
 
-                    new_item_sender.attrib['jid'] = new_item_sender.attrib['jid'] + f"@{AppConfig.app_config.host}"
+                    new_item_sender.attrib["jid"] = (
+                        new_item_sender.attrib["jid"] + f"@{AppConfig.app_config.host}"
+                    )
                     roster_push_sender = new_item_sender
 
                 else:
@@ -392,7 +460,10 @@ class Presence(metaclass=Singleton):
                     new_item_receiver.attrib["subscription"] = "from"
                     await self._roster.update_item(new_item_receiver, item_id)
 
-                    new_item_receiver.attrib['jid'] = new_item_receiver.attrib['jid'] + f"@{AppConfig.app_config.host}"
+                    new_item_receiver.attrib["jid"] = (
+                        new_item_receiver.attrib["jid"]
+                        + f"@{AppConfig.app_config.host}"
+                    )
                     roster_push_receiver = new_item_receiver
 
                 elif et_item_receiver.attrib["subscription"] == "to":
@@ -400,7 +471,10 @@ class Presence(metaclass=Singleton):
                     new_item_receiver.attrib["subscription"] = "both"
                     await self._roster.update_item(new_item_receiver, item_id)
 
-                    new_item_receiver.attrib['jid'] = new_item_receiver.attrib['jid'] + f"@{AppConfig.app_config.host}"
+                    new_item_receiver.attrib["jid"] = (
+                        new_item_receiver.attrib["jid"]
+                        + f"@{AppConfig.app_config.host}"
+                    )
                     roster_push_receiver = new_item_receiver
 
                 else:
@@ -413,7 +487,7 @@ class Presence(metaclass=Singleton):
                         attrib={
                             "from": jid.bare(),
                             "to": str(to),
-                            "id": element.attrib.get('id') or str(uuid4()),
+                            "id": element.attrib.get("id") or str(uuid4()),
                             "type": "subscribed",
                         },
                     )
@@ -423,7 +497,9 @@ class Presence(metaclass=Singleton):
             if roster_push_sender is not None:
                 for sender in self._connections.get_transport(JID(to.bare())):
                     res = IQ(to=str(sender.jid), type_=IQ.TYPE.SET)
-                    query = ET.SubElement(res, "query", attrib={"xmlns": "jabber:iq:roster"})
+                    query = ET.SubElement(
+                        res, "query", attrib={"xmlns": "jabber:iq:roster"}
+                    )
                     query.append(roster_push_sender)
 
                     sender.transport.write(ET.tostring(res))
@@ -431,7 +507,9 @@ class Presence(metaclass=Singleton):
             if roster_push_receiver is not None:
                 for receiver in self._connections.get_transport(JID(jid.bare())):
                     res = IQ(to=str(receiver.jid), type_=IQ.TYPE.SET)
-                    query = ET.SubElement(res, "query", attrib={"xmlns": "jabber:iq:roster"})
+                    query = ET.SubElement(
+                        res, "query", attrib={"xmlns": "jabber:iq:roster"}
+                    )
                     query.append(roster_push_receiver)
 
                     receiver.transport.write(ET.tostring(res))
@@ -445,8 +523,12 @@ class Presence(metaclass=Singleton):
         # Handle locally
         if to.domain == AppConfig.app_config.host:
             roster = self._roster.roster_by_jid(jid)
-            item = [item for item in roster
-                    if ET.fromstring(item.get("item")).attrib.get("jid") in [to.bare(), to.user]]
+            item = [
+                item
+                for item in roster
+                if ET.fromstring(item.get("item")).attrib.get("jid")
+                in [to.bare(), to.user]
+            ]
 
             if not item:
                 return
@@ -476,11 +558,11 @@ class Presence(metaclass=Singleton):
                 presence = ET.Element(
                     "presence",
                     attrib={
-                        "from": element.attrib.get('from'),
+                        "from": element.attrib.get("from"),
                         "to": to.bare(),
                         "id": str(uuid4()),
-                        "type": "unsubscribed"
-                    }
+                        "type": "unsubscribed",
+                    },
                 )
                 for buffer in self._connections.get_transport(to):
                     buffer.transport.write(ET.tostring(presence))
@@ -491,7 +573,7 @@ class Presence(metaclass=Singleton):
 
         roster = self._roster.roster_by_jid(jid)
         for item in roster:
-            to = ET.fromstring(item[-1]).attrib.get('jid')
+            to = ET.fromstring(item[-1]).attrib.get("jid")
 
             if to.split("@")[1] == AppConfig.app_config.host:
                 presence = element.__copy__()
@@ -499,4 +581,3 @@ class Presence(metaclass=Singleton):
 
                 for client in self._connections.get_transport(JID(to)):
                     client.transport.write(ET.tostring(presence))
-

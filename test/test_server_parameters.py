@@ -23,30 +23,30 @@ def test_default_parameters():
 
 def test_from_json():
     data_mock = {
-        'host': 'publichost',
-        'client_port': 5252,
-        'server_port': 2525,
-        'server_out_port': 6952,
-        'family': socket.AF_INET6.value,
-        'connection_timeout': 59,
-        'database_path': '/some/fake/path',
-        'database_purge': True,
-        'database_in_memory': True,
-        'cert_path': '/another/fake/path',
-        'message_persistence': False,
-        'verbose': True,
-        'plugins': [
-            'http://jabber.org/protocol/disco#info',
-            'http://jabber.org/protocol/disco#items'
+        "host": "publichost",
+        "client_port": 5252,
+        "server_port": 2525,
+        "server_out_port": 6952,
+        "family": socket.AF_INET6.value,
+        "connection_timeout": 59,
+        "database_path": "/some/fake/path",
+        "database_purge": True,
+        "database_in_memory": True,
+        "cert_path": "/another/fake/path",
+        "message_persistence": False,
+        "verbose": True,
+        "plugins": [
+            "http://jabber.org/protocol/disco#info",
+            "http://jabber.org/protocol/disco#items",
         ],
-        'items': {
-            'pubsub.$': {
+        "items": {
+            "pubsub.$": {
                 "name": "Pubsub Service",
                 "category": "pubsub",
                 "type": "service",
-                "var": "http://jabber.org/protocol/pubsub"
+                "var": "http://jabber.org/protocol/pubsub",
             }
-        }
+        },
     }
     m = mock_open(read_data=json.dumps(data_mock))
 
@@ -71,30 +71,30 @@ def test_from_json():
 
 def test_update_from_json():
     data_mock = {
-        'host': 'publichost',
-        'client_port':  5252,
-        'server_port': 2525,
-        'server_out_port': 6952,
-        'family': socket.AF_INET6.value,
-        'connection_timeout': 59,
-        'database_path': '/some/fake/path',
-        'database_purge': True,
-        'database_in_memory': True,
-        'cert_path': '/another/fake/path',
-        'message_persistence': False,
-        'verbose': True,
-        'plugins': [
-            'http://jabber.org/protocol/disco#info',
-            'http://jabber.org/protocol/disco#items'
+        "host": "publichost",
+        "client_port": 5252,
+        "server_port": 2525,
+        "server_out_port": 6952,
+        "family": socket.AF_INET6.value,
+        "connection_timeout": 59,
+        "database_path": "/some/fake/path",
+        "database_purge": True,
+        "database_in_memory": True,
+        "cert_path": "/another/fake/path",
+        "message_persistence": False,
+        "verbose": True,
+        "plugins": [
+            "http://jabber.org/protocol/disco#info",
+            "http://jabber.org/protocol/disco#items",
         ],
-        'items': {
-            'pubsub.$': {
+        "items": {
+            "pubsub.$": {
                 "name": "Pubsub Service",
                 "category": "pubsub",
                 "type": "service",
-                "var": "http://jabber.org/protocol/pubsub"
+                "var": "http://jabber.org/protocol/pubsub",
             }
-        }
+        },
     }
     m = mock_open(read_data=json.dumps(data_mock))
 
@@ -118,7 +118,7 @@ def test_update_from_json():
 
 
 def test_pickle():
-    filepath = './params.pkl'
+    filepath = "./params.pkl"
     param = Parameters()
     param.dump(filepath)
 
@@ -138,25 +138,25 @@ def test_pickle():
     assert parsed_param.cert_path is None
     assert parsed_param.message_persistence is True
     assert parsed_param.plugins == [
-        'http://jabber.org/protocol/disco#info',
-        'http://jabber.org/protocol/disco#items',
-        'http://jabber.org/protocol/pubsub',
-        'http://jabber.org/protocol/pubsub#publish',
-        'http://jabber.org/protocol/pubsub#subscribe',
-        'http://jabber.org/protocol/pubsub#config-node',
-        'http://jabber.org/protocol/pubsub#create-nodes',
-        'http://jabber.org/protocol/pubsub#delete-nodes',
-        'jabber:iq:register',
-        'jabber:x:data',
-        'urn:xmpp:ping',
-        'jabber:iq:rpc'
+        "http://jabber.org/protocol/disco#info",
+        "http://jabber.org/protocol/disco#items",
+        "http://jabber.org/protocol/pubsub",
+        "http://jabber.org/protocol/pubsub#publish",
+        "http://jabber.org/protocol/pubsub#subscribe",
+        "http://jabber.org/protocol/pubsub#config-node",
+        "http://jabber.org/protocol/pubsub#create-nodes",
+        "http://jabber.org/protocol/pubsub#delete-nodes",
+        "jabber:iq:register",
+        "jabber:x:data",
+        "urn:xmpp:ping",
+        "jabber:iq:rpc",
     ]
     assert parsed_param.items == {
-        'pubsub.$': {
+        "pubsub.$": {
             "name": "Pubsub Service",
             "category": "pubsub",
             "type": "service",
-            "var": "http://jabber.org/protocol/pubsub"
+            "var": "http://jabber.org/protocol/pubsub",
         }
     }
 

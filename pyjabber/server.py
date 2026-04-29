@@ -13,18 +13,18 @@ from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.http_server import HttpServer
 from pyjabber.network import CertGenerator
 from pyjabber.network.protocols.XMLProtocol import XMLProtocol
-from pyjabber.network.protocols.XMLProtocolServerIncoming import XMLProtocolServerIncoming
 from pyjabber.plugins.xep_0060.xep_0060 import PubSub
 from pyjabber.plugins.xep_0363.upload_server import UploadHttpServer
 from pyjabber.plugins.xep_0363.xep_0363 import HTTPFieldUpload
-from pyjabber.queues.QueueManager import get_queue, QueueName
+from pyjabber.queues.QueueManager import QueueName, get_queue
+from pyjabber.queues.workers.MessageQueueWorker import queue_worker
+from pyjabber.queues.workers.ServerConnectionWorker import server_connection_worker
 from pyjabber.server_parameters import Parameters
 from pyjabber.utils.ServerUtils import setup_ip_by_host, setup_query_local_ip
 from pyjabber.webpage.adminPage import api_adminpage_app
-from pyjabber.queues.workers.MessageQueueWorker import queue_worker
-from pyjabber.queues.workers.ServerConnectionWorker import server_connection_worker
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+
 
 class Server:
     """Server class
@@ -49,13 +49,17 @@ class Server:
         self._database_in_memory = param.database_in_memory
 
         # Certs
-        cert_path = param.cert_path or os.path.join(SERVER_FILE_PATH, "network", "certs")
+        cert_path = param.cert_path or os.path.join(
+            SERVER_FILE_PATH, "network", "certs"
+        )
         try:
             if not CertGenerator.check_hostname_cert_exists(param.host, cert_path):
                 CertGenerator.generate_hostname_cert(param.host, cert_path)
         except FileNotFoundError as e:
-            logger.error(f"{e.__class__.__name__}: Pass an existing directory in your system to load the certs. "
-                         f"Closing protocols")
+            logger.error(
+                f"{e.__class__.__name__}: Pass an existing directory in your system to load the certs. "
+                f"Closing protocols"
+            )
             raise SystemExit
 
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
@@ -84,7 +88,9 @@ class Server:
             database_purge=param.database_purge,
             database_in_memory=self._database_in_memory,
             database_debug=param.database_debug,
-            config_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "config/config.yaml"),
+            config_path=os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "config/config.yaml"
+            ),
             cert_path=cert_path,
             root_path=SERVER_FILE_PATH,
             message_persistence=param.message_persistence or False,
@@ -92,11 +98,11 @@ class Server:
             process_pool_exe=ProcessPoolExecutor(multiprocessing.cpu_count()),
             verbose=param.verbose,
             plugins=param.plugins,
-            items=param.items
+            items=param.items,
         )
 
         # HTTP Server
-        if 'urn:xmpp:http:upload:0' in param.plugins and 'upload.$' in param.items:
+        if "urn:xmpp:http:upload:0" in param.plugins and "upload.$" in param.items:
             self._http_apps.append(api_adminpage_app())
             self._UploadHttpServer = UploadHttpServer()
             self._http_apps.append(self._UploadHttpServer.get_aiohttp_webapp())
@@ -136,7 +142,9 @@ class Server:
                         namespace="jabber:client",
                         connection_timeout=self._connection_timeout,
                     ),
-                    host=[self._host, self._public_ip] if self._public_ip else [self._host],
+                    host=[self._host, self._public_ip]
+                    if self._public_ip
+                    else [self._host],
                     port=self._client_port,
                     family=self._family,
                 )
@@ -155,7 +163,9 @@ class Server:
                         namespace="jabber:server",
                         connection_timeout=self._connection_timeout,
                     ),
-                    host=[self._host, self._public_ip] if self._public_ip else [self._host],
+                    host=[self._host, self._public_ip]
+                    if self._public_ip
+                    else [self._host],
                     port=self._server_port,
                     family=self._family,
                 )
@@ -209,17 +219,19 @@ class Server:
             tasks = [
                 asyncio.create_task(queue_worker()),
                 asyncio.create_task(server_connection_worker()),
-                asyncio.create_task(self.run_server())
+                asyncio.create_task(self.run_server()),
             ]
 
             if self._http_server:
-                tasks.append(
-                    asyncio.create_task(self._http_server.start())
-                )
+                tasks.append(asyncio.create_task(self._http_server.start()))
 
             await asyncio.gather(*tasks)
 
-        except (SystemExit, KeyboardInterrupt, asyncio.CancelledError) as e:  # pragma: no cover
+        except (
+            SystemExit,
+            KeyboardInterrupt,
+            asyncio.CancelledError,
+        ) as e:  # pragma: no cover
             logger.trace(f"Signal {e.__class__.__name__} intercepted. Stopping server")
 
         finally:

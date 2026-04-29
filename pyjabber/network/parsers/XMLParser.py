@@ -1,25 +1,32 @@
 import asyncio
 from asyncio import Transport
-from enum import Enum
 from xml.etree import ElementTree as ET
 from xml.sax import ContentHandler
 
 from pyjabber.network.ConnectionManager import ConnectionManager
+from pyjabber.stream.handlers.StanzaHandler import StanzaHandler
 from pyjabber.stream.negotiators.StreamNegotiator import StreamNegotiator
-from pyjabber.stream.handlers.StanzaHandler import  StanzaHandler
 from pyjabber.stream.QueueBridge import QueueBridge
 from pyjabber.utils import ClarkNotation as CN
 
 
 class XMLParser(ContentHandler):
     """
-        Manages the stream data and process the XML objects.
-        Inheriting from sax.ContentHandler
+    Manages the stream data and process the XML objects.
+    Inheriting from sax.ContentHandler
 
-        :param transport: Transport instance of the connected client. Used to send replays
+    :param transport: Transport instance of the connected client. Used to send replays
     """
+
     __slots__ = ()
-    def __init__(self, transport, protocol, stream_negotiator=StreamNegotiator, stanza_handler=StanzaHandler):
+
+    def __init__(
+        self,
+        transport,
+        protocol,
+        stream_negotiator=StreamNegotiator,
+        stanza_handler=StanzaHandler,
+    ):
         super().__init__()
         self._stack = []
 
@@ -47,16 +54,18 @@ class XMLParser(ContentHandler):
             elem = ET.Element(
                 CN.clark_from_tuple(name),
                 attrib={
-                    CN.clark_from_tuple(key): item for key,
-                    item in dict(attrs).items()})
+                    CN.clark_from_tuple(key): item for key, item in dict(attrs).items()
+                },
+            )
             self._stack.append(elem)
 
         elif name[1] == "stream" and name[0] == "http://etherx.jabber.org/streams":
             elem = ET.Element(
                 CN.clark_from_tuple(name),
                 attrib={
-                    CN.clark_from_tuple(key): item for key,
-                    item in dict(attrs).items()})
+                    CN.clark_from_tuple(key): item for key, item in dict(attrs).items()
+                },
+            )
             self._stack.append(elem)
 
             self._stream_negotiator.put(elem)
@@ -79,7 +88,7 @@ class XMLParser(ContentHandler):
             # INVALID STANZA/MESSAGE
             raise Exception()
 
-        if self._stack[-1].tag != '{http://etherx.jabber.org/streams}stream':
+        if self._stack[-1].tag != "{http://etherx.jabber.org/streams}stream":
             self._stack[-1].append(elem)
 
         else:
@@ -92,10 +101,10 @@ class XMLParser(ContentHandler):
         elem = self._stack[-1]
         if len(elem) != 0:
             child = elem[-1]
-            child.tail = (child.tail or '') + content
+            child.tail = (child.tail or "") + content
 
         else:
-            elem.text = (elem.text or '') + content
+            elem.text = (elem.text or "") + content
 
     def reset_stack(self) -> None:
         self._stack.clear()

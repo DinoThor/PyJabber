@@ -11,6 +11,7 @@ def test_initialization():
     assert stream_feature.attrib == {"xmlns": "http://etherx.jabber.org/streams"}
     assert stream_feature._features == {}
 
+
 def test_register_feature():
     stream_feature = StreamFeature()
     feature = ET.Element("feature1")
@@ -19,6 +20,7 @@ def test_register_feature():
 
     assert "feature1" in stream_feature._features
     assert stream_feature._features["feature1"] == feature
+
 
 def test_register_non_unique_feature():
     stream_feature = StreamFeature()
@@ -29,6 +31,7 @@ def test_register_non_unique_feature():
     with pytest.raises(NonUniqueFeature):
         stream_feature.register(feature)
 
+
 def test_unregister_feature():
     stream_feature = StreamFeature()
     feature = ET.Element("feature1")
@@ -38,6 +41,7 @@ def test_unregister_feature():
 
     assert "feature1" not in stream_feature._features
 
+
 def test_unregister_nonexistent_feature():
     stream_feature = StreamFeature()
     feature = ET.Element("feature1")
@@ -46,6 +50,7 @@ def test_unregister_nonexistent_feature():
     stream_feature.unregister(feature)
 
     assert "feature1" not in stream_feature._features
+
 
 def test_reset_features():
     stream_feature = StreamFeature()
@@ -59,6 +64,7 @@ def test_reset_features():
 
     assert stream_feature._features == {}
 
+
 def test_tostring():
     stream_feature = StreamFeature()
     feature = ET.Element("feature1")
@@ -66,7 +72,11 @@ def test_tostring():
 
     xml_string = stream_feature.tostring()
 
-    assert xml_string == '<stream:features xmlns="http://etherx.jabber.org/streams"><feature1 /></stream:features>'
+    assert (
+        xml_string
+        == '<stream:features xmlns="http://etherx.jabber.org/streams"><feature1 /></stream:features>'
+    )
+
 
 def test_tobytes():
     stream_feature = StreamFeature()
@@ -77,4 +87,3 @@ def test_tobytes():
 
     expected_bytes = b'<stream:features xmlns="http://etherx.jabber.org/streams"><feature1 /></stream:features>'
     assert xml_bytes == expected_bytes
-

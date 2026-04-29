@@ -10,10 +10,10 @@ from pyjabber.utils import ClarkNotation as CN
 
 @pytest.fixture
 def setup():
-    with patch('pyjabber.stream.StreamHandler.metadata') as mock_meta:
+    with patch("pyjabber.stream.StreamHandler.metadata") as mock_meta:
         transport = Mock()
         starttls = Mock()
-        mock_meta.HOST = 'localhost'
+        mock_meta.HOST = "localhost"
 
         return XMLParser(transport, starttls)
 
@@ -42,11 +42,15 @@ def test_start_element_ns_stream(setup):
     handler = setup
 
     attrs = {("http://etherx.jabber.org/streams", "version"): "1.0"}
-    handler.startElementNS(("http://etherx.jabber.org/streams", "stream"), "stream", attrs)
+    handler.startElementNS(
+        ("http://etherx.jabber.org/streams", "stream"), "stream", attrs
+    )
 
     assert handler._transport.write.call_count == 2
     assert len(handler._stack) == 1
-    assert handler._stack[0].tag == CN.clark_from_tuple(("http://etherx.jabber.org/streams", "stream"))
+    assert handler._stack[0].tag == CN.clark_from_tuple(
+        ("http://etherx.jabber.org/streams", "stream")
+    )
 
 
 def test_start_element_ns_normal_element(setup):
@@ -58,7 +62,9 @@ def test_start_element_ns_normal_element(setup):
     handler.startElementNS(("namespace", "element"), "element", attrs)
     assert len(handler._stack) == 2
     assert handler._stack[-1].tag == CN.clark_from_tuple(("namespace", "element"))
-    assert handler._stack[-1].attrib == {CN.clark_from_tuple(("namespace", "attr")): "value"}
+    assert handler._stack[-1].attrib == {
+        CN.clark_from_tuple(("namespace", "attr")): "value"
+    }
 
 
 def test_start_element_ns_invalid(setup):
@@ -74,7 +80,7 @@ def test_end_element_ns_stream(setup):
 
     handler.endElementNS(("http://etherx.jabber.org/streams", "stream"), "stream")
 
-    handler._transport.write.assert_called_once_with(b'</stream:stream>')
+    handler._transport.write.assert_called_once_with(b"</stream:stream>")
     assert len(handler._stack) == 0
 
 
@@ -93,6 +99,7 @@ def test_end_element_ns_normal_element(setup):
     assert len(handler._stack[0]) == 1
     assert handler._stack[0][0].tag == CN.clark_from_tuple(("namespace", "child"))
 
+
 def test_end_element_ns_invalid_stack(setup):
     handler = setup
 
@@ -108,11 +115,17 @@ def test_end_element_ns_mismatched_tag(setup):
         handler.endElementNS(("namespace", "element"), "element")
 
 
-@patch('pyjabber.stream.StanzaHandler.StanzaHandler')
-@patch('pyjabber.stream.StreamHandler.StreamHandler')
-@patch('pyjabber.stream.StanzaHandler.PluginManager')
-@patch('pyjabber.stream.StanzaHandler.Presence')
-def test_end_element_ns_stream_handling(mock_plugin_manager, mock_presence, mock_handle_open_stream, mock_stream_handler, setup):
+@patch("pyjabber.stream.StanzaHandler.StanzaHandler")
+@patch("pyjabber.stream.StreamHandler.StreamHandler")
+@patch("pyjabber.stream.StanzaHandler.PluginManager")
+@patch("pyjabber.stream.StanzaHandler.Presence")
+def test_end_element_ns_stream_handling(
+    mock_plugin_manager,
+    mock_presence,
+    mock_handle_open_stream,
+    mock_stream_handler,
+    setup,
+):
     handler = setup
     handler._stack.append(ET.Element("{http://etherx.jabber.org/streams}stream"))
 
@@ -126,7 +139,9 @@ def test_end_element_ns_stream_handling(mock_plugin_manager, mock_presence, mock
     mock_stream_handler.handle_open_stream.return_value = Signal.DONE
     handler._streamHandler = mock_stream_handler
 
-    with patch('pyjabber.network.parsers.XMLParser.StanzaHandler') as mock_stanza_handler:
+    with patch(
+        "pyjabber.network.parsers.XMLParser.StanzaHandler"
+    ) as mock_stanza_handler:
         handler.endElementNS(("namespace", "dummy"), "dummy")
 
     assert handler._state == XMLParser.StreamState.READY
@@ -148,6 +163,7 @@ def test_characters(setup):
     assert handler._stack[-1].text == "more content"
     handler.characters(" additional content")
     assert handler._stack[-1].text == "more content additional content"
+
 
 if __name__ == "__main__":
     pytest.main()

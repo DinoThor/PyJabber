@@ -15,4 +15,3 @@ def model():
     mock.PubsubItems = ModelTest.PubsubItems
     mock.PendingSubs = ModelTest.PendingSubs
     yield mock
-

@@ -17,10 +17,14 @@ def setup_database() -> Connection:
     engine = create_engine("sqlite:///:memory:")
     Model.server_metadata.create_all(engine)
     con = engine.connect()
-    con.execute(insert(Model.Credentials).values({
-        "jid": "username",
-        "hash_pwd": bcrypt.hashpw(b'password', bcrypt.gensalt())
-    }))
+    con.execute(
+        insert(Model.Credentials).values(
+            {
+                "jid": "username",
+                "hash_pwd": bcrypt.hashpw(b"password", bcrypt.gensalt()),
+            }
+        )
+    )
     con.commit()
 
     yield con
@@ -30,29 +34,34 @@ def setup_database() -> Connection:
 
 @pytest.fixture
 def sasl(setup_database):
-    with patch('pyjabber.features.SASLFeature.metadata') as mock_meta, \
-         patch('pyjabber.features.SASLFeature.DB') as mock_db, \
-         patch('pyjabber.features.SASLFeature.ConnectionManager') as mock_con, \
-         patch('pyjabber.stanzas.error.StanzaError.metadata') as mock_meta_se:
+    with (
+        patch("pyjabber.features.SASLFeature.metadata") as mock_meta,
+        patch("pyjabber.features.SASLFeature.DB") as mock_db,
+        patch("pyjabber.features.SASLFeature.ConnectionManager") as mock_con,
+        patch("pyjabber.stanzas.error.StanzaError.metadata") as mock_meta_se,
+    ):
         mock_db.connection.return_value = setup_database
-        mock_meta.HOST = 'localhost'
-        mock_meta_se.HOST = 'localhost'
+        mock_meta.HOST = "localhost"
+        mock_meta_se.HOST = "localhost"
         yield SASL()
 
 
 def test_handle_auth_success(sasl):
     element = ET.Element("{urn:ietf:params:xml:ns:xmpp-sasl}auth")
-    auth_text = base64.b64encode(b'\x00username\x00password').decode('ascii')
+    auth_text = base64.b64encode(b"\x00username\x00password").decode("ascii")
     element.text = auth_text
 
     result = sasl.handle_auth(element)
 
-    assert result == (Signal.RESET, b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>")
+    assert result == (
+        Signal.RESET,
+        b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>",
+    )
 
 
 def test_handle_auth_failure(sasl):
     element = ET.Element("{urn:ietf:params:xml:ns:xmpp-sasl}auth")
-    auth_text = base64.b64encode(b'\x00username\x00wrongpassword').decode('ascii')
+    auth_text = base64.b64encode(b"\x00username\x00wrongpassword").decode("ascii")
     element.text = auth_text
 
     result = sasl.handle_auth(element)
@@ -82,11 +91,11 @@ def test_get_fields(sasl):
 
     assert res_elem is not None
     assert res_elem.tag in element.tag
-    assert res_elem.attrib.get('type') == 'result'
-    assert res_elem.attrib.get('id') == '1234'
-    assert 'query' in res_elem[0].tag
-    assert res_elem[0][0].tag == 'username'
-    assert res_elem[0][1].tag == 'password'
+    assert res_elem.attrib.get("type") == "result"
+    assert res_elem.attrib.get("id") == "1234"
+    assert "query" in res_elem[0].tag
+    assert res_elem[0][0].tag == "username"
+    assert res_elem[0][1].tag == "password"
 
 
 def test_handle_iq_register_success(sasl):
@@ -114,8 +123,8 @@ def test_sasl_feature():
 
 
 def test_iq_register_result():
-    with patch('pyjabber.features.SASLFeature.metadata') as mock_meta:
-        mock_meta.HOST = 'localhost'
+    with patch("pyjabber.features.SASLFeature.metadata") as mock_meta:
+        mock_meta.HOST = "localhost"
 
         res = SASL.iq_register_result("123")
         res_parsed = ET.fromstring(res)

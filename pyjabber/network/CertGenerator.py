@@ -39,56 +39,61 @@ def generate_hostname_cert(host: str, cert_path: str):
             os.remove(file)
 
     domain_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048,
-        backend=default_backend()
+        public_exponent=65537, key_size=2048, backend=default_backend()
     )
 
     with open(f"{host}_key.pem", "wb") as f:
-        f.write(domain_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.TraditionalOpenSSL,
-            encryption_algorithm=serialization.NoEncryption()
-        ))
+        f.write(
+            domain_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+        )
 
     domain_name = host
-    csr = x509.CertificateSigningRequestBuilder().subject_name(x509.Name([
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"Spade"),
-        x509.NameAttribute(NameOID.COMMON_NAME, domain_name),
-    ])).add_extension(
-        x509.SubjectAlternativeName([x509.DNSName(domain_name)]),
-        critical=False,
-    ).sign(domain_key, hashes.SHA256(), default_backend())
+    csr = (
+        x509.CertificateSigningRequestBuilder()
+        .subject_name(
+            x509.Name(
+                [
+                    x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Spade"),
+                    x509.NameAttribute(NameOID.COMMON_NAME, domain_name),
+                ]
+            )
+        )
+        .add_extension(
+            x509.SubjectAlternativeName([x509.DNSName(domain_name)]),
+            critical=False,
+        )
+        .sign(domain_key, hashes.SHA256(), default_backend())
+    )
 
     with open(f"{host}_csr.pem", "wb") as f:
         f.write(csr.public_bytes(serialization.Encoding.PEM))
 
     with open("ca_key.pem", "rb") as f:
         ca_key = serialization.load_pem_private_key(
-            f.read(),
-            password=None,
-            backend=default_backend()
+            f.read(), password=None, backend=default_backend()
         )
 
     with open("ca_cert.pem", "rb") as f:
         ca_cert = x509.load_pem_x509_certificate(f.read(), default_backend())
 
-    domain_cert = x509.CertificateBuilder().subject_name(
-        csr.subject
-    ).issuer_name(
-        ca_cert.subject
-    ).public_key(
-        csr.public_key()
-    ).serial_number(
-        x509.random_serial_number()
-    ).not_valid_before(
-        datetime.datetime.utcnow()
-    ).not_valid_after(
-        datetime.datetime.utcnow() + datetime.timedelta(days=365 * 10)
-    ).add_extension(
-        x509.SubjectAlternativeName([x509.DNSName(domain_name)]),
-        critical=False,
-    ).sign(ca_key, hashes.SHA256(), default_backend())
+    domain_cert = (
+        x509.CertificateBuilder()
+        .subject_name(csr.subject)
+        .issuer_name(ca_cert.subject)
+        .public_key(csr.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(datetime.datetime.utcnow())
+        .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=365 * 10))
+        .add_extension(
+            x509.SubjectAlternativeName([x509.DNSName(domain_name)]),
+            critical=False,
+        )
+        .sign(ca_key, hashes.SHA256(), default_backend())
+    )
 
     with open(f"{host}_cert.pem", "wb") as f:
         f.write(domain_cert.public_bytes(serialization.Encoding.PEM))

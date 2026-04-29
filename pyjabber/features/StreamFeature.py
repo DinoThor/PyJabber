@@ -6,6 +6,7 @@ class NonUniqueFeature(Exception):
     """
     Exception raised when a non-unique feature is found on the manager
     """
+
     pass
 
 
@@ -13,14 +14,9 @@ class StreamFeature(ET.Element):
     """
     Class to manage protocols features
     """
-    def __init__(
-        self,
-        tag: str = "stream:features",
-            **extra: str) -> None:
 
-        attrib: Dict[str, str] = {
-            "xmlns": "http://etherx.jabber.org/streams"
-        }
+    def __init__(self, tag: str = "stream:features", **extra: str) -> None:
+        attrib: Dict[str, str] = {"xmlns": "http://etherx.jabber.org/streams"}
 
         super().__init__(tag, attrib, **extra)
         self._features: Dict[str, ET.Element] = {}

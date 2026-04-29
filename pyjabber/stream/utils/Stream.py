@@ -7,38 +7,41 @@ class Namespaces(enum.Enum):
     """
     Defines the available namespaces in the protocol.
     """
+
     XMLSTREAM = "http://etherx.jabber.org/streams"
     CLIENT = "jabber:client"
     SERVER = "jabber:server"
 
 
 class Stream(ET.Element):
-
     class Namespaces(enum.Enum):
         XMLSTREAM = "http://etherx.jabber.org/streams"
         CLIENT = "jabber:client"
         SERVER = "jabber:server"
 
     def __init__(
-            self,
-            id=None,
-            from_=None,
-            to=None,
-            version="1.0",
-            xml_lang="en",
-            xmlns=Namespaces.CLIENT.value):
-
+        self,
+        id=None,
+        from_=None,
+        to=None,
+        version="1.0",
+        xml_lang="en",
+        xmlns=Namespaces.CLIENT.value,
+    ):
         if not id:
             id = str(uuid4())
 
         attrib = {
-            k: v for k, v in (
+            k: v
+            for k, v in (
                 ("id", id),
                 ("from", from_),
                 ("to", to),
                 ("version", version),
                 ("xml:lang", xml_lang),
-                ("xmlns", xmlns)) if v is not None
+                ("xmlns", xmlns),
+            )
+            if v is not None
         }
 
         attrib["xmlns:stream"] = Namespaces.XMLSTREAM.value
@@ -46,10 +49,10 @@ class Stream(ET.Element):
         super().__init__("stream:stream", attrib)
 
     def open_tag(self) -> bytes:
-        tag = f'<{self.tag}'
+        tag = f"<{self.tag}"
         for a in self.attrib:
             tag += f" {a}='{self.attrib[a]}'"
-        tag += '>'
+        tag += ">"
         return tag.encode()
 
     @staticmethod
@@ -68,8 +71,7 @@ class Stream(ET.Element):
             to=from_,
             version=version,
             xml_lang=lang,
-            xmlns=Namespaces.SERVER.value if server else Namespaces.CLIENT.value
+            xmlns=Namespaces.SERVER.value if server else Namespaces.CLIENT.value,
         )
 
         return stream.open_tag()
-

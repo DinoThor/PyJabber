@@ -8,10 +8,12 @@ from pyjabber.server_parameters import Parameters
 
 @pytest.fixture
 def setup():
-    with patch('pyjabber.protocols.logger') as mock_log, \
-         patch('pyjabber.protocols.DB') as mock_db, \
-         patch('pyjabber.protocols.init_utils') as mock_utils:
-        mock_utils.setup_query_local_ip.return_value = '127.0.0.1'
+    with (
+        patch("pyjabber.protocols.logger") as mock_log,
+        patch("pyjabber.protocols.DB") as mock_db,
+        patch("pyjabber.protocols.init_utils") as mock_utils,
+    ):
+        mock_utils.setup_query_local_ip.return_value = "127.0.0.1"
         # mock_utils.setup_ip_by_host.return_value =
         param = Parameters()
         yield Server(param), mock_log, mock_db

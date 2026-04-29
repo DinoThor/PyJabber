@@ -20,10 +20,11 @@ def test_bad_request():
     expected = b"<error type='modify'><bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>"
     assert bad_request() == expected
 
+
 def test_conflict_error():
     id = "123"
-    with patch('pyjabber.stanzas.error.StanzaError.metadata') as mock_meta:
-        mock_meta.HOST = 'localhost'
+    with patch("pyjabber.stanzas.error.StanzaError.metadata") as mock_meta:
+        mock_meta.HOST = "localhost"
         result = conflict_error(id)
 
     root = ET.fromstring(result)
@@ -39,7 +40,7 @@ def test_conflict_error():
 
     conflict = error.find(f"{{{XMLNS}}}conflict")
     if conflict is None:
-        print(ET.tostring(root, encoding='unicode'))
+        print(ET.tostring(root, encoding="unicode"))
     assert conflict is not None
     assert conflict.tag == f"{{{XMLNS}}}conflict"
 
@@ -47,10 +48,15 @@ def test_conflict_error():
     assert text is not None
     assert text.tag == f"{{{XMLNS}}}text"
     assert text.text == "The requested username already exists"
+
+
 def test_feature_not_implemented():
     ns = "custom:namespace"
     feature = "some_feature"
-    expected = f"<error type='cancel'><feature-not-implemented xmlns='{XMLNS}'/><unsupported "f"xmlns='{ns}' feature='{feature}'/></error>".encode()
+    expected = (
+        f"<error type='cancel'><feature-not-implemented xmlns='{XMLNS}'/><unsupported "
+        f"xmlns='{ns}' feature='{feature}'/></error>".encode()
+    )
     assert feature_not_implemented(feature, ns) == expected
 
 
@@ -76,7 +82,9 @@ def test_not_acceptable_without_text():
 
 
 def test_not_authorized():
-    expected = b"<failure xmlns='urn:ietf:params:xml:ns:xmpp-sasl'><not-authorized/></failure>"
+    expected = (
+        b"<failure xmlns='urn:ietf:params:xml:ns:xmpp-sasl'><not-authorized/></failure>"
+    )
     assert not_authorized_sasl() == expected
 
 
