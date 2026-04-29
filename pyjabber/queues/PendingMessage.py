@@ -1,10 +1,11 @@
-from dataclasses import dataclass
 from typing import Optional
+
+from attrs import define
 
 from pyjabber.stream.JID import JID
 
 
-@dataclass(frozen=True, slots=True)
+@define(frozen=True, slots=True)
 class PendingMessageWrapper:
     """
     Represents messages that could not be sent at the time of the request.

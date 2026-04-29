@@ -1,10 +1,12 @@
 import os
 import socket
-from dataclasses import dataclass, field
+from dataclasses import field
 from typing import Dict, List
 
+from attrs import define
 
-@dataclass(frozen=True, slots=True)
+
+@define(frozen=True, slots=True)
 class Parameters:
     host: str = "localhost"
     client_port: int = 5222

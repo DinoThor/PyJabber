@@ -1,7 +1,7 @@
-from dataclasses import dataclass
+from attrs import define
 
 
-@dataclass(frozen=True, slots=True)
+@define(frozen=True, slots=True)
 class NewConnectionWrapper:
     """
     Represents a new connection made.

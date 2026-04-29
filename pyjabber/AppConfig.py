@@ -1,12 +1,13 @@
 import asyncio
 import ssl
 from concurrent.futures import ProcessPoolExecutor
-from dataclasses import dataclass
 from socket import AddressFamily
 from typing import List, Optional
 
+from attrs import define
 
-@dataclass(frozen=True, slots=True)
+
+@define(frozen=True, slots=True)
 class AppConfig:
     host: str
     ip: List[str]
