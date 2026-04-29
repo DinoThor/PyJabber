@@ -13,6 +13,7 @@ class Stage(Enum):
     """
     Stream connection states.
     """
+
     CONNECTED = 0
     OPENED = 1
     SSL = 2

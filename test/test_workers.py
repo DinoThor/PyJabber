@@ -5,16 +5,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from pyjabber.network.protocols.XMLProtocol import TransportProxy
-from pyjabber.stream.JID import JID
 from pyjabber.queues.workers.MessageQueueWorker import queue_worker, tls_worker
+from pyjabber.stream.JID import JID
 
 
 @pytest.mark.asyncio
 async def test_tls_worker_client():
-    with patch('pyjabber.queues.metadata') as mock_metadata, \
-         patch('pyjabber.queues.asyncio.get_running_loop') as mock_get_loop, \
-         patch('pyjabber.queues.ssl') as mock_ssl:
-
+    with (
+        patch("pyjabber.queues.metadata") as mock_metadata,
+        patch("pyjabber.queues.asyncio.get_running_loop") as mock_get_loop,
+        patch("pyjabber.queues.ssl") as mock_ssl,
+    ):
         mock_queue = MagicMock()
         mock_transport = MagicMock()
         mock_protocol = MagicMock()
@@ -28,7 +29,10 @@ async def test_tls_worker_client():
         mock_transport.get_extra_info.return_value = ("127.0.0.1", "1234")
 
         mock_queue.get = AsyncMock()
-        mock_queue.get.side_effect = [(mock_transport, mock_protocol, mock_parser), asyncio.CancelledError()]
+        mock_queue.get.side_effect = [
+            (mock_transport, mock_protocol, mock_parser),
+            asyncio.CancelledError(),
+        ]
 
         mock_metadata.TLS_QUEUE = mock_queue
         mock_AppConfig.app_config.cert_path = os.path.dirname(os.path.abspath(__file__))
@@ -57,12 +61,13 @@ async def test_tls_worker_client():
 
 @pytest.mark.asyncio
 async def test_tls_worker_connection_error_client():
-    with patch('pyjabber.queues.ConnectionManager') as mock_con, \
-         patch('pyjabber.queues.metadata') as mock_metadata, \
-         patch('pyjabber.queues.asyncio.get_running_loop') as mock_get_loop, \
-         patch('pyjabber.queues.ssl') as mock_ssl, \
-         patch('pyjabber.queues.logger') as mock_logger:
-
+    with (
+        patch("pyjabber.queues.ConnectionManager") as mock_con,
+        patch("pyjabber.queues.metadata") as mock_metadata,
+        patch("pyjabber.queues.asyncio.get_running_loop") as mock_get_loop,
+        patch("pyjabber.queues.ssl") as mock_ssl,
+        patch("pyjabber.queues.logger") as mock_logger,
+    ):
         mock_queue = MagicMock()
         mock_transport = MagicMock()
         mock_protocol = MagicMock()
@@ -78,7 +83,10 @@ async def test_tls_worker_connection_error_client():
         mock_transport.is_closing.return_value = False
 
         mock_queue.get = AsyncMock()
-        mock_queue.get.side_effect = [(mock_transport, mock_protocol, mock_parser), asyncio.CancelledError()]
+        mock_queue.get.side_effect = [
+            (mock_transport, mock_protocol, mock_parser),
+            asyncio.CancelledError(),
+        ]
 
         mock_metadata.TLS_QUEUE = mock_queue
         mock_AppConfig.app_config.cert_path = ""
@@ -101,29 +109,32 @@ async def test_tls_worker_connection_error_client():
         assert kwargs["sslcontext"].maximum_version == mock_ssl.TLSVersion.TLSv1_2
         assert kwargs["sslcontext"].load_cert_chain.called
 
-        mock_logger.error.assert_called_once_with(f"ERROR DURING TLS UPGRADE WITH <{mock_peer}>")
+        mock_logger.error.assert_called_once_with(
+            f"ERROR DURING TLS UPGRADE WITH <{mock_peer}>"
+        )
         mock_con.return_value.close.assert_called_once_with(mock_peer)
 
 
 @pytest.mark.skip
 @pytest.mark.asyncio
 async def test_tls_worker_connection_queue_client():
-    with patch('pyjabber.queues.ConnectionManager') as mock_con, \
-         patch('pyjabber.queues.metadata') as mock_metadata, \
-         patch('pyjabber.queues.asyncio.get_running_loop') as mock_get_loop, \
-         patch('pyjabber.queues.ssl') as mock_ssl, \
-         patch('pyjabber.queues.logger') as mock_logger, \
-         patch("pyjabber.queues.dict", return_value={"test@localhost": [b"message"]}):
-        jid = JID('test@localhost')
+    with (
+        patch("pyjabber.queues.ConnectionManager") as mock_con,
+        patch("pyjabber.queues.metadata") as mock_metadata,
+        patch("pyjabber.queues.asyncio.get_running_loop") as mock_get_loop,
+        patch("pyjabber.queues.ssl") as mock_ssl,
+        patch("pyjabber.queues.logger") as mock_logger,
+        patch("pyjabber.queues.dict", return_value={"test@localhost": [b"message"]}),
+    ):
+        jid = JID("test@localhost")
 
         mock_con_queue = MagicMock()
         mock_con_queue.get = AsyncMock()
-        mock_con_queue.get.side_effect = [('CONNECTION', jid)]
-
+        mock_con_queue.get.side_effect = [("CONNECTION", jid)]
 
         mock_metadata.connection_queue.get.return_value = mock_con_queue
         mock_metadata.message_queue.get.return_value = AsyncMock()
 
-        mock_metadata.connection_queue.get.side_effect = [('CONNECTION', jid)]
+        mock_metadata.connection_queue.get.side_effect = [("CONNECTION", jid)]
 
         await queue_worker()

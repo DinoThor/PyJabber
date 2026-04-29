@@ -3,6 +3,7 @@ from typing import Optional
 
 from pyjabber.stream.JID import JID
 
+
 @dataclass(frozen=True, slots=True)
 class PendingMessageWrapper:
     """
@@ -12,6 +13,7 @@ class PendingMessageWrapper:
     as well as messages destined for entities on external servers that not have
     an open connection.
     """
+
     jid: JID
     payload: bytes
     external_host: Optional[str] = None

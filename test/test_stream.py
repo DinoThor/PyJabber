@@ -11,33 +11,36 @@ def test_namespaces_enum():
 
 def test_stream_initialization():
     stream = Stream(
-        id='12345',
-        from_='user@example.com',
-        to='protocols@example.com',
-        version='1.0',
-        xml_lang='en'
+        id="12345",
+        from_="user@example.com",
+        to="protocols@example.com",
+        version="1.0",
+        xml_lang="en",
     )
     assert isinstance(stream, Element)
-    assert stream.tag == 'stream:stream'
-    assert stream.attrib['id'] == '12345'
-    assert stream.attrib['from'] == 'user@example.com'
-    assert stream.attrib['to'] == 'protocols@example.com'
-    assert stream.attrib['version'] == '1.0'
-    assert stream.attrib['xml:lang'] == 'en'
-    assert stream.attrib['xmlns'] == Stream.Namespaces.CLIENT.value
-    assert stream.attrib['xmlns:stream'] == Stream.Namespaces.XMLSTREAM.value
+    assert stream.tag == "stream:stream"
+    assert stream.attrib["id"] == "12345"
+    assert stream.attrib["from"] == "user@example.com"
+    assert stream.attrib["to"] == "protocols@example.com"
+    assert stream.attrib["version"] == "1.0"
+    assert stream.attrib["xml:lang"] == "en"
+    assert stream.attrib["xmlns"] == Stream.Namespaces.CLIENT.value
+    assert stream.attrib["xmlns:stream"] == Stream.Namespaces.XMLSTREAM.value
 
 
 def test_stream_open_tag():
     stream = Stream(
-        id='12345',
-        from_='user@example.com',
-        to='protocols@example.com',
-        version='1.0',
-        xml_lang='en'
+        id="12345",
+        from_="user@example.com",
+        to="protocols@example.com",
+        version="1.0",
+        xml_lang="en",
     )
     open_tag = stream.open_tag()
-    assert open_tag == b"<stream:stream id='12345' from='user@example.com' to='protocols@example.com' version='1.0' xml:lang='en' xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams'>"
+    assert (
+        open_tag
+        == b"<stream:stream id='12345' from='user@example.com' to='protocols@example.com' version='1.0' xml:lang='en' xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams'>"
+    )
 
 
 def test_response_stream_client():
@@ -45,7 +48,7 @@ def test_response_stream_client():
         (None, "from"): "user@example.com",
         (None, "to"): "protocols@example.com",
         (None, "version"): "1.0",
-        ("http://www.w3.org/XML/1998/namespace", "lang"): "en"
+        ("http://www.w3.org/XML/1998/namespace", "lang"): "en",
     }
     open_tag = Stream.responseStream(attrs)
     tag = open_tag.decode()
@@ -64,7 +67,7 @@ def test_response_stream_server():
         (None, "from"): "protocols.com",
         (None, "to"): "otherser.com",
         (None, "version"): "1.0",
-        ("http://www.w3.org/XML/1998/namespace", "lang"): "en"
+        ("http://www.w3.org/XML/1998/namespace", "lang"): "en",
     }
     open_tag = Stream.responseStream(attrs, True)
     tag = open_tag.decode()

@@ -17,36 +17,44 @@ from pyjabber.utils import ClarkNotation as CN
 
 
 class PluginManager:
-    __slots__ = ('_jid', '_plugins')
+    __slots__ = ("_jid", "_plugins")
 
     def __init__(self, jid: JID) -> None:
         self._jid = jid
 
         self._plugins: Dict[str, object] = {
-            'jabber:iq:roster': Roster(),
-            'urn:xmpp:ping': Ping,
-            'urn:xmpp:http:upload:0': HTTPFieldUpload(),
-            'jabber:iq:rpc': RPC()
+            "jabber:iq:roster": Roster(),
+            "urn:xmpp:ping": Ping,
+            "urn:xmpp:http:upload:0": HTTPFieldUpload(),
+            "jabber:iq:rpc": RPC(),
         }
 
-        if any(p.startswith('http://jabber.org/protocol/disco') for p in AppConfig.app_config.plugins):
-            self._plugins['http://jabber.org/protocol/disco*'] = Disco()
-        if any(p.startswith('http://jabber.org/protocol/pubsub') for p in AppConfig.app_config.plugins):
-            self._plugins['http://jabber.org/protocol/pubsub*'] = PubSub()
+        if any(
+            p.startswith("http://jabber.org/protocol/disco")
+            for p in AppConfig.app_config.plugins
+        ):
+            self._plugins["http://jabber.org/protocol/disco*"] = Disco()
+        if any(
+            p.startswith("http://jabber.org/protocol/pubsub")
+            for p in AppConfig.app_config.plugins
+        ):
+            self._plugins["http://jabber.org/protocol/pubsub*"] = PubSub()
 
     async def feed(self, element: ET.Element):
         try:
             child = element[0]
         except IndexError:
             if element.attrib["type"] == "result":
-                return None # Safe return. Nothing to process
+                return None  # Safe return. Nothing to process
             else:
                 return SE.bad_request()
 
         ns, tag = CN.break_down(child.tag)
 
         try:
-            ns = list(filter(lambda regex: re.search(regex, ns), list(self._plugins.keys())))[-1]
+            ns = list(
+                filter(lambda regex: re.search(regex, ns), list(self._plugins.keys()))
+            )[-1]
             return await self._plugins[ns].feed(self._jid, element)
         except (KeyError, IndexError):
             return SE.feature_not_implemented(tag, ns)

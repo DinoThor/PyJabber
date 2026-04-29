@@ -74,13 +74,16 @@ async def test_unauthorized():
             self.login_reached.set_result("REACHED")
             self.disconnect()
 
-    server = Server(Parameters(
-        database_path='./pyjabber.db',
-        plugins=[
-            # 'jabber:iq:register',
-            'jabber:x:data',
-            'urn:xmpp:ping',
-        ]))
+    server = Server(
+        Parameters(
+            database_path="./pyjabber.db",
+            plugins=[
+                # 'jabber:iq:register',
+                "jabber:x:data",
+                "urn:xmpp:ping",
+            ],
+        )
+    )
     server_task = asyncio.create_task(server.start())
     await server.ready.wait()
 
@@ -89,7 +92,10 @@ async def test_unauthorized():
         client.connect()
         try:
             await asyncio.wait_for(client.disconnected, 5)
-            if client.login_reached.done() and client.login_reached.result() == "REACHED":
+            if (
+                client.login_reached.done()
+                and client.login_reached.result() == "REACHED"
+            ):
                 pytest.fail("Client was able to login")
         except asyncio.TimeoutError:
             assert pytest.fail("Server unreachable")
@@ -128,7 +134,8 @@ async def test_roster():
 
     presence = Presence()
 
-    assert 'a' == 21
+    assert "a" == 21
+
 
 @pytest.mark.asyncio
 async def test_init_presence():
@@ -156,8 +163,8 @@ async def test_init_presence():
 
     presence = Presence()
 
-    assert 'a' == 21
+    assert "a" == 21
+
 
 if __name__ == "__main__":
     pytest.main()
-

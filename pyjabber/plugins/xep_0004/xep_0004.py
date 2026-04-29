@@ -11,14 +11,15 @@ class MissingDataForms(Exception):
     """
     No dataforms founded in a stanza, when it was expected
     """
+
     pass
 
 
 class FormType(Enum):
-    FORM = 'form'
-    SUBMIT = 'submit'
-    CANCEL = 'cancel'
-    RESULT = 'result'
+    FORM = "form"
+    SUBMIT = "submit"
+    CANCEL = "cancel"
+    RESULT = "result"
 
 
 def parse_form(element: ET.Element):
@@ -35,7 +36,7 @@ def parse_form(element: ET.Element):
         """
         forms = element[0][0]
         ns, tag = CN.break_down(forms.tag)
-        if tag != 'x' or ns != 'jabber:x:data':
+        if tag != "x" or ns != "jabber:x:data":
             raise MissingDataForms
         data = forms
     except (KeyError, MissingDataForms):
@@ -45,62 +46,69 @@ def parse_form(element: ET.Element):
         try:
             forms = element[0]
             ns, tag = CN.break_down(forms.tag)
-            if tag != 'x' or ns != 'jabber:x:data':
+            if tag != "x" or ns != "jabber:x:data":
                 raise MissingDataForms
             data = forms
         except (KeyError, MissingDataForms):
             return SE.bad_request()
 
-    field_list = data.findall('{jabber:x:data}field')
+    field_list = data.findall("{jabber:x:data}field")
     try:
         field_list = [
             FieldResponse(
-                field_type=FieldTypes.from_value(f.attrib.get('type')),
-                var=f.attrib.get('var'),
-                values=[v.text for v in f.findall('{jabber:x:data}value')]
-            ) for f in field_list]
+                field_type=FieldTypes.from_value(f.attrib.get("type")),
+                var=f.attrib.get("var"),
+                values=[v.text for v in f.findall("{jabber:x:data}value")],
+            )
+            for f in field_list
+        ]
     except KeyError:
         return SE.bad_request()
 
     return field_list
 
 
-def generate_form(form_type: FormType, title: str = None, instructions: str = None, fields: List[FieldRequest] = None) -> ET.Element:
-    form_res = ET.Element('x', attrib={'xmlns': 'jabber:x:data', 'type': form_type.value})
+def generate_form(
+    form_type: FormType,
+    title: str = None,
+    instructions: str = None,
+    fields: List[FieldRequest] = None,
+) -> ET.Element:
+    form_res = ET.Element(
+        "x", attrib={"xmlns": "jabber:x:data", "type": form_type.value}
+    )
 
     if form_type == FormType.CANCEL.value:
         return form_res
 
     if title:
-        ET.SubElement(form_res, 'title').text = title
+        ET.SubElement(form_res, "title").text = title
 
     if instructions:
-        ET.SubElement(form_res, 'instructions').text = instructions
+        ET.SubElement(form_res, "instructions").text = instructions
 
     for f in fields:
-        field = ET.Element('field', attrib={
-            'var': f.var
-        })
+        field = ET.Element("field", attrib={"var": f.var})
 
         if f.type:
-            field.attrib['type'] = f.type.value
+            field.attrib["type"] = f.type.value
 
         if f.label:
-            field.attrib['label'] = f.label
+            field.attrib["label"] = f.label
 
         for v in f.values:
-            value = ET.Element('value')
+            value = ET.Element("value")
             value.text = v
             field.append(value)
 
         if f.options:
             for o in f.options:
-                option = ET.Element('option')
+                option = ET.Element("option")
                 option.text = o
                 field.append(option)
 
         if f.desc:
-            desc = ET.Element('desc')
+            desc = ET.Element("desc")
             desc.text = f.desc
             field.append(desc)
 

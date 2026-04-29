@@ -17,7 +17,7 @@ class AppConfig:
     family: AddressFamily
     config_path: str
     cert_path: str
-    root_path:str
+    root_path: str
     database_path: str
     database_in_memory: bool
     database_purge: bool
@@ -28,5 +28,6 @@ class AppConfig:
     verbose: bool
     plugins: List[str]
     items: dict
+
 
 app_config: Optional[AppConfig] = None

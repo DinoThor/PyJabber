@@ -10,7 +10,7 @@ from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.plugins.PluginManager import PluginManager
 from pyjabber.queues.NewConnection import NewConnectionWrapper
 from pyjabber.queues.PendingMessage import PendingMessageWrapper
-from pyjabber.queues.QueueManager import get_queue, QueueName
+from pyjabber.queues.QueueManager import QueueName, get_queue
 from pyjabber.stream.JID import JID
 from pyjabber.utils import ClarkNotation as CN
 from pyjabber.utils.Exceptions import InternalServerError
@@ -20,7 +20,7 @@ class StanzaHandler:
     def __init__(self, transport: Transport) -> None:
         self._ip = AppConfig.app_config.ip
         self._transport = transport
-        self._peername = transport.get_extra_info('peername')
+        self._peername = transport.get_extra_info("peername")
 
         self._connections = ConnectionManager()
         self._jid = self._connections.get_jid(self._peername)
@@ -36,12 +36,10 @@ class StanzaHandler:
         self._functions = {
             "{jabber:client}iq": self.handle_iq,
             "{jabber:client}message": self.handle_msg,
-            "{jabber:client}presence": self.handle_pre
+            "{jabber:client}presence": self.handle_pre,
         }
 
-        get_queue(QueueName.CONNECTIONS).put_nowait(
-            NewConnectionWrapper(self._jid)
-        )
+        get_queue(QueueName.CONNECTIONS).put_nowait(NewConnectionWrapper(self._jid))
 
     async def feed(self, element: ET.Element):
         try:
@@ -54,9 +52,9 @@ class StanzaHandler:
 
     async def handle_iq(self, element: ET.Element):
         """
-            Process the iq stanza with the PluginManager (PM) class
+        Process the iq stanza with the PluginManager (PM) class
 
-            :param element: The stanza in the ElementTree format
+        :param element: The stanza in the ElementTree format
         """
         res = await self._pluginManager.feed(element)
         if res:
@@ -64,19 +62,19 @@ class StanzaHandler:
 
     async def handle_msg(self, element: ET.Element):
         """
-            Router the message to the client
+        Router the message to the client
 
-            If the destination client is a user of a remote protocols,
-            it will queue the message into the QueueMessage
-            object and try to connect to the remote protocols
+        If the destination client is a user of a remote protocols,
+        it will queue the message into the QueueMessage
+        object and try to connect to the remote protocols
 
-            :param element: the message in the ElementTree format
+        :param element: the message in the ElementTree format
         """
         jid = JID(element.attrib.get("to"))
 
         # Local bound
-        if 'from' not in element.attrib:
-            element.attrib['from'] = str(self._jid)
+        if "from" not in element.attrib:
+            element.attrib["from"] = str(self._jid)
 
         if jid.domain == AppConfig.app_config.host or jid.domain in self._ip:
             if jid.domain in self._ip:
@@ -86,7 +84,9 @@ class StanzaHandler:
                 if not priority:
                     if self._message_persistence:
                         await self._message_queue.put(
-                            PendingMessageWrapper(jid=JID(jid.bare()), payload=ET.tostring(element))
+                            PendingMessageWrapper(
+                                jid=JID(jid.bare()), payload=ET.tostring(element)
+                            )
                         )
                 else:
                     all_resources_online = []
@@ -112,20 +112,22 @@ class StanzaHandler:
         # Remote protocols
         else:
             ns, tag = CN.break_down(element.tag)
-            if ns == 'jabber:client':
-                CN.update_namespace('jabber:server', element)
+            if ns == "jabber:client":
+                CN.update_namespace("jabber:server", element)
 
             buffer = self._connections.get_server_transport_host(jid.domain)
             if buffer:
                 buffer.write(ET.tostring(element))
             else:
                 await self._message_queue.put(
-                    PendingMessageWrapper(jid, ET.tostring(element), external_host=jid.domain)
+                    PendingMessageWrapper(
+                        jid, ET.tostring(element), external_host=jid.domain
+                    )
                 )
 
     async def handle_pre(self, element: ET.Element):
         """
-            Handle the presences stanzas
+        Handle the presences stanzas
         """
         res = await self._presenceManager.feed(self._jid, element)
         if res:

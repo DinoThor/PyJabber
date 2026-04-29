@@ -18,10 +18,10 @@ class SubscribersAttrib(Enum):
 
 
 class Subscription(Enum):
-    NONE = 'none'
-    PENDING = 'pending'
-    UNCONFIGURED = 'unconfigured'
-    SUBSCRIBED = 'subscribed'
+    NONE = "none"
+    PENDING = "pending"
+    UNCONFIGURED = "unconfigured"
+    SUBSCRIBED = "subscribed"
 
 
 class NodeAccess(Enum):
@@ -33,8 +33,8 @@ class NodeAccess(Enum):
 
 
 class Affiliation:
-    OWNER = 'owner'
-    PUBLISHER = 'publisher'
-    MEMBER = 'member'
-    NONE = 'none'
-    OUTCAST = 'outcast'
+    OWNER = "owner"
+    PUBLISHER = "publisher"
+    MEMBER = "member"
+    NONE = "none"
+    OUTCAST = "outcast"

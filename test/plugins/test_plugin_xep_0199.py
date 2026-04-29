@@ -9,8 +9,8 @@ from pyjabber.stream.JID import JID
 
 @pytest.fixture
 def ping():
-    with patch('pyjabber.plugins.xep_0199.xep_0199.metadata') as mock_meta:
-        mock_meta.HOST = 'localhost'
+    with patch("pyjabber.plugins.xep_0199.xep_0199.metadata") as mock_meta:
+        mock_meta.HOST = "localhost"
         yield Ping
 
 
@@ -20,11 +20,11 @@ def test_ping_feed_happy_path(ping):
     result = ping.feed(JID("demo@localhost/123"), element)
 
     result = ET.fromstring(result)
-    assert result.tag == 'iq'
-    assert result.attrib.get('from') == 'localhost'
-    assert result.attrib.get('type') == 'result'
-    assert result.attrib.get('id') == '1234'
-    assert result.attrib.get('to') == 'demo@localhost/123'
+    assert result.tag == "iq"
+    assert result.attrib.get("from") == "localhost"
+    assert result.attrib.get("type") == "result"
+    assert result.attrib.get("id") == "1234"
+    assert result.attrib.get("to") == "demo@localhost/123"
 
 
 def test_ping_feed_wrong_to_value(ping):
@@ -58,14 +58,15 @@ def test_ping_feed_with_invalid_xml(ping):
 def test_ping_feed_with_additional_attributes(ping):
     ping = Ping()
 
-    element = ET.Element("iq", attrib={"to": "localhost", "id": "1234", "extra": "value"})
+    element = ET.Element(
+        "iq", attrib={"to": "localhost", "id": "1234", "extra": "value"}
+    )
 
     result = ping.feed(JID("demo@localhost/123"), element)
     result = ET.fromstring(result)
 
-    assert result.tag == 'iq'
-    assert result.attrib.get('from') == 'localhost'
-    assert result.attrib.get('type') == 'result'
-    assert result.attrib.get('id') == '1234'
-    assert result.attrib.get('to') == 'demo@localhost/123'
-
+    assert result.tag == "iq"
+    assert result.attrib.get("from") == "localhost"
+    assert result.attrib.get("type") == "result"
+    assert result.attrib.get("id") == "1234"
+    assert result.attrib.get("to") == "demo@localhost/123"

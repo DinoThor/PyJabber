@@ -15,7 +15,9 @@ from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.utils.TransportProxy import TransportProxy
 from pyjabber.stream.handlers.ServerStanzaHandler import ServerStanzaHandler
 from pyjabber.stream.handlers.StanzaHandler import InternalServerError
-from pyjabber.stream.negotiators.ServerIncomingStreamNegotiator import ServerIncomingStreamNegotiator
+from pyjabber.stream.negotiators.ServerIncomingStreamNegotiator import (
+    ServerIncomingStreamNegotiator,
+)
 
 
 class XMLProtocol(asyncio.Protocol):
@@ -25,9 +27,25 @@ class XMLProtocol(asyncio.Protocol):
     :param namespace: namespace of the XML tags (jabber:client or jabber:server)
     :param connection_timeout: Max time without any response from a client. After that, the protocols will terminate the connection
     """
-    __slots__ = ('_xmlns', '_host', '_connection_timeout', '_cert_path', '_connection_manager',
-                 '_presence_manager', '_tls_queue', '_transport', '_peer', '_xml_parser',
-                 '_timeout_monitor', '_timeout_flag', '_connection_type', '_server_log', '_logger_tag', '_server_incoming')
+
+    __slots__ = (
+        "_xmlns",
+        "_host",
+        "_connection_timeout",
+        "_cert_path",
+        "_connection_manager",
+        "_presence_manager",
+        "_tls_queue",
+        "_transport",
+        "_peer",
+        "_xml_parser",
+        "_timeout_monitor",
+        "_timeout_flag",
+        "_connection_type",
+        "_server_log",
+        "_logger_tag",
+        "_server_incoming",
+    )
 
     def __init__(self, namespace, connection_timeout):
         if namespace not in ["jabber:server", "jabber:client"]:
@@ -45,10 +63,12 @@ class XMLProtocol(asyncio.Protocol):
         self._timeout_monitor = None
         self._timeout_flag = False
 
-        self._server_incoming = namespace == 'jabber:server'
+        self._server_incoming = namespace == "jabber:server"
 
     def __del__(self):
-        logger.trace(f"DEBUG: Protocol object for {self._peer or hex(id(self))} has been deleted")
+        logger.trace(
+            f"DEBUG: Protocol object for {self._peer or hex(id(self))} has been deleted"
+        )
 
     @property
     def transport(self):
@@ -69,13 +89,14 @@ class XMLProtocol(asyncio.Protocol):
         :param transport: The transport object for the connection
         :type transport: asyncio.Transport
         """
-        self._peer = transport.get_extra_info('peername')
-        logger.info(f"{'Server c' if self._server_incoming else 'C'}onnection from <{self._peer}>")
+        self._peer = transport.get_extra_info("peername")
+        logger.info(
+            f"{'Server c' if self._server_incoming else 'C'}onnection from <{self._peer}>"
+        )
 
         if self._connection_timeout:
             self._timeout_monitor = StreamAlivenessMonitor(
-                timeout=self._connection_timeout,
-                callback=self.connection_timeout
+                timeout=self._connection_timeout, callback=self.connection_timeout
             )
 
         if AppConfig.app_config.verbose:
@@ -93,7 +114,7 @@ class XMLProtocol(asyncio.Protocol):
                     self._transport,
                     self,
                     stream_negotiator=ServerIncomingStreamNegotiator,
-                    stanza_handler=ServerStanzaHandler
+                    stanza_handler=ServerStanzaHandler,
                 )
             )
 
@@ -101,15 +122,9 @@ class XMLProtocol(asyncio.Protocol):
                 self._peer, self._transport
             )
         else:
-            self._xml_parser.setContentHandler(
-                XMLParser(self._transport, self)
-            )
+            self._xml_parser.setContentHandler(XMLParser(self._transport, self))
 
-            self._connection_manager.connection(
-                self._peer, self._transport
-            )
-
-
+            self._connection_manager.connection(self._peer, self._transport)
 
     def connection_lost(self, exc):
         """
@@ -121,7 +136,7 @@ class XMLProtocol(asyncio.Protocol):
         if self._timeout_flag:
             return
 
-        logger.info(f"Connection lost <{self._peer}>{f'': Reason {exc}' if exc else ''}")
+        logger.info(f"Connection lost <{self._peer}>{'': Reason {exc}' if exc else ''}")
 
         self._transport = None
         self._xml_parser.getContentHandler().cancel_queue_bridge()
@@ -143,7 +158,6 @@ class XMLProtocol(asyncio.Protocol):
             # self._connection_manager.close(self._peer)
 
         super().connection_lost(None)
-
 
     def data_received(self, data):
         """
