@@ -1,5 +1,5 @@
-from enum import Enum, unique
 import asyncio
+from enum import Enum, unique
 
 
 @unique

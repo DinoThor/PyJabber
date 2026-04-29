@@ -10,7 +10,7 @@ from pyjabber.utils import Singleton
 
 
 class HTTPFieldUpload(metaclass=Singleton):
-    __slots__ = ('_host', '_max_size', '_http_app_instance')
+    __slots__ = ("_host", "_max_size", "_http_app_instance")
 
     def __init__(self, http_app_instance: UploadHttpServer):
         self._host = "upload.$".replace("$", AppConfig.app_config.host)
@@ -21,46 +21,52 @@ class HTTPFieldUpload(metaclass=Singleton):
         if len(element) != 1:
             return SE.invalid_xml()
 
-        request = element.find('{urn:xmpp:http:upload:0}request')
+        request = element.find("{urn:xmpp:http:upload:0}request")
         if request is None:
             return SE.invalid_xml()
 
-        filename = request.attrib.get('filename')
-        size = request.attrib.get('size')
+        filename = request.attrib.get("filename")
+        size = request.attrib.get("size")
 
         try:
             size = int(size)
         except TypeError:
-            return SE.not_acceptable("Missing \"size\" parameter")
+            return SE.not_acceptable('Missing "size" parameter')
         except ValueError:
-            return SE.not_acceptable("Invalid \"size\" parameter. Must be an integer")
+            return SE.not_acceptable('Invalid "size" parameter. Must be an integer')
 
-        content_type = request.attrib.get('content-type')
+        content_type = request.attrib.get("content-type")
 
         if size > self._max_size:
-            return SE.not_acceptable(f"File too large. The maximum file size is {self._max_size} bytes")
+            return SE.not_acceptable(
+                f"File too large. The maximum file size is {self._max_size} bytes"
+            )
 
         slot_id = self._http_app_instance.slot_request(
-            filename=filename,
-            content_type=content_type,
-            content_length=size
+            filename=filename, content_type=content_type, content_length=size
         )
 
         iq_res = IQ(
             type_=IQ.TYPE.RESULT,
             from_=AppConfig.app_config.host,
             to=str(jid),
-            id_=element.attrib.get('id') or str(uuid4())
+            id_=element.attrib.get("id") or str(uuid4()),
         )
 
-        slot = ET.SubElement(iq_res, '{urn:xmpp:http:upload:0}slot')
-        ET.SubElement(slot, '{urn:xmpp:http:upload:0}put', attrib={
-            "url": f"http://{AppConfig.app_config.host}:9090/upload/{slot_id}/{filename}"
-        })
-        ET.SubElement(slot, '{urn:xmpp:http:upload:0}get', attrib={
-            "url": f"http://{AppConfig.app_config.host}:9090/upload/{slot_id}/{filename}"
-        })
+        slot = ET.SubElement(iq_res, "{urn:xmpp:http:upload:0}slot")
+        ET.SubElement(
+            slot,
+            "{urn:xmpp:http:upload:0}put",
+            attrib={
+                "url": f"http://{AppConfig.app_config.host}:9090/upload/{slot_id}/{filename}"
+            },
+        )
+        ET.SubElement(
+            slot,
+            "{urn:xmpp:http:upload:0}get",
+            attrib={
+                "url": f"http://{AppConfig.app_config.host}:9090/upload/{slot_id}/{filename}"
+            },
+        )
 
         return ET.tostring(iq_res)
-
-

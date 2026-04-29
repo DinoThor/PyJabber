@@ -6,8 +6,7 @@ from loguru import logger
 
 from pyjabber import AppConfig
 from pyjabber.network.utils.TransportProxy import TransportProxy
-from pyjabber.queues.NewConnection import NewConnectionWrapper
-from pyjabber.queues.QueueManager import get_queue, QueueName
+from pyjabber.queues.QueueManager import QueueName, get_queue
 from pyjabber.stream.negotiators.StreamNegotiator import Signal, Stage, StreamNegotiator
 
 
@@ -23,7 +22,7 @@ class StreamServerNegotiator(StreamNegotiator):
             Stage.SSL: self._handle_init_ssl,
             Stage.SASL: self._handle_ssl,
             Stage.AUTH: self._handle_init_resource_bind,
-            Stage.BIND: self._handle_resource_bind
+            Stage.BIND: self._handle_resource_bind,
         }
 
         self._stages_flags = {
@@ -35,27 +34,36 @@ class StreamServerNegotiator(StreamNegotiator):
     async def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
         if elem.tag == "{http://etherx.jabber.org/streams}features":
             children = [child.tag for child in elem]
-            if ("{urn:ietf:params:xml:ns:xmpp-tls}starttls" in children
-                and self._stages_flags["starttls"] is False):
-                    self._transport.write("<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>".encode())
-                    self._stages_flags["starttls"] = True
+            if (
+                "{urn:ietf:params:xml:ns:xmpp-tls}starttls" in children
+                and self._stages_flags["starttls"] is False
+            ):
+                self._transport.write(
+                    "<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>".encode()
+                )
+                self._stages_flags["starttls"] = True
 
-            elif ("{urn:ietf:params:xml:ns:xmpp-sasl}mechanisms" in children
-                  and self._stages_flags["starttls"]
-                  and self._stages_flags["starttls_handshake"]):
-
-                mechanisms_offered = [m for m in elem.find("{urn:ietf:params:xml:ns:xmpp-sasl}mechanisms")]
-                if any('EXTERNAL' == m.text for m in mechanisms_offered):
+            elif (
+                "{urn:ietf:params:xml:ns:xmpp-sasl}mechanisms" in children
+                and self._stages_flags["starttls"]
+                and self._stages_flags["starttls_handshake"]
+            ):
+                mechanisms_offered = [
+                    m for m in elem.find("{urn:ietf:params:xml:ns:xmpp-sasl}mechanisms")
+                ]
+                if any("EXTERNAL" == m.text for m in mechanisms_offered):
                     self._transport.write(
-                        "<auth xmlns='urn:ietf:params:xml:ns:xmpp-sasl' mechanism='EXTERNAL'>=</auth>".encode())
+                        "<auth xmlns='urn:ietf:params:xml:ns:xmpp-sasl' mechanism='EXTERNAL'>=</auth>".encode()
+                    )
 
-        elif (elem.tag == "{urn:ietf:params:xml:ns:xmpp-tls}proceed"
-              and self._stages_flags["starttls"]
-              and self._stages_flags["starttls_handshake"] is False):
-
-                await self.handle_tls_server()
-                self._parser.reset_stack()
-                self._stages_flags["starttls_handshake"] = True
+        elif (
+            elem.tag == "{urn:ietf:params:xml:ns:xmpp-tls}proceed"
+            and self._stages_flags["starttls"]
+            and self._stages_flags["starttls_handshake"] is False
+        ):
+            await self.handle_tls_server()
+            self._parser.reset_stack()
+            self._stages_flags["starttls_handshake"] = True
 
         elif elem.tag == "{urn:ietf:params:xml:ns:xmpp-sasl}success":
             self._stages_flags["auth"] = True

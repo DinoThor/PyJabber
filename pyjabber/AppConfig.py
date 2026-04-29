@@ -1,12 +1,13 @@
 import asyncio
 import ssl
 from concurrent.futures import ProcessPoolExecutor
-from dataclasses import dataclass
 from socket import AddressFamily
 from typing import List, Optional
 
+from attrs import define
 
-@dataclass(frozen=True, slots=True)
+
+@define(frozen=True, slots=True)
 class AppConfig:
     host: str
     ip: List[str]
@@ -17,7 +18,7 @@ class AppConfig:
     family: AddressFamily
     config_path: str
     cert_path: str
-    root_path:str
+    root_path: str
     database_path: str
     database_in_memory: bool
     database_purge: bool
@@ -28,5 +29,6 @@ class AppConfig:
     verbose: bool
     plugins: List[str]
     items: dict
+
 
 app_config: Optional[AppConfig] = None

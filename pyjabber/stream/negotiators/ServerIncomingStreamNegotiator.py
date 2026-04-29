@@ -1,23 +1,19 @@
 import asyncio
 from typing import Union
+from xml.etree import ElementTree as ET
 
 from loguru import logger
 
 from pyjabber import AppConfig
-from pyjabber.features.Features import start_tls_proceed_response, SASL_feature
+from pyjabber.features.Features import SASL_feature, start_tls_proceed_response
 from pyjabber.features.SASL.Mechanism import MECHANISM
-from pyjabber.features.StreamFeature import StreamFeature
-from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.utils.TransportProxy import TransportProxy
-from pyjabber.stream.negotiators.StreamNegotiator import StreamNegotiator
-from pyjabber.stream.utils.Enums import Stage, Signal
-
-from xml.etree import ElementTree as ET
-
-from pyjabber.stream.utils.Stream import Stream
-from pyjabber.utils import Exceptions as EX
 from pyjabber.stanzas.error import StanzaError as SE
 from pyjabber.stream.handlers.StanzaHandler import InternalServerError
+from pyjabber.stream.negotiators.StreamNegotiator import StreamNegotiator
+from pyjabber.stream.utils.Enums import Signal, Stage
+from pyjabber.stream.utils.Stream import Stream
+from pyjabber.utils import Exceptions as EX
 from pyjabber.utils.Exceptions import NotAuthorizerStreamNegotiationException
 
 
@@ -28,7 +24,7 @@ class ServerIncomingStreamNegotiator(StreamNegotiator):
 
     async def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
         try:
-            if elem.tag == '{http://etherx.jabber.org/streams}stream':
+            if elem.tag == "{http://etherx.jabber.org/streams}stream":
                 self._transport.write(Stream.responseStream(elem.attrib))
             return await self._stages_handlers[self._stage](elem)
         except EX.NotAuthorizerStreamNegotiationException:
@@ -61,7 +57,7 @@ class ServerIncomingStreamNegotiator(StreamNegotiator):
                     transport=original_transport,
                     protocol=self._protocol,
                     sslcontext=AppConfig.app_config.ssl_context,
-                    server_side=True
+                    server_side=True,
                 )
 
                 if transport_proxy_is_used:
@@ -71,7 +67,9 @@ class ServerIncomingStreamNegotiator(StreamNegotiator):
                 self._protocol.transport = new_transport
                 self._parser.transport = new_transport
                 self._handler.transport = new_transport
-                self._connection_manager.update_transport_server(new_transport, self._peer)
+                self._connection_manager.update_transport_server(
+                    new_transport, self._peer
+                )
 
                 logger.debug(f"Done TLS for <{self._peer}>")
                 self._stage = Stage.SSL
@@ -80,7 +78,9 @@ class ServerIncomingStreamNegotiator(StreamNegotiator):
                 return Signal.RESET
 
             except ConnectionResetError as e:
-                logger.error(f"Error during TLS upgrade with <{self._peer}> Reason: {e}")
+                logger.error(
+                    f"Error during TLS upgrade with <{self._peer}> Reason: {e}"
+                )
                 self._connection_manager.close_server(self._peer)
                 return Signal.FORCE_CLOSE
 

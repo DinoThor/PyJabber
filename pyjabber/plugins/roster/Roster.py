@@ -12,22 +12,23 @@ from pyjabber.stream.JID import JID
 
 class Roster:
     """
-        Roster plugin.
+    Roster plugin.
 
-        Manages the roster list for each registered user in the protocols.
+    Manages the roster list for each registered user in the protocols.
 
-        A roster in XMPP is a protocols-stored contact list that manages contacts, presence status,
-        and subscription requests.
-        It enables real-time presence updates, contact organization, and synchronization across devices,
-        ensuring seamless and private communication.
+    A roster in XMPP is a protocols-stored contact list that manages contacts, presence status,
+    and subscription requests.
+    It enables real-time presence updates, contact organization, and synchronization across devices,
+    ensuring seamless and private communication.
     """
-    __slots__ = ('_handlers', '_roster_in_memory', '_initial_update')
+
+    __slots__ = ("_handlers", "_roster_in_memory", "_initial_update")
 
     def __init__(self) -> None:
         self._handlers = {
             "get": self.handle_get,
             "set": self.handle_set,
-            "result": self.handle_result
+            "result": self.handle_result,
         }
 
         self._roster_in_memory = {}
@@ -72,7 +73,11 @@ class Roster:
 
         roster = self._roster_in_memory.get(jid)
         if roster:
-            match_item = [i for i in roster if ET.fromstring(i.get("item")).get("jid") == new_item.attrib.get("jid")]
+            match_item = [
+                i
+                for i in roster
+                if ET.fromstring(i.get("item")).get("jid") == new_item.attrib.get("jid")
+            ]
             if match_item:  # UPDATE EXISTING ENTRY
                 match_item = match_item[0]
                 if new_item.attrib.get("remove") == "remove":  # DELETE ENTRY
@@ -80,7 +85,8 @@ class Roster:
                         query = delete(Model.Roster).where(
                             and_(
                                 Model.Roster.c.jid == jid,
-                                Model.Roster.c.roster_item == ET.tostring(match_item.get("item")).decode()
+                                Model.Roster.c.roster_item
+                                == ET.tostring(match_item.get("item")).decode(),
                             )
                         )
                         await con.execute(query)
@@ -89,12 +95,17 @@ class Roster:
 
                 else:  # UPDATE FIELDS OF ENTRY
                     async with await DB.connection_async() as con:
-                        query = update(Model.Roster).where(
-                            and_(
-                                Model.Roster.c.jid == jid,
-                                Model.Roster.c.roster_item == match_item.get("item")
+                        query = (
+                            update(Model.Roster)
+                            .where(
+                                and_(
+                                    Model.Roster.c.jid == jid,
+                                    Model.Roster.c.roster_item
+                                    == match_item.get("item"),
+                                )
                             )
-                        ).values({"roster_item": ET.tostring(new_item).decode()})
+                            .values({"roster_item": ET.tostring(new_item).decode()})
+                        )
                         await con.execute(query)
                         if not AppConfig.app_config.database_in_memory:
                             await con.commit()
@@ -102,64 +113,65 @@ class Roster:
             else:  # CREATE NEW ENTRY
                 if new_item.attrib.get("remove") != "remove":
                     async with await DB.connection_async() as con:
-                        query = insert(Model.Roster).values({
-                            "jid": jid,
-                            "roster_item": ET.tostring(new_item).decode()
-                        })
+                        query = insert(Model.Roster).values(
+                            {"jid": jid, "roster_item": ET.tostring(new_item).decode()}
+                        )
                         await con.execute(query)
                         if not AppConfig.app_config.database_in_memory:
                             await con.commit()
 
         else:
             async with await DB.connection_async() as con:
-                query = insert(Model.Roster).values({
-                    "jid": jid,
-                    "roster_item": ET.tostring(new_item).decode()
-                })
+                query = insert(Model.Roster).values(
+                    {"jid": jid, "roster_item": ET.tostring(new_item).decode()}
+                )
                 await con.execute(query)
                 if not AppConfig.app_config.database_in_memory:
                     await con.commit()
 
         await self._update_roster()
-        res = IQ(
-            id_=element.attrib.get("id"),
-            type_=IQ.TYPE.RESULT
-        )
+        res = IQ(id_=element.attrib.get("id"), type_=IQ.TYPE.RESULT)
         return ET.tostring(res)
 
     def handle_result(self, _, __):
         # It's safe to ignore this stanza
         return
 
-    async def create_roster_entry(self, jid: JID,  to: JID):
-        iq = IQ(
-            from_=str(jid),
-            type_=IQ.TYPE.SET
-        )
+    async def create_roster_entry(self, jid: JID, to: JID):
+        iq = IQ(from_=str(jid), type_=IQ.TYPE.SET)
         query = ET.SubElement(iq, "{jabber:iq:roster}query")
         if to.domain == AppConfig.app_config.host:
-            ET.SubElement(query, "{jabber:iq:roster}item", attrib={"jid": to.user, "subscription": "none"})
+            ET.SubElement(
+                query,
+                "{jabber:iq:roster}item",
+                attrib={"jid": to.user, "subscription": "none"},
+            )
         else:
-            ET.SubElement(query, "{jabber:iq:roster}item", attrib={"jid": to.bare(), "subscription": "none"})
+            ET.SubElement(
+                query,
+                "{jabber:iq:roster}item",
+                attrib={"jid": to.bare(), "subscription": "none"},
+            )
 
         return await self.feed(jid, iq)
 
     @staticmethod
     async def store_pending_sub(to_: str, item: ET.Element) -> None:
         async with await DB.connection_async() as con:
-            query = insert(Model.PendingSubs).values({
-                "jid": to_,
-                "item":  ET.tostring(item).decode()
-            })
+            query = insert(Model.PendingSubs).values(
+                {"jid": to_, "item": ET.tostring(item).decode()}
+            )
             await con.execute(query)
             if not AppConfig.app_config.database_in_memory:
                 await con.commit()
 
     async def update_item(self, item: ET.Element, id_: int):
         async with await DB.connection_async() as con:
-            query = update(Model.Roster).where(Model.Roster.c.id == id_).values({
-                "roster_item": ET.tostring(item).decode()
-            })
+            query = (
+                update(Model.Roster)
+                .where(Model.Roster.c.id == id_)
+                .values({"roster_item": ET.tostring(item).decode()})
+            )
             await con.execute(query)
             if not AppConfig.app_config.database_in_memory:
                 await con.commit()
@@ -169,9 +181,7 @@ class Roster:
     async def _update_roster(self):
         async with await DB.connection_async() as con:
             query = select(
-                Model.Roster.c.id,
-                Model.Roster.c.jid,
-                Model.Roster.c.roster_item
+                Model.Roster.c.id, Model.Roster.c.jid, Model.Roster.c.roster_item
             )
             res = await con.execute(query)
             res = res.fetchall()

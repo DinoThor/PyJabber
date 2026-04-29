@@ -18,5 +18,6 @@ def test_presence_initialization():
 
     assert isinstance(presence, ET.Element)
 
+
 if __name__ == "__main__":
     pytest.main()

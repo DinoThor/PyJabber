@@ -4,9 +4,9 @@ from loguru import logger
 
 from pyjabber import AppConfig
 from pyjabber.network.parsers.XMLParser import XMLParser
+from pyjabber.network.protocols.XMLProtocol import XMLProtocol
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
 from pyjabber.network.utils.TransportProxy import TransportProxy
-from pyjabber.network.protocols.XMLProtocol import XMLProtocol
 
 
 class XMLProtocolServerIncoming(XMLProtocol):
@@ -22,7 +22,7 @@ class XMLProtocolServerIncoming(XMLProtocol):
         :type transport: asyncio.Transport
         """
         if transport:
-            self._peer = transport.get_extra_info('peername')
+            self._peer = transport.get_extra_info("peername")
             logger.info(f"Connection {self._peer}")
 
             if AppConfig.app_config.verbose:
@@ -33,14 +33,11 @@ class XMLProtocolServerIncoming(XMLProtocol):
             self._xml_parser = sax.make_parser()
             self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
             self._xml_parser.setFeature(sax.handler.feature_external_ges, False)
-            self._xml_parser.setContentHandler(
-                XMLParser(self._transport, self)
-            )
+            self._xml_parser.setContentHandler(XMLParser(self._transport, self))
 
             if self._connection_timeout:
                 self._timeout_monitor = StreamAlivenessMonitor(
-                    timeout=self._connection_timeout,
-                    callback=self.connection_timeout
+                    timeout=self._connection_timeout, callback=self.connection_timeout
                 )
 
             self._connection_manager.connection_server(

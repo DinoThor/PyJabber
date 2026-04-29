@@ -23,17 +23,19 @@ def clark_from_tuple(tuple: Tuple[str, str]):
         return f"{tuple[1]}"
     return f"{{{tuple[0]}}}{tuple[1]}"
 
+
 def update_namespace(ns: str, element: Element):
     _, tag = break_down(element.tag)
-    element.tag = f'{{{ns}}}{tag}'
+    element.tag = f"{{{ns}}}{tag}"
 
     for child in element:
         update_namespace(ns, child)
+
 
 def is_clark(tag: str) -> bool:
     """
     Regex to check if a string is in the clark notation format
     """
-    return re.match(
-        "^\\{[a-zA-Z0-9:/#?=&;.]+?\\}[a-zA-Z_][a-zA-Z0-9_]*$",
-        tag) is not None
+    return (
+        re.match("^\\{[a-zA-Z0-9:/#?=&;.]+?\\}[a-zA-Z_][a-zA-Z0-9_]*$", tag) is not None
+    )

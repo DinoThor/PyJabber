@@ -8,21 +8,21 @@ from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.queues.FailedRemoteConnection import FailedRemoteConnectionWrapper
 from pyjabber.queues.NewConnection import NewConnectionWrapper
 from pyjabber.queues.PendingMessage import PendingMessageWrapper
-from pyjabber.queues.QueueManager import get_queue, QueueName
+from pyjabber.queues.QueueManager import QueueName, get_queue
 from pyjabber.stream.JID import JID
 
 
 async def queue_worker():
     """
-       Returns a coroutine that watches two different queues: one
-       for new connections and another for new messages.
+    Returns a coroutine that watches two different queues: one
+    for new connections and another for new messages.
 
-       - For the new connections queue, the worker checks if there are any pending
-         messages in the buffer for the new connection's JID. If so, it processes
-         them.
-       - For the new messages queue, the worker directly enqueues incoming
-         messages into the pending messages buffer.
-   """
+    - For the new connections queue, the worker checks if there are any pending
+      messages in the buffer for the new connection's JID. If so, it processes
+      them.
+    - For the new messages queue, the worker directly enqueues incoming
+      messages into the pending messages buffer.
+    """
     local_pending_stanzas: Dict[str, List[bytes]] = {}
     remote_pending_stanzas: Dict[str, List[tuple[JID, bytes]]] = {}
 
@@ -38,14 +38,17 @@ async def queue_worker():
             msg_task = asyncio.create_task(msg_queue.get())
 
             done, pending = await asyncio.wait(
-                [con_task, msg_task],
-                return_when=asyncio.FIRST_COMPLETED
+                [con_task, msg_task], return_when=asyncio.FIRST_COMPLETED
             )
 
             for task in pending:
                 task.cancel()
 
-            result: Union[NewConnectionWrapper, PendingMessageWrapper, FailedRemoteConnectionWrapper] = done.pop().result()
+            result: Union[
+                NewConnectionWrapper,
+                PendingMessageWrapper,
+                FailedRemoteConnectionWrapper,
+            ] = done.pop().result()
 
             while done:
                 item = done.pop().result()
@@ -60,12 +63,17 @@ async def queue_worker():
                     jid_str = str(jid)
                     jid_bare = jid.bare()
 
-                    target_key = jid_str if jid_str in local_pending_stanzas else (
-                        jid_bare if jid_bare in local_pending_stanzas else None)
+                    target_key = (
+                        jid_str
+                        if jid_str in local_pending_stanzas
+                        else (jid_bare if jid_bare in local_pending_stanzas else None)
+                    )
 
                     if target_key:
                         stanzas_list = local_pending_stanzas[target_key]
-                        buffer = connection_manager.get_transport_online(JID(target_key))
+                        buffer = connection_manager.get_transport_online(
+                            JID(target_key)
+                        )
 
                         while stanzas_list:
                             stanza_bytes = stanzas_list.pop()
@@ -91,7 +99,9 @@ async def queue_worker():
                 if result.is_external:
                     if jid.domain not in remote_pending_stanzas:
                         remote_pending_stanzas[jid.domain] = []
-                        await s2s_queue.put(jid.domain)  # Put remote host on connection queue
+                        await s2s_queue.put(
+                            jid.domain
+                        )  # Put remote host on connection queue
 
                     remote_pending_stanzas[jid.domain].append((jid, payload))
                 else:
@@ -99,11 +109,16 @@ async def queue_worker():
                         local_pending_stanzas[str(jid)] = []
                     local_pending_stanzas[str(jid)].append(payload)
 
-            else:   # FailedRemoteConnectionWrapper
+            else:  # FailedRemoteConnectionWrapper
                 host = result.value
-                error = ET.Element("error", attrib={
-                    "type": "cancel" if result.reason == "remote-server-not-found" else "wait"
-                })
+                error = ET.Element(
+                    "error",
+                    attrib={
+                        "type": "cancel"
+                        if result.reason == "remote-server-not-found"
+                        else "wait"
+                    },
+                )
 
                 if result.reason == "remote-server-not-found":
                     tag = "{urn:ietf:params:xml:ns:xmpp-stanzas}remote-server-not-found"
@@ -125,7 +140,6 @@ async def queue_worker():
 
                 if result.reason == "remote-server-not-found":
                     remote_pending_stanzas.pop(host, None)
-
 
     except asyncio.CancelledError:
         pass

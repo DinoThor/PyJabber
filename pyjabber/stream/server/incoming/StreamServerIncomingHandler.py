@@ -1,6 +1,6 @@
 from pyjabber.features.SASL.Mechanism import MECHANISM
-from pyjabber.stream.utils.Enums import Signal
 from pyjabber.stream.negotiators.StreamNegotiator import Stage, StreamNegotiator
+from pyjabber.stream.utils.Enums import Signal
 
 
 class StreamServerIncomingHandler(StreamNegotiator):
@@ -18,4 +18,3 @@ class StreamServerIncomingHandler(StreamNegotiator):
 
         self._stage = Stage.READY
         return Signal.DONE
-

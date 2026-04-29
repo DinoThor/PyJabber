@@ -8,7 +8,7 @@ import yaml
 
 from pyjabber.server_parameters import Parameters
 
-if sys.platform != 'win32':
+if sys.platform != "win32":
     from uvloop import run
 else:
     from winloop import run
@@ -24,6 +24,7 @@ class InterceptHandler(logging.Handler):
     """
     Redirects all logging from stdlib to loguru
     """
+
     def emit(self, record):
         try:
             lvl = logger.level(record.levelname).name
@@ -40,77 +41,107 @@ class InterceptHandler(logging.Handler):
 
 def load_config(path=os.path.join(FILE_PATH, "config/config.yaml")):
     try:
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             raw_config = yaml.safe_load(f) or {}
 
         flat_config = {}
 
-        for section in ['connection', 'database', 'logs']:
+        for section in ["connection", "database", "logs"]:
             if section in raw_config and raw_config[section]:
                 flat_config.update(raw_config[section])
 
-        for section in ['modules', 'items']:
+        for section in ["modules", "items"]:
             if section in raw_config and raw_config[section]:
                 flat_config[section] = raw_config[section]
 
-        if 'flags' in raw_config and raw_config['flags']:
-            for flag in raw_config['flags']:
+        if "flags" in raw_config and raw_config["flags"]:
+            for flag in raw_config["flags"]:
                 flat_config[flag] = True
 
         return flat_config
     except FileNotFoundError:
         return {}
 
+
 config_defaults = load_config()
 
-@click.command(context_settings=dict(default_map=config_defaults))
-@click.option('--host', type=str, default='localhost',
-              show_default=True, help='Host name')
-@click.option('--client_port', type=int, default=5222,
-              show_default=True, help='Server-to-client port')
-@click.option('--server_port', type=int, default=5269,
-              show_default=True, help='Server-to-protocols port')
-@click.option('--family',
-              type=click.Choice(['ipv4',
-                                 'ipv6'],
-                                case_sensitive=False),
-              default='ipv4',
-              show_default=True,
-              help='(ipv4 / ipv6)')
-@click.option('--timeout', type=int, default=60,
-              show_default=True, help='Timeout for connection')
-@click.option('--database_path', type=str, default=os.path.join(os.getcwd(), "pyjabber.db"),
-              show_default=True, help='Path for database file')
-@click.option('--database_purge', is_flag=True, help='Restore database file to default state (empty)')
-@click.option('--database_in_memory', is_flag=True,
-              help='Database in memory. The data will be erased after protocols shutdown')
-@click.option('--message_persistence', is_flag=True,
-              help='Keep the unsent messages in memory waiting for the receiver client to connect')
-@click.option('--cert_path', type=str, default=None,
-              help='Path to the certificate files')
-@click.option(
-              "-v",
-              "--verbose",
-              count=True,
-              help="Show verbose debug level: -v INFO -vv DEBUG, -vvv level TRACE, ")
-@click.option('--log_path', type=str, help='Path to log dumpfile')
-@click.option('--debug', '-D', is_flag=True,
-              help='Enables debug mode in Asyncio')
 
+@click.command(context_settings=dict(default_map=config_defaults))
+@click.option(
+    "--host", type=str, default="localhost", show_default=True, help="Host name"
+)
+@click.option(
+    "--client_port",
+    type=int,
+    default=5222,
+    show_default=True,
+    help="Server-to-client port",
+)
+@click.option(
+    "--server_port",
+    type=int,
+    default=5269,
+    show_default=True,
+    help="Server-to-protocols port",
+)
+@click.option(
+    "--family",
+    type=click.Choice(["ipv4", "ipv6"], case_sensitive=False),
+    default="ipv4",
+    show_default=True,
+    help="(ipv4 / ipv6)",
+)
+@click.option(
+    "--timeout", type=int, default=60, show_default=True, help="Timeout for connection"
+)
+@click.option(
+    "--database_path",
+    type=str,
+    default=os.path.join(os.getcwd(), "pyjabber.db"),
+    show_default=True,
+    help="Path for database file",
+)
+@click.option(
+    "--database_purge",
+    is_flag=True,
+    help="Restore database file to default state (empty)",
+)
+@click.option(
+    "--database_in_memory",
+    is_flag=True,
+    help="Database in memory. The data will be erased after protocols shutdown",
+)
+@click.option(
+    "--message_persistence",
+    is_flag=True,
+    help="Keep the unsent messages in memory waiting for the receiver client to connect",
+)
+@click.option(
+    "--cert_path", type=str, default=None, help="Path to the certificate files"
+)
+@click.option(
+    "-v",
+    "--verbose",
+    count=True,
+    help="Show verbose debug level: -v INFO -vv DEBUG, -vvv level TRACE, ",
+)
+@click.option("--log_path", type=str, help="Path to log dumpfile")
+@click.option("--debug", "-D", is_flag=True, help="Enables debug mode in Asyncio")
 def main(
-        host,
-        client_port,
-        server_port,
-        family,
-        timeout,
-        database_path,
-        database_purge,
-        database_in_memory,
-        message_persistence,
-        cert_path,
-        verbose,
-        log_path,
-        debug):
+    host,
+    client_port,
+    server_port,
+    family,
+    timeout,
+    database_path,
+    database_purge,
+    database_in_memory,
+    message_persistence,
+    cert_path,
+    verbose,
+    log_path,
+    debug,
+):
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
 
     logger.remove()
@@ -118,7 +149,7 @@ def main(
     verbosity = set_verbosity(verbose)
 
     if log_path:
-        log_file = open(os.path.join(log_path, "pyjabber.log"), 'w')
+        log_file = open(os.path.join(log_path, "pyjabber.log"), "w")
         logger.add(
             log_file,
             enqueue=True,
@@ -147,7 +178,7 @@ def main(
         database_in_memory=database_in_memory,
         cert_path=cert_path,
         message_persistence=message_persistence,
-        verbose=verbosity == 'TRACE',
+        verbose=verbosity == "TRACE",
         plugins=config_defaults["modules"],
         items=config_defaults["items"],
     )
@@ -161,13 +192,13 @@ def main(
 
 def set_verbosity(verbose):
     if verbose == 1:
-        return 'INFO'
+        return "INFO"
     elif verbose == 2:
-        return 'DEBUG'
+        return "DEBUG"
     elif verbose == 3:
-        return 'TRACE'
+        return "TRACE"
     else:
-        return 'SUCCESS'
+        return "SUCCESS"
 
 
 """Allow cookiecutter to be executable through `python -m pyjabber`."""

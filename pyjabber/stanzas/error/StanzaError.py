@@ -20,34 +20,31 @@ from pyjabber import AppConfig
 XMLNS = "urn:ietf:params:xml:ns:xmpp-stanzas"
 
 
-def bad_request() -> bytes: # pragma: no cover
+def bad_request() -> bytes:  # pragma: no cover
     """
-   <error type='modify'>
-       <bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
-   </error>
-   """
+    <error type='modify'>
+        <bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
+    </error>
+    """
     return "<error type='modify'><bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>".encode()
 
 
 def conflict_error(id: str) -> bytes:
     iq = ET.Element(
-        "iq",
-        attrib={
-            "id": id,
-            "type": "error",
-            "from": AppConfig.app_config.host})
+        "iq", attrib={"id": id, "type": "error", "from": AppConfig.app_config.host}
+    )
     error = ET.SubElement(iq, "error", attrib={"type": "cancel"})
     ET.SubElement(
-        error, "conflict", attrib={
-            "xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
+        error, "conflict", attrib={"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"}
+    )
     text = ET.SubElement(
-        error, "text", attrib={
-            "xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"})
+        error, "text", attrib={"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"}
+    )
     text.text = "The requested username already exists"
     return ET.tostring(iq)
 
 
-def feature_not_implemented(feature: str, namespace: str) -> bytes: # pragma: no cover
+def feature_not_implemented(feature: str, namespace: str) -> bytes:  # pragma: no cover
     """
     <error type='cancel'>
         <feature-not-implemented
@@ -56,11 +53,13 @@ def feature_not_implemented(feature: str, namespace: str) -> bytes: # pragma: no
             f"xmlns='<<namespace>>' feature='<<feature>>'/>
     </error>
     """
-    return (f"<error type='cancel'><feature-not-implemented xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/><unsupported "
-            f"xmlns='{namespace}' feature='{feature}'/></error>").encode()
+    return (
+        f"<error type='cancel'><feature-not-implemented xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/><unsupported "
+        f"xmlns='{namespace}' feature='{feature}'/></error>"
+    ).encode()
 
 
-def invalid_xml() -> bytes: # pragma: no cover
+def invalid_xml() -> bytes:  # pragma: no cover
     """
     <stream:error>
         <invalid-xml
@@ -71,7 +70,7 @@ def invalid_xml() -> bytes: # pragma: no cover
     return f"<stream:error><invalid-xml xmlns='{XMLNS}'/></stream:error></stream:stream>".encode()
 
 
-def internal_server_error() -> bytes: # pragma: no cover
+def internal_server_error() -> bytes:  # pragma: no cover
     """
     <stream:error>
         <internal-protocols-error
@@ -80,7 +79,8 @@ def internal_server_error() -> bytes: # pragma: no cover
     """
     return "<stream:error><internal-protocols-error xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error>".encode()
 
-def item_not_found() -> bytes: # pragma: no cover
+
+def item_not_found() -> bytes:  # pragma: no cover
     """
     <error type='cancel'>
         <item-not-found xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
@@ -101,13 +101,12 @@ def not_acceptable(text: str = None) -> bytes:
     </error>
     """
     if text:
-        return f"<error type='modify'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'><text>{text}</text></not-acceptable></error>".encode(
-        )
+        return f"<error type='modify'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'><text>{text}</text></not-acceptable></error>".encode()
     else:
         return "<error type='modify'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>".encode()
 
 
-def not_authorized_sasl() -> bytes: # pragma: no cover
+def not_authorized_sasl() -> bytes:  # pragma: no cover
     """
     <failure xmlns='urn:ietf:params:xml:ns:xmpp-sasl'>
         <not-authorized/>
@@ -131,7 +130,8 @@ def not_well_formed() -> bytes:
     """
     return "<stream:error><xml-not-well-formed xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error></stream:stream>"
 
-def service_unavaliable(): # pragma: no cover
+
+def service_unavaliable():  # pragma: no cover
     """
     <error type='cancel'>
         <service-unavailable

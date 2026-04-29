@@ -23,6 +23,7 @@ def test_message_creation():
     assert body_elem is not None
     assert body_elem.text == body
 
+
 def test_message_creation_with_default_type():
     mto = "user@domain.com"
     mfrom = "otheruser@domain.com"
@@ -43,6 +44,7 @@ def test_message_creation_with_default_type():
     body_elem = msg.find("body")
     assert body_elem is not None
     assert body_elem.text == body
+
 
 def test_message_creation_with_extra_attributes():
     mto = "user@domain.com"
@@ -67,5 +69,3 @@ def test_message_creation_with_extra_attributes():
     body_elem = msg.find("body")
     assert body_elem is not None
     assert body_elem.text == body
-
-

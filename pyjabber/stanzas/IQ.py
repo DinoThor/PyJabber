@@ -8,6 +8,7 @@ class IQ(ET.Element):
     An IQ stanza element based on ElementTree.
     The enum TYPE define the possible values of type
     """
+
     class TYPE(Enum):
         GET = "get"
         RESULT = "result"
@@ -15,12 +16,13 @@ class IQ(ET.Element):
         ERROR = "error"
 
     def __init__(
-            self,
-            type_: TYPE,
-            id_: str = None,
-            from_: str = None,
-            to: str = None,
-            **extra: str) -> None:
+        self,
+        type_: TYPE,
+        id_: str = None,
+        from_: str = None,
+        to: str = None,
+        **extra: str,
+    ) -> None:
         """
         Create an IQ stanza
 
@@ -31,14 +33,17 @@ class IQ(ET.Element):
             to (str): The receiver user
         """
         attrib = {
-            k: v for k, v in (
+            k: v
+            for k, v in (
                 ("id", id_),
                 ("from", from_),
                 ("to", to),
-                ("type", type_.value)) if v is not None
+                ("type", type_.value),
+            )
+            if v is not None
         }
 
-        if attrib.get('id') is None:
-            attrib['id'] = str(uuid4())
+        if attrib.get("id") is None:
+            attrib["id"] = str(uuid4())
 
-        super().__init__('iq', attrib, **extra)
+        super().__init__("iq", attrib, **extra)

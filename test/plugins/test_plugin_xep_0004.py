@@ -40,15 +40,16 @@ form_element = ET.fromstring(form)
 def test_parse_form():
     form_parsed = parse_form(form_element)
     assert form_parsed[0].type == FieldTypes.HIDDEN
-    assert form_parsed[0].var == 'FORM_TYPE'
-    assert form_parsed[0].values[0] == 'jabber:bot'
+    assert form_parsed[0].var == "FORM_TYPE"
+    assert form_parsed[0].values[0] == "jabber:bot"
     assert form_parsed[1].type == FieldTypes.TEXT_SINGLE
-    assert form_parsed[1].var == 'botname'
-    assert form_parsed[1].values[0] == 'The Jabber Google Bot'
+    assert form_parsed[1].var == "botname"
+    assert form_parsed[1].values[0] == "The Jabber Google Bot"
     assert form_parsed[-1].type == FieldTypes.JID_MULTI
-    assert form_parsed[-1].var == 'invitelist'
-    assert form_parsed[-1].values[0] == 'juliet@capulet.com'
-    assert form_parsed[-1].values[1] == 'benvolio@montague.net'
+    assert form_parsed[-1].var == "invitelist"
+    assert form_parsed[-1].values[0] == "juliet@capulet.com"
+    assert form_parsed[-1].values[1] == "benvolio@montague.net"
+
 
 """
 <x xmlns='jabber:x:data' type='result'>
@@ -65,36 +66,35 @@ def test_parse_form():
 </x>
 """
 
+
 def test_generate_form():
     form = generate_form(
         form_type=FormType.FORM,
-        title='Form Test',
-        instructions='Fill this form to test it',
+        title="Form Test",
+        instructions="Fill this form to test it",
         fields=[
             FieldRequest(
-                field_type=FieldTypes.HIDDEN,
-                var='FORM_TYPE',
-                values=['jabber:bot']
+                field_type=FieldTypes.HIDDEN, var="FORM_TYPE", values=["jabber:bot"]
             ),
             FieldRequest(
                 field_type=FieldTypes.TEXT_SINGLE,
-                var='botname',
-                label='The bot name',
-                values=['Google Bot']
+                var="botname",
+                label="The bot name",
+                values=["Google Bot"],
             ),
             FieldRequest(
                 field_type=FieldTypes.JID_MULTI,
-                var='invitelist',
-                values=['juliet@capulet.com', 'benvolio@montague.net']
-            )
-        ]
+                var="invitelist",
+                values=["juliet@capulet.com", "benvolio@montague.net"],
+            ),
+        ],
     )
 
-    assert form.tag == 'x'
-    assert form.attrib.get('xmlns') == 'jabber:x:data'
-    assert form.attrib.get('type') == FormType.FORM.value
-    fields = form.findall('field')
-    assert fields[0].tag == 'field'
-    assert fields[0].attrib.get('type') == FieldTypes.HIDDEN.value
-    assert fields[0].attrib.get('var') == 'FORM_TYPE'
-    assert fields[0].findall('value')[0].text == 'jabber:bot'
+    assert form.tag == "x"
+    assert form.attrib.get("xmlns") == "jabber:x:data"
+    assert form.attrib.get("type") == FormType.FORM.value
+    fields = form.findall("field")
+    assert fields[0].tag == "field"
+    assert fields[0].attrib.get("type") == FieldTypes.HIDDEN.value
+    assert fields[0].attrib.get("var") == "FORM_TYPE"
+    assert fields[0].findall("value")[0].text == "jabber:bot"

@@ -16,7 +16,7 @@ class DB:
     _engine = None
 
     @staticmethod
-    def connection() -> sqlalchemy.Connection:  #pragma: no cover
+    def connection() -> sqlalchemy.Connection:  # pragma: no cover
         """
         Returns an already crafted connection with the database.
         It takes the parameters from the protocols class instance (i.e., DB path | DB in memory)
@@ -54,18 +54,20 @@ class DB:
         :return: SQLAlchemy Engine
         """
         if not AppConfig.app_config.database_debug:
-            logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
+            logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
             logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
             logging.getLogger("sqlite3").setLevel(logging.WARNING)
             logging.getLogger("aiosqlite").setLevel(logging.WARNING)
 
         if AppConfig.app_config.database_in_memory:
-            logger.info("Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!")
+            logger.info(
+                "Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!"
+            )
             DB._engine = create_async_engine(
                 url="sqlite+aiosqlite:///:memory:",
                 isolation_level="AUTOCOMMIT",
                 poolclass=StaticPool,
-                echo=AppConfig.app_config.database_debug
+                echo=AppConfig.app_config.database_debug,
             )
 
             @event.listens_for(DB._engine.sync_engine, "connect")
@@ -81,14 +83,14 @@ class DB:
         if os.path.isfile(AppConfig.app_config.database_path):
             DB._engine = create_async_engine(
                 url=f"sqlite+aiosqlite:///{AppConfig.app_config.database_path}",
-                echo=AppConfig.app_config.database_debug
+                echo=AppConfig.app_config.database_debug,
             )
 
         else:
             logger.info("No database found. Initializing one...")
             DB._engine = create_async_engine(
                 f"sqlite+aiosqlite:///{AppConfig.app_config.database_path}",
-                echo=AppConfig.app_config.database_debug
+                echo=AppConfig.app_config.database_debug,
             )
 
         @event.listens_for(DB._engine.sync_engine, "connect")
@@ -113,6 +115,11 @@ class DB:
     @staticmethod
     def run_db_migrations() -> None:
         cfg = Config()
-        cfg.set_main_option("script_location", os.path.join(AppConfig.app_config.root_path, '..', 'alembic_local'))
-        cfg.set_main_option("sqlalchemy.url", f"sqlite:///{AppConfig.app_config.database_path}")
+        cfg.set_main_option(
+            "script_location",
+            os.path.join(AppConfig.app_config.root_path, "..", "alembic_local"),
+        )
+        cfg.set_main_option(
+            "sqlalchemy.url", f"sqlite:///{AppConfig.app_config.database_path}"
+        )
         command.upgrade(cfg, "head")
