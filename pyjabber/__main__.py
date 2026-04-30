@@ -66,7 +66,10 @@ def load_config(path=os.path.join(FILE_PATH, "config/config.yaml")):
 config_defaults = load_config()
 
 
-@click.command(context_settings=dict(default_map=config_defaults))
+@click.command(context_settings=dict(
+    default_map=config_defaults,
+    auto_envvar_prefix='PYJABBER'
+))
 @click.option(
     "--host", type=str, default="localhost", show_default=True, help="Host name"
 )
