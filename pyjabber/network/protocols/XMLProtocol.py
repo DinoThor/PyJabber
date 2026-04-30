@@ -131,7 +131,7 @@ class XMLProtocol(asyncio.Protocol):
         if self._timeout_flag:
             return
 
-        logger.info(f"Connection lost <{self._peer}>{'': Reason {exc}' if exc else ''}")
+        logger.info(f"Connection lost <{self._peer}>: Reason {exc or ''}")
 
         self._transport = None
         self._xml_parser.getContentHandler().cancel_queue_bridge()
