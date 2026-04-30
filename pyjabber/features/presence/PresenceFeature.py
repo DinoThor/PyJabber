@@ -117,7 +117,7 @@ class Presence(metaclass=Singleton):
             return present[0]
         return None, None
 
-    def _handle_lost_connection(self, jid: Union[JID | str], element: Element):
+    def _handle_lost_connection(self, jid: Union[JID, str], element: Element):
         if isinstance(jid, JID):
             if jid.bare() not in self._online_status:
                 return None
