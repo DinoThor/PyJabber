@@ -20,39 +20,35 @@ class Parameters:
     cert_path: str = None
     message_persistence: bool = True
     verbose: bool = False
-    plugins: List[str] = field(
-        default_factory=lambda: [
-            "http://jabber.org/protocol/disco#info",
-            "http://jabber.org/protocol/disco#items",
-            "http://jabber.org/protocol/pubsub",
-            "http://jabber.org/protocol/pubsub#publish",
-            "http://jabber.org/protocol/pubsub#subscribe",
-            "http://jabber.org/protocol/pubsub#config-node",
-            "http://jabber.org/protocol/pubsub#create-nodes",
-            "http://jabber.org/protocol/pubsub#delete-nodes",
-            "jabber:iq:register",
-            "jabber:x:data",
-            "urn:xmpp:ping",
-            "jabber:iq:rpc",
-            "urn:xmpp:http:upload:0",
-        ]
-    )
+    plugins: List[str] = [
+        "http://jabber.org/protocol/disco#info",
+        "http://jabber.org/protocol/disco#items",
+        "http://jabber.org/protocol/pubsub",
+        "http://jabber.org/protocol/pubsub#publish",
+        "http://jabber.org/protocol/pubsub#subscribe",
+        "http://jabber.org/protocol/pubsub#config-node",
+        "http://jabber.org/protocol/pubsub#create-nodes",
+        "http://jabber.org/protocol/pubsub#delete-nodes",
+        "jabber:iq:register",
+        "jabber:x:data",
+        "urn:xmpp:ping",
+        "jabber:iq:rpc",
+        "urn:xmpp:http:upload:0",
+    ]
 
-    items: Dict[str, Dict[str, str]] = field(
-        default_factory=lambda: {
-            "pubsub.$": {
-                "name": "Pubsub Service",
-                "category": "pubsub",
-                "type": "service",
-                "var": "http://jabber.org/protocol/pubsub",
-                "extra": {},
-            },
-            "upload.$": {
-                "name": "HTTP File Upload",
-                "category": "store",
-                "type": "file",
-                "var": "urn:xmpp:http:upload:0",
-                "extra": {"max-size": 5242880},
-            },
-        }
-    )
+    items: Dict[str, Dict[str, str]] = {
+        "pubsub.$": {
+            "name": "Pubsub Service",
+            "category": "pubsub",
+            "type": "service",
+            "var": "http://jabber.org/protocol/pubsub",
+            "extra": {},
+        },
+        "upload.$": {
+            "name": "HTTP File Upload",
+            "category": "store",
+            "type": "file",
+            "var": "urn:xmpp:http:upload:0",
+            "extra": {"max-size": 5242880},
+        },
+    }
