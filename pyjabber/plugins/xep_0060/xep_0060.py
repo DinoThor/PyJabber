@@ -88,7 +88,7 @@ class PubSub(metaclass=Singleton):
                 return StanzaError.invalid_xml()
 
             _, operation = CN.break_down(element[0][0].tag)
-            return self._operations[operation](element, jid)
+            return await self._operations[operation](element, jid)
         except KeyError as e:
             logger.error(f"Pubsub operation not supported: {e}")
             return StanzaError.feature_not_implemented(
@@ -694,7 +694,7 @@ class PubSub(metaclass=Singleton):
             item = ET.SubElement(items, "item")
             if item_id:
                 item.attrib["id"] = item_id
-            if payload:
+            if payload is None:
                 item.append(payload)
 
         for jid, buffer, _ in receivers_buffer_single_iterator:
