@@ -694,7 +694,7 @@ class PubSub(metaclass=Singleton):
             item = ET.SubElement(items, "item")
             if item_id:
                 item.attrib["id"] = item_id
-            if payload is None:
+            if payload is not None:
                 item.append(payload)
 
         for jid, buffer, _ in receivers_buffer_single_iterator:
