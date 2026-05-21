@@ -156,7 +156,7 @@ class PubSub(metaclass=Singleton):
             if not AppConfig.app_config.database_in_memory:
                 await con.commit()
 
-        self.update_memory_from_database()
+        await self.update_memory_from_database()
 
         iq_res, pubsub = success_response(element)
         ET.SubElement(pubsub, "create", attrib={"node": new_node})
@@ -197,7 +197,7 @@ class PubSub(metaclass=Singleton):
             if not AppConfig.app_config.database_in_memory:
                 await con.commit()
 
-        self.update_memory_from_database()
+        await self.update_memory_from_database()
         iq_res, _ = success_response(element)
         return ET.tostring(iq_res)
 
@@ -335,7 +335,7 @@ class PubSub(metaclass=Singleton):
             if not AppConfig.app_config.database_in_memory:
                 await con.commit()
 
-        self.update_memory_from_database()
+        await self.update_memory_from_database()
 
         iq_res, pubsub = success_response(element)
         ET.SubElement(
@@ -416,7 +416,7 @@ class PubSub(metaclass=Singleton):
             if not AppConfig.app_config.database_in_memory:
                 await con.commit()
 
-        self.update_memory_from_database()
+        await self.update_memory_from_database()
 
         iq_res, pubsub = success_response(element)
         sub = ET.SubElement(
