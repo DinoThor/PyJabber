@@ -147,6 +147,9 @@ class PubSub(metaclass=Singleton):
             if existing:
                 existing_owner = existing[0][NodeAttrib.OWNER.value]
                 if existing_owner == jid.user:
+                    logger.warning(
+                        f"create_node: node '{new_node}' already exists and owner matches {jid.user}; treating as idempotent"
+                    )
                     # Temporary behavior: if the node already exists for the same owner,
                     # return success instead of conflict. This should be revisited against
                     # the XEP-0060 expected behavior before considering it final.
