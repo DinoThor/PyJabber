@@ -135,22 +135,35 @@ class PubSub(metaclass=Singleton):
         if not new_node:
             return error_response(element, jid, ErrorType.NOT_ACCEPTABLE)
 
-        # Node already exists
-        if [node for node in self._nodes if node[NodeAttrib.NODE.value] == new_node]:
-            return error_response(element, jid, ErrorType.CONFLICT)
-
         if config:  # pragma: no cover
             pass  # TODO: create node with given configuration
 
-        item = {
-            "node": new_node,
-            "owner": jid.user,
-            "name": None,
-            "type": "leaf",
-            "max_items": 1024,
-        }
-
         async with await DB.connection_async() as con:
+            # Check DB state first to avoid races with in-memory cache.
+            sel = select(Model.Pubsub).where(Model.Pubsub.c.node == new_node)
+            res = await con.execute(sel)
+            existing = res.fetchall()
+
+            if existing:
+                existing_owner = existing[0][NodeAttrib.OWNER.value]
+                if existing_owner == jid.user:
+                    # Temporary behavior: if the node already exists for the same owner,
+                    # return success instead of conflict. This should be revisited against
+                    # the XEP-0060 expected behavior before considering it final.
+                    iq_res, pubsub = success_response(element)
+                    ET.SubElement(pubsub, "create", attrib={"node": new_node})
+                    return ET.tostring(iq_res)
+
+                return error_response(element, jid, ErrorType.CONFLICT)
+
+            item = {
+                "node": new_node,
+                "owner": jid.user,
+                "name": None,
+                "type": "leaf",
+                "max_items": 1024,
+            }
+
             query = insert(Model.Pubsub).values(item)
             await con.execute(query)
             if not AppConfig.app_config.database_in_memory:
