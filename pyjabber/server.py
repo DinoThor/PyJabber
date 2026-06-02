@@ -13,6 +13,7 @@ from pyjabber.features.presence.PresenceFeature import Presence
 from pyjabber.http_server import HttpServer
 from pyjabber.network import CertGenerator
 from pyjabber.network.protocols.XMLProtocol import XMLProtocol
+from pyjabber.plugins.roster.Roster import Roster
 from pyjabber.plugins.xep_0060.xep_0060 import PubSub
 from pyjabber.plugins.xep_0363.upload_server import UploadHttpServer
 from pyjabber.plugins.xep_0363.xep_0363 import HTTPFieldUpload
@@ -20,7 +21,7 @@ from pyjabber.queues.QueueManager import QueueName, get_queue
 from pyjabber.queues.workers.MessageQueueWorker import queue_worker
 from pyjabber.queues.workers.ServerConnectionWorker import server_connection_worker
 from pyjabber.server_parameters import Parameters
-from pyjabber.utils.ServerUtils import setup_ip_by_host, setup_query_local_ip
+from pyjabber.utils.ServerUtils import setup_query_local_ip
 from pyjabber.webpage.adminPage import api_adminpage_app
 
 SERVER_FILE_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -37,7 +38,6 @@ class Server:
         # Server
         self._host = param.host
         self._public_ip = setup_query_local_ip()
-        self._host_ip = setup_ip_by_host(self._host)
         self._client_port = param.client_port
         self._server_port = param.server_port
         self._family = param.family
@@ -76,9 +76,13 @@ class Server:
             keyfile=os.path.join(cert_path, f"{param.host}_key.pem"),
         )
 
+        domains = ["127.0.0.1", self._host]
+        if self._public_ip:
+            domains.append(self._public_ip)
+
         AppConfig.app_config = AppConfig.AppConfig(
             host=param.host,
-            ip=[self._host_ip, self._public_ip],
+            domains=domains,
             ssl_context=ssl_context,
             ssl_context_s2s=ssl_context_s2s,
             connection_timeout=param.connection_timeout,
@@ -128,8 +132,11 @@ class Server:
             if not self._database_in_memory:
                 DB.run_db_migrations()
 
+            roster = Roster()
+            await roster.start()
+
             presence = Presence()
-            await presence.get_all_pending_presence()
+            await presence.start()
 
             pubsub = PubSub()
             await pubsub.update_memory_from_database()

@@ -24,7 +24,7 @@ class StanzaServerIncomingHandler(StanzaHandler):
         jid = JID(element.attrib["to"])
 
         if not jid.resource:
-            priority = self._presenceManager.most_priority(jid)
+            priority = self._presenceManager._most_priority(jid)
             if not priority and self._message_persistence:
                 self._message_queue.put_nowait(("MESSAGE", jid, ET.tostring(element)))
                 return None

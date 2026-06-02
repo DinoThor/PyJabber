@@ -123,7 +123,7 @@ def test_handleMsg_no_resource_tie_priority(setup):
         [(JID("user@localhost/res2"), mock_server_buffer_2, [True])],
     ]
 
-    mock_presence.return_value.most_priority.return_value = [("res1", 10), ("res2", 10)]
+    mock_presence.return_value._most_priority.return_value = [("res1", 10), ("res2", 10)]
 
     handler.handle_msg(element)
 
@@ -138,7 +138,7 @@ def test_handleMsg_enqueue_resource(setup):
     element.tag = "{jabber:client}message"
 
     mock_connections.return_value.get_transport_online.return_value = []
-    mock_presence.return_value.most_priority.return_value = []
+    mock_presence.return_value._most_priority.return_value = []
 
     handler.handle_msg(element)
 
@@ -160,7 +160,7 @@ def test_handleMsg_bare(setup):
         [(MagicMock(), buffer_mock_1, [True])],
         [(MagicMock(), buffer_mock_2, [True])],
     ]
-    mock_presence.return_value.most_priority.return_value = [
+    mock_presence.return_value._most_priority.return_value = [
         ("res1", PresenceType.AVAILABLE, None, None, None),
         ("res2", PresenceType.AVAILABLE, None, None, None),
     ]
@@ -169,7 +169,7 @@ def test_handleMsg_bare(setup):
 
     mock_queue.put_nowait.assert_not_called()
     assert (
-        str(mock_presence.return_value.most_priority.call_args[0][0])
+        str(mock_presence.return_value._most_priority.call_args[0][0])
         == "user@localhost"
     )
     con_calls = mock_connections.return_value.get_transport_online.call_args_list

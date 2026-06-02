@@ -74,7 +74,7 @@ def test_most_priority_by_jid(setup_presence):
         ]
     }
 
-    res = presence.most_priority(JID("test@localhost"))
+    res = presence._most_priority(JID("test@localhost"))
 
     assert len(res) == 1
     assert str(res[0][0]) == "res4"

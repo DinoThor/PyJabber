@@ -1,9 +1,8 @@
 import socket
+from typing import Union
 
-from loguru import logger
 
-
-def setup_query_local_ip():  # pragma: no cover
+def setup_query_local_ip() -> Union[str, None]:  # pragma: no cover
     """
     Return the local IP of the host machine
     """
@@ -11,18 +10,10 @@ def setup_query_local_ip():  # pragma: no cover
     s.settimeout(0)
     try:
         # doesn't even have to be reachable
-        s.connect(("10.254.254.254", 1))
-        IP = s.getsockname()[0]
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
     except Exception:
-        IP = "127.0.0.1"
+        ip = None
     finally:
         s.close()
-    return IP
-
-
-def setup_ip_by_host(host: str):  # pragma: no cover
-    try:
-        return socket.gethostbyname(host)
-    except socket.gaierror as e:
-        logger.error(e)
-        return None
+    return ip

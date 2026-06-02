@@ -34,6 +34,7 @@ class PluginManager:
             for p in AppConfig.app_config.plugins
         ):
             self._plugins["http://jabber.org/protocol/disco*"] = Disco()
+
         if any(
             p.startswith("http://jabber.org/protocol/pubsub")
             for p in AppConfig.app_config.plugins

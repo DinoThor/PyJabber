@@ -18,35 +18,37 @@ from pyjabber.utils.Exceptions import InternalServerError
 
 class StanzaHandler:
     def __init__(self, transport: Transport) -> None:
-        self._ip = AppConfig.app_config.ip
+        self._domains = AppConfig.app_config.domains
         self._transport = transport
         self._peername = transport.get_extra_info("peername")
-
         self._connections = ConnectionManager()
-        self._jid = self._connections.get_jid(self._peername)
-
-        self._pluginManager = PluginManager(self._jid)
+        self._jid = None
+        self._pluginManager = None
         self._presenceManager = Presence()
-
         self._message_queue = get_queue(QueueName.MESSAGES)
         self._connection_queue: asyncio.Queue = get_queue(QueueName.CONNECTIONS)
-
         self._message_persistence = AppConfig.app_config.message_persistence
-
         self._functions = {
             "{jabber:client}iq": self.handle_iq,
             "{jabber:client}message": self.handle_msg,
             "{jabber:client}presence": self.handle_pre,
         }
 
-        get_queue(QueueName.CONNECTIONS).put_nowait(NewConnectionWrapper(self._jid))
+    async def start(self):
+        self._jid = await self._connections.get_jid(self._peername)
+        if self._jid:
+            self._pluginManager = PluginManager(self._jid)
+            get_queue(QueueName.CONNECTIONS).put_nowait(
+                NewConnectionWrapper(self._jid)
+            )
 
     async def feed(self, element: ET.Element):
         try:
             await self._functions[element.tag](element)
         except (KeyError, InternalServerError) as e:
             logger.error(
-                f"Internal protocols error {self._peername}. Closing connection for protocols stability. Reason: ${e}"
+                f"Internal protocols error {self._peername}. "
+                f"Closing connection for protocols stability. Reason: ${e}"
             )
             raise InternalServerError
 
@@ -76,11 +78,9 @@ class StanzaHandler:
         if "from" not in element.attrib:
             element.attrib["from"] = str(self._jid)
 
-        if jid.domain == AppConfig.app_config.host or jid.domain in self._ip:
-            if jid.domain in self._ip:
-                jid.domain = AppConfig.app_config.host
+        if jid.domain in self._domains:
             if not jid.resource:
-                priority = self._presenceManager.most_priority(jid)
+                priority = self._presenceManager._most_priority(jid)
                 if not priority:
                     if self._message_persistence:
                         await self._message_queue.put(
@@ -91,7 +91,7 @@ class StanzaHandler:
                 else:
                     all_resources_online = []
                     for user in priority:
-                        buffer_online = self._connections.get_transport_online(
+                        buffer_online = await self._connections.get_transport_online(
                             JID(user=jid.user, domain=jid.domain, resource=user[0])
                         )
                         all_resources_online += buffer_online
@@ -100,7 +100,7 @@ class StanzaHandler:
                         buffer[1].write(ET.tostring(element))
 
             else:
-                resource_online = self._connections.get_transport_online(jid)
+                resource_online = await self._connections.get_transport_online(jid)
                 if not resource_online and self._message_persistence:
                     await self._message_queue.put(
                         PendingMessageWrapper(jid, ET.tostring(element))
@@ -115,7 +115,7 @@ class StanzaHandler:
             if ns == "jabber:client":
                 CN.update_namespace("jabber:server", element)
 
-            buffer = self._connections.get_server_transport_host(jid.domain)
+            buffer = await self._connections.get_server_transport_host(jid.domain)
             if buffer:
                 buffer.write(ET.tostring(element))
             else:

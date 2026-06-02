@@ -18,7 +18,7 @@ class DB:
     @staticmethod
     def connection() -> sqlalchemy.Connection:  # pragma: no cover
         """
-        Returns an already crafted connection with the database.
+        Returns an already crafted connection with the db.
         It takes the parameters from the protocols class instance (i.e., DB path | DB in memory)
         """
         return DB._engine.connect()
@@ -26,7 +26,7 @@ class DB:
     @staticmethod
     async def connection_async() -> AsyncConnection:  # pragma: no cover
         """
-        Returns an already crafted connection with the database.
+        Returns an already crafted connection with the db.
         It takes the parameters from the protocols class instance (i.e., DB path | DB in memory)
         """
         return DB._engine.connect()
@@ -48,7 +48,7 @@ class DB:
     @staticmethod
     async def setup_database() -> AsyncEngine:
         """
-        Initialize the database that will be used in the protocols session.
+        Initialize the db that will be used in the protocols session.
         It can be adjusted by the parameters passed in the Server constructor, as it will be
         read via the metadata class
         :return: SQLAlchemy Engine
@@ -59,9 +59,16 @@ class DB:
             logging.getLogger("sqlite3").setLevel(logging.WARNING)
             logging.getLogger("aiosqlite").setLevel(logging.WARNING)
 
+        if os.path.isfile(AppConfig.app_config.database_path):
+            DB._engine = create_async_engine(
+                url=f"sqlite+aiosqlite:///{AppConfig.app_config.database_path}",
+                echo=AppConfig.app_config.database_debug,
+            )
+            return DB._engine
+
         if AppConfig.app_config.database_in_memory:
             logger.info(
-                "Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!"
+                "Using db on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!"
             )
             DB._engine = create_async_engine(
                 url="sqlite+aiosqlite:///:memory:",
@@ -71,35 +78,26 @@ class DB:
             )
 
             @event.listens_for(DB._engine.sync_engine, "connect")
-            def set_sqlite_pragma(dbapi_connection, connection_record):
+            def set_sqlite_pragma(dbapi_connection, _):
                 cursor = dbapi_connection.cursor()
                 cursor.execute("PRAGMA synchronous=FULL")
                 cursor.execute("PRAGMA journal_mode=MEMORY")
                 cursor.close()
 
-            await DB._init_metadata(DB._engine)
-            return DB._engine
-
-        if os.path.isfile(AppConfig.app_config.database_path):
-            DB._engine = create_async_engine(
-                url=f"sqlite+aiosqlite:///{AppConfig.app_config.database_path}",
-                echo=AppConfig.app_config.database_debug,
-            )
-
         else:
-            logger.info("No database found. Initializing one...")
+            logger.info("No db found. Initializing one...")
             DB._engine = create_async_engine(
                 f"sqlite+aiosqlite:///{AppConfig.app_config.database_path}",
                 echo=AppConfig.app_config.database_debug,
             )
 
-        @event.listens_for(DB._engine.sync_engine, "connect")
-        def set_sqlite_pragma(dbapi_connection, connection_record):
-            cursor = dbapi_connection.cursor()
-            cursor.execute("PRAGMA journal_mode=WAL")
-            cursor.execute("PRAGMA synchronous=NORMAL")
-            cursor.execute("PRAGMA cache_size=-20000")
-            cursor.close()
+            @event.listens_for(DB._engine.sync_engine, "connect")
+            def set_sqlite_pragma(dbapi_connection, _):
+                cursor = dbapi_connection.cursor()
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA synchronous=NORMAL")
+                cursor.execute("PRAGMA cache_size=-20000")
+                cursor.close()
 
         await DB._init_metadata(DB._engine)
         return DB._engine

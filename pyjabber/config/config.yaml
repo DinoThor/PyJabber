@@ -36,7 +36,7 @@ items:
             max-size: 5242880
 
 database:
-#    database_path: /path/to/database
+#    database_path: /path/to/db
 
 logs:
 #    Possible values: [INFO, DEBUG, TRACE]
@@ -44,12 +44,12 @@ logs:
 #    output_path: /path/to/file
 
 flags:
-#    Creates a database in memory, and uses it instead of the database_path.
+#    Creates a db in memory, and uses it instead of the database_path.
 #    It’s volatile, so any data will be lost after the shutdown of the server
 #
 #    - database_in_memory
 #
-#    Deletes the content of the database file
+#    Deletes the content of the db file
 #
 #    - database_purge
 #

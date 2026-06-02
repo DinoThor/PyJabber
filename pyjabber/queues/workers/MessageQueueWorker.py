@@ -71,7 +71,7 @@ async def queue_worker():
 
                     if target_key:
                         stanzas_list = local_pending_stanzas[target_key]
-                        buffer = connection_manager.get_transport_online(
+                        buffer = await connection_manager.get_transport_online(
                             JID(target_key)
                         )
 
@@ -85,7 +85,7 @@ async def queue_worker():
                     host = result.value
                     if host in remote_pending_stanzas:
                         stanzas_list = remote_pending_stanzas[host]
-                        buffer = connection_manager.get_server_transport_host(host)
+                        buffer = await connection_manager.get_server_transport_host(host)
 
                         while remote_pending_stanzas[host]:
                             _, stanza_bytes = stanzas_list.pop()
@@ -135,7 +135,7 @@ async def queue_worker():
                     payload.attrib["id"] = str(uuid4())
                     payload.append(error)
 
-                    for buffer in connection_manager.get_transport(jid):
+                    for buffer in await connection_manager.get_transport(jid):
                         buffer.transport.write(ET.tostring(payload))
 
                 if result.reason == "remote-server-not-found":

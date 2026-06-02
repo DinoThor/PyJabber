@@ -42,13 +42,11 @@ class PubSub(metaclass=Singleton):
 
         self._connections = ConnectionManager()
 
-        pubsub_item = next(
-            (
+        pubsub_item = next((
                 (key, item)
                 for key, item in AppConfig.app_config.items.items()
                 if "pubsub" in key
-            ),
-            None,
+            ), None
         )
 
         self._jid = pubsub_item[0].replace("$", AppConfig.app_config.host)
@@ -69,6 +67,13 @@ class PubSub(metaclass=Singleton):
             "publish": self.publish,
             "retract": self.retract,
         }
+
+    async def start(self):
+        """
+        Initialize the PubSub plugin.
+        MUST BE CALLED right after its instantiation.
+        """
+        await self.update_memory_from_database()
 
     async def update_memory_from_database(self):
         async with await DB.connection_async() as con:
@@ -114,10 +119,11 @@ class PubSub(metaclass=Singleton):
         Return the info for a given node
         :return: A 2-tuple in the format of (name, type)
         """
-        match_node = [n for n in self._nodes if n[NodeAttrib.NODE.value] == node]
+        match_node = next((k for k, v in self._nodes.items() if v[NodeAttrib.NODE.value] == node), None)
+        # match_node = [n for n in self._nodes if n[NodeAttrib.NODE.value] == node]
         if match_node:
-            match_node = match_node.pop()
-            return match_node[NodeAttrib.NAME.value], match_node[NodeAttrib.TYPE.value]
+            # match_node = match_node.pop()
+            return self._nodes[match_node][NodeAttrib.NAME.value], match_node[NodeAttrib.TYPE.value]
 
         return None
 
@@ -156,7 +162,7 @@ class PubSub(metaclass=Singleton):
             if not AppConfig.app_config.database_in_memory:
                 await con.commit()
 
-        self.update_memory_from_database()
+        await self.update_memory_from_database()
 
         iq_res, pubsub = success_response(element)
         ET.SubElement(pubsub, "create", attrib={"node": new_node})
@@ -197,7 +203,7 @@ class PubSub(metaclass=Singleton):
             if not AppConfig.app_config.database_in_memory:
                 await con.commit()
 
-        self.update_memory_from_database()
+        await self.update_memory_from_database()
         iq_res, _ = success_response(element)
         return ET.tostring(iq_res)
 
@@ -335,7 +341,7 @@ class PubSub(metaclass=Singleton):
             if not AppConfig.app_config.database_in_memory:
                 await con.commit()
 
-        self.update_memory_from_database()
+        await self.update_memory_from_database()
 
         iq_res, pubsub = success_response(element)
         ET.SubElement(

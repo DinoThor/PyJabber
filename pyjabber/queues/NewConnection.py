@@ -1,4 +1,8 @@
+from typing import Union
+
 from attrs import define
+
+from pyjabber.stream.JID import JID
 
 
 @define(frozen=True, slots=True)
@@ -8,5 +12,5 @@ class NewConnectionWrapper:
     It can be from a client or a server.
     """
 
-    value: str
+    value: Union[str, JID]
     client: bool = True

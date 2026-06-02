@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyjabber"
-version = "0.4.2"
+dynamic = ["version"]
 description = "A lightweight, modular and asyncio XMPP/Jabber server written in Python."
 readme = "README.rst"
 requires-python = ">=3.9"
@@ -48,6 +48,9 @@ dependencies = [
     "uvloop>=0.21.0; sys_platform != 'win32'",
     "winloop>=0.5.0; sys_platform == 'win32'",
 ]
+
+[tool.setuptools.dynamic]
+version = {attr = "pyjabber.__version__"}
 
 [project.optional-dependencies]
 test = [

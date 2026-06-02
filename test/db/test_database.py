@@ -7,47 +7,47 @@ from sqlalchemy import create_engine
 from pyjabber.db.database import DB
 
 
-def test_setup_database_in_memory():
+async def test_setup_database_in_memory():
     with (
-        patch("pyjabber.db.database.metadata") as mock_meta,
-        patch("pyjabber.db.database.logger") as mock_log,
-        patch("pyjabber.db.database.os") as mock_os,
-        patch("pyjabber.db.database.DB._init_metadata") as mock_init,
+        patch("pyjabber.db.db.AppConfig") as mock_config,
+        patch("pyjabber.db.db.logger") as mock_log,
+        patch("pyjabber.db.db.os") as mock_os,
+        patch("pyjabber.db.db.DB._init_metadata") as mock_init,
     ):
-        mock_meta.DATABASE_IN_MEMORY = True
-        mock_meta.VERBOSE = True
+        mock_config.app_config.database_in_memory = True
+        mock_config.app_config.database_debug = True
         db = DB()
         db._init_metadata = MagicMock()
-        db.setup_database()
+        await db.setup_database()
 
         assert db._engine is not None
         mock_log.info.assert_called_with(
-            "Using database on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!"
+            "Using db on memory. ANY CHANGE WILL BE LOST AFTER SERVER SHUTDOWN!"
         )
         mock_init.assert_called_with(db._engine)
         mock_os.path.isfile.assert_not_called()
 
 
-def test_setup_database_local():
+async def test_setup_database_local():
     with (
-        patch("pyjabber.db.database.metadata") as mock_meta,
-        patch("pyjabber.db.database.DB._init_metadata") as mock_init,
+        patch("pyjabber.db.db.AppConfig") as mock_config,
+        patch("pyjabber.db.db.DB._init_metadata") as mock_init,
     ):
-        mock_meta.VERBOSE = True
-        mock_meta.DATABASE_IN_MEMORY = False
-        mock_meta.DATABASE_PURGE = False
-        mock_meta.DATABASE_PATH = os.path.join(
+        mock_config.app_config.database_debug = True
+        mock_config.app_config.database_in_memory = False
+        mock_config.app_config.database_purge = False
+        mock_config.app_config.database_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "test_database.db"
         )
         db = DB()
         db._init_metadata = MagicMock()
-        db.setup_database()
+        await db.setup_database()
 
         assert db._engine is not None
         mock_init.assert_not_called()
 
 
-def test_setup_database_purge():
+async def test_setup_database_purge():
     origin = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "test_database.db"
     )
@@ -58,17 +58,17 @@ def test_setup_database_purge():
     shutil.copy(origin, copy)
 
     with (
-        patch("pyjabber.db.database.metadata") as mock_meta,
-        patch("pyjabber.db.database.DB._init_metadata") as mock_init,
-        patch("pyjabber.db.database.MetaData") as mock_meta_const,
+        patch("pyjabber.db.db.AppConfig") as mock_config,
+        patch("pyjabber.db.db.DB._init_metadata") as mock_init,
+        patch("pyjabber.db.db.MetaData") as mock_meta_const,
     ):
-        mock_meta.VERBOSE = True
-        mock_meta.DATABASE_IN_MEMORY = False
-        mock_meta.DATABASE_PURGE = True
-        mock_meta.DATABASE_PATH = copy
+        mock_config.app_config.database_debug = True
+        mock_config.app_config.database_in_memory = False
+        mock_config.app_config.database_purge = True
+        mock_config.app_config.database_path = copy
         db = DB()
         db._init_metadata = MagicMock()
-        db.setup_database()
+        await db.setup_database()
 
         assert db._engine is not None
         mock_meta_const.assert_called()
@@ -87,13 +87,13 @@ def test_setup_database_new_file():
 
     try:
         with (
-            patch("pyjabber.db.database.metadata") as mock_meta,
-            patch("pyjabber.db.database.logger") as mock_log,
+            patch("pyjabber.db.db.metadata") as mock_meta,
+            patch("pyjabber.db.db.logger") as mock_log,
             patch(
-                "pyjabber.db.database.create_engine", wraps=create_engine
+                "pyjabber.db.db.create_engine", wraps=create_engine
             ) as spy_engine,
             patch(
-                "pyjabber.db.database.DB._init_metadata", wraps=DB._init_metadata
+                "pyjabber.db.db.DB._init_metadata", wraps=DB._init_metadata
             ) as spy_init,
         ):
             mock_meta.VERBOSE = True
@@ -105,7 +105,7 @@ def test_setup_database_new_file():
             db.setup_database()
 
             assert db._engine is not None
-            mock_log.info.assert_called_with("No database found. Initializing one...")
+            mock_log.info.assert_called_with("No db found. Initializing one...")
             spy_engine.assert_called_with(f"sqlite:///{new_file}", echo=True)
             spy_init.assert_called_with(db._engine)
             assert os.path.isfile(new_file)
@@ -124,9 +124,9 @@ def test_migration():
     ]
 
     with (
-        patch("pyjabber.db.database.Config") as mock_config,
-        patch("pyjabber.db.database.command") as mock_command,
-        patch("pyjabber.db.database.metadata") as mock_meta,
+        patch("pyjabber.db.db.Config") as mock_config,
+        patch("pyjabber.db.db.command") as mock_command,
+        patch("pyjabber.db.db.metadata") as mock_meta,
     ):
         mock_meta.VERBOSE = True
         mock_meta.ROOT_PATH = ".."

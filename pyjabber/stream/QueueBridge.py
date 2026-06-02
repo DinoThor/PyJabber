@@ -58,6 +58,8 @@ class QueueBridge:
                         self._stanza_handler = self._stanza_handler_class(
                             self._transport
                         )
+                        await self._stanza_handler.start()
+
                         self._stream_handler = None
                         self._stream_ready = True
 

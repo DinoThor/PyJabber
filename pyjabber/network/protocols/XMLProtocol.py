@@ -9,6 +9,7 @@ from loguru import logger
 
 from pyjabber import AppConfig
 from pyjabber.features.presence.PresenceFeature import Presence
+from pyjabber.features.presence.Wrappers import PresenceInternalMessage, PIMType
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.parsers.XMLParser import XMLParser
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
@@ -22,10 +23,12 @@ from pyjabber.stream.negotiators.ServerIncomingStreamNegotiator import (
 
 class XMLProtocol(asyncio.Protocol):
     """
-    Protocol to manage the network connection between nodes in the XMPP network. Handles the transport layer.
+    Protocol to manage the network connection between nodes in the XMPP network.
+    Handles the transport layer.
 
     :param namespace: namespace of the XML tags (jabber:client or jabber:server)
-    :param connection_timeout: Max time without any response from a client. After that, the protocols will terminate the connection
+    :param connection_timeout: Max time without any response from a client.
+    After that, the protocols will terminate the connection
     """
 
     __slots__ = (
@@ -45,6 +48,7 @@ class XMLProtocol(asyncio.Protocol):
         "_server_log",
         "_logger_tag",
         "_server_incoming",
+        "_task_set"
     )
 
     def __init__(self, namespace, connection_timeout):
@@ -64,6 +68,7 @@ class XMLProtocol(asyncio.Protocol):
         self._timeout_flag = False
 
         self._server_incoming = namespace == "jabber:server"
+        self._task_set = set()
 
     @property
     def transport(self):
@@ -113,13 +118,15 @@ class XMLProtocol(asyncio.Protocol):
                 )
             )
 
-            self._connection_manager.connection_server_incoming(
+            asyncio.create_task(self._connection_manager.connection_server_incoming(
                 self._peer, self._transport
-            )
+            ))
         else:
             self._xml_parser.setContentHandler(XMLParser(self._transport, self))
 
-            self._connection_manager.connection(self._peer, self._transport)
+            asyncio.create_task(
+                self._connection_manager.connection(self._peer, self._transport)
+            )
 
     def connection_lost(self, exc):
         """
@@ -139,18 +146,22 @@ class XMLProtocol(asyncio.Protocol):
         self._timeout_monitor.cancel()
 
         if self._server_incoming:
-            host = self._connection_manager.get_host(self._peer)
-            self._presence_manager.put_nowait(
-                (host, Element("presence", attrib={"type": "INTERNAL"}))
+            task_host = asyncio.create_task(
+                self._connection_manager.get_host(self._peer)
             )
-            # self._connection_manager.close_server_incoming(self._peer)
+            self._task_set.add(asyncio.create_task(
+                self._connection_manager.close_server_incoming(self._peer)
+            ))
+            self._task_set.add(task_host)
+            task_host.add_done_callback(self._presence_connection_closed_host_callback)
+
         else:
-            jid = self._connection_manager.get_jid(self._peer)
-            if jid and jid.user and jid.domain:
-                self._presence_manager.put_nowait(
-                    (jid, Element("presence", attrib={"type": "INTERNAL"}))
-                )
-            # self._connection_manager.close(self._peer)
+            task_jid = asyncio.create_task(self._connection_manager.get_jid(self._peer))
+            self._task_set.add(
+                asyncio.create_task(self._connection_manager.get_jid(self._peer))
+            )
+            self._task_set.add(task_jid)
+            task_jid.add_done_callback(self._presence_connection_closed_jid_callback)
 
         super().connection_lost(None)
 
@@ -168,9 +179,6 @@ class XMLProtocol(asyncio.Protocol):
 
         if self._timeout_monitor:
             self._timeout_monitor.reset()
-
-        # data = data.replace(b"<?xml version=\'1.0\'?>", b"")
-        # data = data.replace(b"<?xml version=\"1.0\"?>", b"")
 
         try:
             self._xml_parser.feed(data)
@@ -198,3 +206,14 @@ class XMLProtocol(asyncio.Protocol):
         if not self._transport.is_closing():
             self._transport.write("<connection-timeout/>".encode())
             self._transport.close()
+
+    def _presence_connection_closed_host_callback(self, task):
+        host = task.result()
+        msg = PresenceInternalMessage(type=PIMType.SERVER, value=host)
+        self._presence_manager.put_nowait(msg)
+
+    def _presence_connection_closed_jid_callback(self, task):
+        jid = task.result()
+        if jid and jid.user and jid.domain:
+            msg = PresenceInternalMessage(type=PIMType.CLIENT, value=str(jid))
+            self._presence_manager.put_nowait(msg)

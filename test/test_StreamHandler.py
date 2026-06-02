@@ -5,6 +5,7 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
+from pyjabber.features.Features import start_tls_feature
 from pyjabber.stream.JID import JID
 from pyjabber.stream.negotiators.StreamNegotiator import Signal, Stage, StreamNegotiator
 from pyjabber.utils import ClarkNotation as CN
@@ -12,86 +13,75 @@ from pyjabber.utils import ClarkNotation as CN
 
 @pytest.fixture
 def setup():
-    with patch("pyjabber.stream.StreamHandler.metadata") as mock_meta_sh:
-        with patch("pyjabber.features.SASLFeature.metadata") as mock_meta_sasl:
+    with patch("pyjabber.stream.negotiators.StreamNegotiator.AppConfig") as mock_config:
+        with patch("pyjabber.features.SASL.SASL.AppConfig") as mock_config_sasl:
             transport = Mock()
-            starttls = Mock()
-            mock_meta_sh.HOST = "localhost"
-            mock_meta_sasl.HOST = "localhost"
+            mock_config.app_config.host = "localhost"
+            mock_config.app_config.plugins = ["jabber:iq:register"]
+            mock_config_sasl.app_config.host = "localhost"
             mock_protocol = MagicMock()
             mock_protocol.from_claim = None
-            yield StreamNegotiator(transport, starttls, mock_protocol)
+            mock_parser = MagicMock()
+            mock_handler = MagicMock()
+
+            negotiator = StreamNegotiator(transport, mock_protocol, mock_parser, mock_handler)
+            negotiator._stream_feature = MagicMock()
+            yield negotiator
+
+def test_stream_negotiator_initialization(setup):
+    negotiator = setup
+
+    assert negotiator._transport is not None
+    assert negotiator._protocol is not None
+    assert negotiator._parser is not None
+    assert negotiator._handler is not None
+    assert negotiator._stream_feature is not None
+    assert negotiator._connection_manager is not None
+    assert negotiator._ibr_feature is True
+    assert negotiator._sasl is None
+    assert negotiator._stages_handlers is not None
+    assert negotiator._stage == Stage.CONNECTED
+    negotiator._transport.get_extra_info.assert_called_once()
 
 
-def test_stage_enum():
-    assert Stage.CONNECTED.value == 0
-    assert Stage.OPENED.value == 1
-    assert Stage.SSL.value == 2
-    assert Stage.SASL.value == 3
-    assert Stage.AUTH.value == 4
-    assert Stage.BIND.value == 5
-    assert Stage.READY.value == 6
 
+async def test_handle_open_stream_connected(setup):
+    negotiator  = setup
 
-def test_signal_enum():
-    assert Signal.RESET.value == 0
-    assert Signal.CLEAR.value == 1
-    assert Signal.DONE.value == 2
-    assert Signal.FORCE_CLOSE.value == 3
+    elem = ET.Element("{http://etherx.jabber.org/streams}stream")
+    await negotiator.handle_open_stream(elem)
 
-
-def test_stream_handler_initialization(setup):
-    handler = setup
-
-    assert handler._transport is not None
-    assert handler._starttls is not None
-    assert handler._stage == Stage.CONNECTED
-
-
-def test_stream_handler_transport_property(setup):
-    handler = setup
-
-    new_transport = Mock()
-    handler.transport = new_transport
-
-    assert handler.transport == new_transport
-
-
-def test_handle_open_stream_connected(setup):
-    handler = setup
-
-    handler.handle_open_stream()
-
-    assert handler._stage == Stage.OPENED
-    handler._transport.write.assert_called_once()
+    assert negotiator._stage == Stage.OPENED
+    negotiator._stream_feature.reset.assert_called_once()
+    negotiator._stream_feature.register.assert_called_once()
+    negotiator._transport.write.assert_called_once()
 
 
 def test_handle_open_stream_opened(setup):
-    handler = setup
-    handler._stage = Stage.OPENED
+    negotiator = setup
+    negotiator._stage = Stage.OPENED
 
     elem = ET.Element("starttls")
-    result = handler.handle_open_stream(elem)
+    result = negotiator.handle_open_stream(elem)
 
-    assert handler._stage == Stage.SSL
+    assert negotiator._stage == Stage.SSL
     assert result == Signal.RESET
-    handler._transport.write.assert_called_once()
-    handler._starttls.assert_called_once()
+    negotiator._transport.write.assert_called_once()
 
 
 def test_handle_open_stream_ssl(setup):
-    handler = setup
-    handler._stage = Stage.SSL
+    negotiator = setup
+    negotiator._stage = Stage.SSL
 
-    handler.handle_open_stream()
+    negotiator.handle_open_stream()
 
-    assert handler._stage == Stage.SASL
-    handler._transport.write.assert_called_once()
+    assert negotiator._stage == Stage.SASL
+    assert negotiator._transport.write.call_count == 2
 
 
 def test_handle_open_stream_sasl_continue(setup):
-    handler = setup
-    handler._stage = Stage.SASL
+    negotiator = setup
+    negotiator._stage = Stage.SASL
 
     password = b"password"
     keyhash = sha256(password).hexdigest()
@@ -100,31 +90,31 @@ def test_handle_open_stream_sasl_continue(setup):
     auth_text = b64encode(b"\x00username\x00password").decode("ascii")
     elem.text = auth_text
 
-    with patch("pyjabber.stream.StreamHandler.SASL") as mock_sasl:
+    with patch("pyjabber.stream.Streamnegotiator.SASL") as mock_sasl:
         mock_sasl.return_value.feed.return_value = (
             Signal.RESET,
             b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>",
         )
-        handler.handle_open_stream(elem)
+        negotiator.handle_open_stream(elem)
 
-    assert handler._stage == Stage.AUTH
+    assert negotiator._stage == Stage.AUTH
     expected_response = b"<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>"
-    handler._transport.write.assert_called_once_with(expected_response)
+    negotiator._transport.write.assert_called_once_with(expected_response)
 
 
 def test_handle_open_stream_auth(setup):
-    handler = setup
-    handler._stage = Stage.AUTH
+    negotiator = setup
+    negotiator._stage = Stage.AUTH
 
-    handler.handle_open_stream()
+    negotiator.handle_open_stream()
 
-    assert handler._stage == Stage.BIND
-    handler._transport.write.assert_called_once()
+    assert negotiator._stage == Stage.BIND
+    negotiator._transport.write.assert_called_once()
 
 
 def test_handle_open_stream_bind(monkeypatch, setup):
-    handler = setup
-    handler._stage = Stage.BIND
+    negotiator = setup
+    negotiator._stage = Stage.BIND
 
     iq_elem = ET.Element("iq", attrib={"type": "set", "id": "123"})
     bind_elem = ET.SubElement(
@@ -136,7 +126,7 @@ def test_handle_open_stream_bind(monkeypatch, setup):
     res_elem.text = "resource_id"
 
     connections = Mock()
-    handler._connection_manager = connections
+    negotiator._connection_manager = connections
     jid = JID("user@localhost")
     connections.get_jid.return_value = jid
 
@@ -148,16 +138,16 @@ def test_handle_open_stream_bind(monkeypatch, setup):
         f"bind_elem_found should not be None, got {bind_elem_found}"
     )
 
-    result = handler.handle_open_stream(iq_elem)
+    result = negotiator.handle_open_stream(iq_elem)
 
     assert result == Signal.DONE
-    handler._transport.write.assert_called_once()
+    negotiator._transport.write.assert_called_once()
 
     connections.get_jid.assert_called_once_with(
-        handler._transport.get_extra_info("peername")
+        negotiator._transport.get_extra_info("peername")
     )
     connections.set_jid.assert_called_once_with(
-        handler._transport.get_extra_info("peername"), jid, handler._transport
+        negotiator._transport.get_extra_info("peername"), jid, negotiator._transport
     )
 
 

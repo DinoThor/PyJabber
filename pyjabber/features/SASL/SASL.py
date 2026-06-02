@@ -114,7 +114,7 @@ class SASL:
             if not self._from_claim:
                 raise BadRequestException()
 
-            cert = self._connection_manager.get_connection_ssl_certificate(self._peer)
+            cert = await self._connection_manager.get_connection_ssl_certificate(self._peer)
             if not cert:
                 logger.error(f"Error retrieving TLS cert from {self._peer}")
                 self._transport.write(not_authorized_response())
@@ -145,13 +145,13 @@ class SASL:
 
             if not hashed_pwd:
                 self._transport.write(SE.not_authorized_sasl())
-                self._connection_manager.close(self._peer)
+                await self._connection_manager.close(self._peer)
 
             authorized = await self._verify_password_async(
                 stored_password=hashed_pwd[0], provided_password=pwd
             )
             if authorized:
-                self._connection_manager.set_jid(
+                await self._connection_manager.set_jid(
                     self._peer, JID(user=jid, domain=AppConfig.app_config.host)
                 )
                 self._transport.write(success_response())
@@ -160,7 +160,7 @@ class SASL:
                 return Stage.AUTH
             else:
                 self._transport.write(SE.not_authorized_sasl())
-                self._connection_manager.close(self._peer)
+                await self._connection_manager.close(self._peer)
 
         except Exception as e:
             logger.error(
@@ -170,10 +170,11 @@ class SASL:
 
     ###############################################################################################
     async def _store_hash_task(self, password: str, jid_str: str):
-        """Handles the full user registration process by hashing the password and storing credentials.
+        """Handles the full user registration process by hashing the password
+        and storing credentials.
 
         This coroutine executes the CPU-intensive password hashing and the I/O-bound
-        database insertion, ensuring neither operation blocks the main event loop.
+        db insertion, ensuring neither operation blocks the main event loop.
         It concludes the registration by sending an XMPP success response to the client.
 
         Args:
@@ -202,7 +203,8 @@ class SASL:
         Verifies a password against the stored string.
 
         Args:
-            stored_password: The full string from the database (e.g., "sha256$100000$salt_hex$hash_hex").
+            stored_password: The full string from the db
+            (e.g., "sha256$100000$salt_hex$hash_hex").
             provided_password: The password entered by the user.
 
         Returns:
@@ -237,9 +239,10 @@ class SASL:
 
         Returns:
             str: A formatted string containing the algorithm, iterations, salt (in hex),
-                 and the resulting hash (in hex), separated by '$' (e.g., "sha256$100000$salt_hex$hash_hex").
+                 and the resulting hash (in hex), separated by '$'
+                 (e.g., "sha256$100000$salt_hex$hash_hex").
                  This format is ideal for securely storing credentials in a single
-                 database column.
+                 db column.
         """
         hashed_pwd = None
         async with self._semaphore:

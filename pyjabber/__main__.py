@@ -46,7 +46,7 @@ def load_config(path=os.path.join(FILE_PATH, "config/config.yaml")):
 
         flat_config = {}
 
-        for section in ["connection", "database", "logs"]:
+        for section in ["connection", "db", "logs"]:
             if section in raw_config and raw_config[section]:
                 flat_config.update(raw_config[section])
 
@@ -102,12 +102,13 @@ config_defaults = load_config()
     type=str,
     default=os.path.join(os.getcwd(), "pyjabber.db"),
     show_default=True,
-    help="Path for database file",
+    help="Path for db file",
 )
 @click.option(
     "--database_purge",
+    confirmation_prompt="You sure nigga?",
     is_flag=True,
-    help="Restore database file to default state (empty)",
+    help="Restore db file to default state (empty)",
 )
 @click.option(
     "--database_in_memory",
@@ -130,6 +131,7 @@ config_defaults = load_config()
 )
 @click.option("--log_path", type=str, help="Path to log dumpfile")
 @click.option("--debug", "-D", is_flag=True, help="Enables debug mode in Asyncio")
+@click.option("--force", "-f", is_flag=True, help="Runs without waiting confirmation")
 def main(
     host,
     client_port,
@@ -144,7 +146,11 @@ def main(
     verbose,
     log_path,
     debug,
+    force
 ):
+    if database_purge and not force:
+        click.confirm("The <database_purge> flag is present. This means that ALL INFORMATION stored will be DELETED from the db file. This action is irreversible. Do you want to keep the execution?", abort=True)
+
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
 
     logger.remove()

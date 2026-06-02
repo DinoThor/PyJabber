@@ -32,7 +32,7 @@ class RPC:
         if not to:
             return SE.invalid_xml()
 
-        buffer = self._connections.get_transport(JID(to))
+        buffer = await self._connections.get_transport(JID(to))
         for b in buffer:
             b.transport.write(ET.tostring(element))
         return None

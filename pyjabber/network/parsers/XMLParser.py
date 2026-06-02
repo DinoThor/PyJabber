@@ -75,7 +75,7 @@ class XMLParser(ContentHandler):
 
     def endElementNS(self, name, qname):
         if "stream" in name:
-            self._connection_manager.close(self._peer)
+            asyncio.create_task(self._connection_manager.close(self._peer))
             self._stack.clear()
             return
 

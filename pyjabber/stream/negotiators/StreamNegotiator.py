@@ -68,20 +68,20 @@ class StreamNegotiator:
             Stage.BIND: self._handle_resource_bind,
         }
 
-    async def handle_open_stream(self, elem: ET.Element = None) -> Union[Signal, None]:
+    async def handle_open_stream(self, elem: ET.Element) -> Union[Signal, None]:
         try:
             if elem.tag == "{http://etherx.jabber.org/streams}stream":
                 self._transport.write(Stream.responseStream(elem.attrib))
             return await self._stages_handlers[self._stage](elem)
         except EX.NotAuthorizerStreamNegotiationException:
             self._transport.write(SE.not_authorized())
-            self._connection_manager.close(self._peer)
+            await self._connection_manager.close(self._peer)
         except EX.BadRequestException:
             self._transport.write(SE.bad_request())
-            self._connection_manager.close(self._peer)
+            await self._connection_manager.close(self._peer)
         except InternalServerError:
             self._transport.write(SE.internal_server_error())
-            self._connection_manager.close(self._peer)
+            await self._connection_manager.close(self._peer)
         except Exception as e:
             logger.error(e)
 
@@ -120,7 +120,7 @@ class StreamNegotiator:
                 self._protocol.transport = new_transport
                 self._parser.transport = new_transport
                 self._handler.transport = new_transport
-                self._connection_manager.update_transport_peer(
+                await self._connection_manager.update_transport_peer(
                     new_transport, self._peer
                 )
 
@@ -134,7 +134,7 @@ class StreamNegotiator:
                 logger.error(
                     f"Error during TLS upgrade with <{self._peer}> Reason: {e}"
                 )
-                self._connection_manager.close(self._peer)
+                await self._connection_manager.close(self._peer)
                 return Signal.FORCE_CLOSE
 
         else:
@@ -182,13 +182,13 @@ class StreamNegotiator:
             )
 
             peername = self._transport.get_extra_info("peername")
-            new_jid = self._connection_manager.get_jid(peername)
+            new_jid = await self._connection_manager.get_jid(peername)
             new_jid.resource = resource_id
 
             ET.SubElement(bind_res, "jid").text = str(new_jid)
             self._transport.write(ET.tostring(iq_res))
 
-            self._connection_manager.set_jid(peername, new_jid, self._transport)
+            await self._connection_manager.set_jid(peername, new_jid, self._transport)
             return Signal.DONE
 
         else:

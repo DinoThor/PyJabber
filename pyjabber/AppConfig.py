@@ -10,7 +10,7 @@ from attrs import define
 @define(frozen=True, slots=True)
 class AppConfig:
     host: str
-    ip: List[str]
+    domains: List[str]
     ssl_context: ssl.SSLContext
     ssl_context_s2s: ssl.SSLContext
     connection_timeout: int

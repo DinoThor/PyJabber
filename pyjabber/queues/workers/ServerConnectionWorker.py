@@ -26,7 +26,7 @@ async def server_connection_worker():
         while True:
             host = await server_queue.get()
 
-            already_open = connection_manager.get_server_transport_host(host)
+            already_open = await connection_manager.get_server_transport_host(host)
             if already_open:
                 continue
 
