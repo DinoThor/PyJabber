@@ -697,7 +697,16 @@ class PubSub(metaclass=Singleton):
             if payload is not None:
                 item.append(payload)
 
+        # A single transport may appear more than once in the receivers list.
+        # Send the event only once per transport to avoid duplicate notifications.
+        # Root cause should be tracked/fixed in upstream issue (ID #74).
+        seen_transports: set[int] = set()
         for jid, buffer, _ in receivers_buffer_single_iterator:
+            buf_id = id(buffer)
+            if buf_id in seen_transports:
+                continue
+            seen_transports.add(buf_id)
+
             message = Message(
                 mto=jid.bare(),
                 mfrom=AppConfig.app_config.host,
