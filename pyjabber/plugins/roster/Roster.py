@@ -24,6 +24,7 @@ class Roster:
     It enables real-time presence updates, contact organization, and
     synchronization across devices, ensuring seamless and private communication.
     """
+
     _roster_in_memory: dict[str, list[RosterInMemory]] = {}
     _lock = asyncio.Lock()
 
@@ -87,10 +88,12 @@ class Roster:
         if roster:
             match_entry = next(
                 (
-                    e for e in roster
+                    e
+                    for e in roster
                     if ET.fromstring(e["roster_item"]).get("jid")
                     == new_item.attrib.get("jid")
-                 ), None
+                ),
+                None,
             )
             if match_entry:
                 if new_item.attrib.get("subscription") == "remove":
@@ -100,7 +103,9 @@ class Roster:
                     updated_item = await self._update_item_from_database(
                         jid, match_entry["id"], new_item
                     )
-                    await self._roster_memory_update(jid, match_entry["id"], updated_item)
+                    await self._roster_memory_update(
+                        jid, match_entry["id"], updated_item
+                    )
             else:
                 await self._create_item_into_database(jid, new_item)
         else:
@@ -125,7 +130,9 @@ class Roster:
         roster = await self._roster_memory_get(jid)
         return [v.get("roster_item") for v in roster or []]
 
-    async def search_contact(self, jid: JID, to: str) -> Union[tuple[str, ET.Element], None]:
+    async def search_contact(
+        self, jid: JID, to: str
+    ) -> Union[tuple[str, ET.Element], None]:
         """
         Search an entry for the contact <to> into the roster of <jid>.
         """
@@ -139,7 +146,9 @@ class Roster:
         else:
             return None
 
-    async def search_and_create_contact(self, jid: JID, to: str) -> Union[tuple[str, ET.Element], None]:
+    async def search_and_create_contact(
+        self, jid: JID, to: str
+    ) -> Union[tuple[str, ET.Element], None]:
         """
         Search an entry for the contact <to> into the roster of <jid>.
         If <to> is not present in the roster, a new entry will be created
@@ -158,7 +167,7 @@ class Roster:
             await self._roster_memory_insert(jid, database_id, database_item)
             return database_id, new_item
 
-    async def update_contact(self, jid: JID, contact_id: str, new_item: str):
+    async def update_contact(self, jid: JID, contact_id: str, new_item: ET.Element):
         item = await self._update_item_from_database(jid, contact_id, new_item)
         if item:
             await self._roster_memory_update(jid, contact_id, item)
@@ -171,7 +180,7 @@ class Roster:
                 self._roster_in_memory[jid.bare()] = []
                 return []
 
-    async def _roster_memory_insert(self, jid:JID, id_roster: str, item: str):
+    async def _roster_memory_insert(self, jid: JID, id_roster: str, item: str):
         async with self._lock:
             try:
                 self._roster_in_memory[jid.bare()].append(
@@ -186,9 +195,12 @@ class Roster:
         async with self._lock:
             if jid.bare() in self._roster_in_memory:
                 index = next(
-                    (index for (index, d)
-                     in enumerate(self._roster_in_memory[jid.bare()])
-                     if d["id"] == id_roster), None
+                    (
+                        index
+                        for (index, d) in enumerate(self._roster_in_memory[jid.bare()])
+                        if d["id"] == id_roster
+                    ),
+                    None,
                 )
                 if index is not None:
                     self._roster_in_memory[jid.bare()][index]["roster_item"] = item
@@ -197,8 +209,12 @@ class Roster:
         async with self._lock:
             if jid.bare() in self._roster_in_memory:
                 index = next(
-                    (index for (index, d) in enumerate(self._roster_in_memory)
-                     if d["id"] == id_roster), None
+                    (
+                        index
+                        for (index, d) in enumerate(self._roster_in_memory)
+                        if d["id"] == id_roster
+                    ),
+                    None,
                 )
                 if index:
                     self._roster_in_memory[jid.bare()].pop(index)
@@ -211,9 +227,7 @@ class Roster:
         """
         async with await DB.connection_async() as con:
             query = select(
-                Model.Roster.c.id,
-                Model.Roster.c.jid,
-                Model.Roster.c.roster_item
+                Model.Roster.c.id, Model.Roster.c.jid, Model.Roster.c.roster_item
             )
             res = await con.execute(query)
             res = res.fetchall()
@@ -232,10 +246,8 @@ class Roster:
         async with await DB.connection_async() as con:
             query = delete(Model.Roster).where(
                 and_(
-                    Model.Roster.c.jid == jid.bare(),
-                    Model.Roster.c.id == id_roster
-                )
-                .returning(Model.Roster.c.roster_item)
+                    Model.Roster.c.jid == jid.bare(), Model.Roster.c.id == id_roster
+                ).returning(Model.Roster.c.roster_item)
             )
             await con.execute(query)
             if not AppConfig.app_config.database_in_memory:
@@ -248,8 +260,7 @@ class Roster:
                 update(Model.Roster)
                 .where(
                     and_(
-                        Model.Roster.c.jid == jid.bare(),
-                        Model.Roster.c.id == id_roster
+                        Model.Roster.c.jid == jid.bare(), Model.Roster.c.id == id_roster
                     )
                 )
                 .values({"roster_item": ET.tostring(new_item).decode()})
@@ -257,7 +268,7 @@ class Roster:
             )
             try:
                 res = await con.execute(query)
-            except Exception as e:
+            except Exception:
                 print(1)
             if not AppConfig.app_config.database_in_memory:
                 await con.commit()
@@ -266,9 +277,10 @@ class Roster:
 
     @staticmethod
     async def _create_item_into_database(jid: JID, new_item):
-        async with (await DB.connection_async() as con):
+        async with await DB.connection_async() as con:
             query = (
-                insert(Model.Roster).values(
+                insert(Model.Roster)
+                .values(
                     {"jid": jid.bare(), "roster_item": ET.tostring(new_item).decode()}
                 )
                 .returning(Model.Roster.c.id, Model.Roster.c.roster_item)

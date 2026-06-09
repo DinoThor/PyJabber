@@ -2,14 +2,13 @@ import asyncio
 from asyncio import Transport
 from typing import Union
 from xml import sax
-from xml.etree.ElementTree import Element
 from xml.sax._exceptions import SAXParseException
 
 from loguru import logger
 
 from pyjabber import AppConfig
 from pyjabber.features.presence.PresenceFeature import Presence
-from pyjabber.features.presence.Wrappers import PresenceInternalMessage, PIMType
+from pyjabber.features.presence.Wrappers import PIMType, PresenceInternalMessage
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.network.parsers.XMLParser import XMLParser
 from pyjabber.network.StreamAlivenessMonitor import StreamAlivenessMonitor
@@ -48,7 +47,7 @@ class XMLProtocol(asyncio.Protocol):
         "_server_log",
         "_logger_tag",
         "_server_incoming",
-        "_task_set"
+        "_task_set",
     )
 
     def __init__(self, namespace, connection_timeout):
@@ -118,9 +117,11 @@ class XMLProtocol(asyncio.Protocol):
                 )
             )
 
-            asyncio.create_task(self._connection_manager.connection_server_incoming(
-                self._peer, self._transport
-            ))
+            asyncio.create_task(
+                self._connection_manager.connection_server_incoming(
+                    self._peer, self._transport
+                )
+            )
         else:
             self._xml_parser.setContentHandler(XMLParser(self._transport, self))
 
@@ -149,9 +150,11 @@ class XMLProtocol(asyncio.Protocol):
             task_host = asyncio.create_task(
                 self._connection_manager.get_host(self._peer)
             )
-            self._task_set.add(asyncio.create_task(
-                self._connection_manager.close_server_incoming(self._peer)
-            ))
+            self._task_set.add(
+                asyncio.create_task(
+                    self._connection_manager.close_server_incoming(self._peer)
+                )
+            )
             self._task_set.add(task_host)
             task_host.add_done_callback(self._presence_connection_closed_host_callback)
 

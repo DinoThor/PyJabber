@@ -28,8 +28,7 @@ class XMLProtocolServerOutgoing(XMLProtocol):
         self._xml_parser.setFeature(sax.handler.feature_namespaces, True)
         self._xml_parser.setFeature(sax.handler.feature_external_ges, False)
         self._xml_parser.setContentHandler(
-            XMLParserServerOutgoing(
-                self._transport, self, self._host)
+            XMLParserServerOutgoing(self._transport, self, self._host)
         )
 
         if self._connection_timeout:
@@ -37,9 +36,11 @@ class XMLProtocolServerOutgoing(XMLProtocol):
                 timeout=self._connection_timeout, callback=self.connection_timeout
             )
 
-        asyncio.create_task(self._connection_manager.connection_server(
-            self._peer, self._transport, self._host
-        ))
+        asyncio.create_task(
+            self._connection_manager.connection_server(
+                self._peer, self._transport, self._host
+            )
+        )
 
     def connection_lost(self, exc):
         """

@@ -38,9 +38,7 @@ class StanzaHandler:
         self._jid = await self._connections.get_jid(self._peername)
         if self._jid:
             self._pluginManager = PluginManager(self._jid)
-            get_queue(QueueName.CONNECTIONS).put_nowait(
-                NewConnectionWrapper(self._jid)
-            )
+            get_queue(QueueName.CONNECTIONS).put_nowait(NewConnectionWrapper(self._jid))
 
     async def feed(self, element: ET.Element):
         try:

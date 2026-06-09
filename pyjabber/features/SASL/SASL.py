@@ -114,7 +114,9 @@ class SASL:
             if not self._from_claim:
                 raise BadRequestException()
 
-            cert = await self._connection_manager.get_connection_ssl_certificate(self._peer)
+            cert = await self._connection_manager.get_connection_ssl_certificate(
+                self._peer
+            )
             if not cert:
                 logger.error(f"Error retrieving TLS cert from {self._peer}")
                 self._transport.write(not_authorized_response())

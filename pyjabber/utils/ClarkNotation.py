@@ -4,7 +4,7 @@ from typing import Tuple
 from xml.etree.ElementTree import Element
 
 
-def break_down(tag: str):
+def break_down(tag: str) -> Tuple[str, str]:
     """
     Return the namespace and tag separated in a 2-tuple
     :return: (namespace, tag)

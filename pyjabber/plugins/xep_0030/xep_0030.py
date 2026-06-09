@@ -1,6 +1,8 @@
 from typing import Callable, Dict
 from xml.etree import ElementTree as ET
 
+import loguru
+
 from pyjabber import AppConfig
 from pyjabber.plugins.xep_0004.field import FieldRequest, FieldTypes
 from pyjabber.plugins.xep_0004.xep_0004 import FormType, generate_form
@@ -48,14 +50,20 @@ class Disco(metaclass=Singleton):
         if len(element) != 1:
             return SE.invalid_xml()
 
-        if element.find("{http://jabber.org/protocol/disco#info}query") is not None:
-            return await self._handlers["info"](jid, element)
+        try:
+            if element.find("{http://jabber.org/protocol/disco#info}query") is not None:
+                return await self._handlers["info"](jid, element)
 
-        elif element.find("{http://jabber.org/protocol/disco#items}query") is not None:
-            return await self._handlers["items"](jid, element)
+            elif (
+                element.find("{http://jabber.org/protocol/disco#items}query")
+                is not None
+            ):
+                return await self._handlers["items"](jid, element)
 
-        else:
-            return SE.bad_request()
+            else:
+                return SE.bad_request()
+        except Exception as e:
+            loguru.logger.error(e)
 
     async def handle_info(self, _, element: ET.Element):
         to = element.attrib.get("to")

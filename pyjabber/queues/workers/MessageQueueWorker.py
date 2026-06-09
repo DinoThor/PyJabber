@@ -85,7 +85,9 @@ async def queue_worker():
                     host = result.value
                     if host in remote_pending_stanzas:
                         stanzas_list = remote_pending_stanzas[host]
-                        buffer = await connection_manager.get_server_transport_host(host)
+                        buffer = await connection_manager.get_server_transport_host(
+                            host
+                        )
 
                         while remote_pending_stanzas[host]:
                             _, stanza_bytes = stanzas_list.pop()

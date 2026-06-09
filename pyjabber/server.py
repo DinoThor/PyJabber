@@ -139,7 +139,7 @@ class Server:
             await presence.start()
 
             pubsub = PubSub()
-            await pubsub.update_memory_from_database()
+            await pubsub.start()
 
             loop = asyncio.get_running_loop()
 

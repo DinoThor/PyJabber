@@ -26,6 +26,7 @@ class Server(NamedTuple):
     host: Optional[str]
     transport: Optional[Transport]
 
+
 class ConnectionManager:
     """
     A singleton class used as a repository of connections during the protocols'
@@ -92,10 +93,10 @@ class ConnectionManager:
     async def get_transport(self, jid: JID) -> Union[Client, List[Client], None]:
         """Get all the available buffers associated with a JID.
 
-            - If the JID is in the full format <username@domain/resource>, it will only
-            return one buffer.
-            - If the JID is in the bare format <username@domain>, it will return a list
-            of the buffers for each resource available.
+        - If the JID is in the full format <username@domain/resource>, it will only
+        return one buffer.
+        - If the JID is in the bare format <username@domain>, it will return a list
+        of the buffers for each resource available.
 
         """
         async with self._lock:
@@ -150,8 +151,8 @@ class ConnectionManager:
 
         async with self._lock:
             match = next(
-                (peer for peer, client in self._peerList.items() if client.jid == jid)
-                , None
+                (peer for peer, client in self._peerList.items() if client.jid == jid),
+                None,
             )
             if match:
                 self._peerList[match] = self._peerList[match]._replace(
@@ -181,7 +182,9 @@ class ConnectionManager:
             try:
                 self._peerList[peer] = self._peerList[peer]._replace(
                     jid=jid,
-                    transport=transport if transport else self._peerList[peer].transport,
+                    transport=transport
+                    if transport
+                    else self._peerList[peer].transport,
                 )
             except KeyError:
                 raise KeyError(f"Unable to find {peer} during jid/transport update")
@@ -201,7 +204,7 @@ class ConnectionManager:
         self,
         peer: Peer,
         transport: Union[Transport, None] = None,
-        host: Union[str, None] = None
+        host: Union[str, None] = None,
     ) -> None:
         async with self._lock:
             if peer not in self._remoteList:
@@ -227,7 +230,9 @@ class ConnectionManager:
             except KeyError:
                 return self._orphan_hosts.pop(peer, None)
 
-    async def set_host(self, peer: Peer, host: str, transport: Transport = None) -> None:
+    async def set_host(
+        self, peer: Peer, host: str, transport: Transport = None
+    ) -> None:
         """Set/update the host of a registered server connection.
 
         An optional transport argument can be provided, in order to set/update
@@ -237,7 +242,9 @@ class ConnectionManager:
             try:
                 self._remoteList[peer] = self._remoteList[peer]._replace(
                     host=host,
-                    transport=transport if transport else self._remoteList[peer].transport,
+                    transport=transport
+                    if transport
+                    else self._remoteList[peer].transport,
                 )
             except KeyError:
                 raise KeyError(f"Unable to find {peer} during host/transport update")
