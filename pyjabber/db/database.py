@@ -54,17 +54,13 @@ class DB:
         :return: SQLAlchemy Engine
         """
         if not AppConfig.app_config.database_debug:
-            logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
-            logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
-            logging.getLogger("sqlite3").setLevel(logging.WARNING)
-            logging.getLogger("aiosqlite").setLevel(logging.WARNING)
-
-        if os.path.isfile(AppConfig.app_config.database_path):
-            DB._engine = create_async_engine(
-                url=f"sqlite+aiosqlite:///{AppConfig.app_config.database_path}",
-                echo=AppConfig.app_config.database_debug,
-            )
-            return DB._engine
+            for log_name in [
+                "sqlalchemy.engine",
+                "sqlalchemy.pool",
+                "sqlite3",
+                "aiosqlite",
+            ]:
+                logging.getLogger(log_name).setLevel(logging.WARNING)
 
         if AppConfig.app_config.database_in_memory:
             logger.info(
@@ -74,15 +70,23 @@ class DB:
                 url="sqlite+aiosqlite:///:memory:",
                 isolation_level="AUTOCOMMIT",
                 poolclass=StaticPool,
+                connect_args={"check_same_thread": False},
                 echo=AppConfig.app_config.database_debug,
             )
 
             @event.listens_for(DB._engine.sync_engine, "connect")
             def set_sqlite_pragma(dbapi_connection, _):
                 cursor = dbapi_connection.cursor()
-                cursor.execute("PRAGMA synchronous=FULL")
+                cursor.execute("PRAGMA synchronous=OFF")
                 cursor.execute("PRAGMA journal_mode=MEMORY")
                 cursor.close()
+
+        elif os.path.isfile(AppConfig.app_config.database_path):
+            DB._engine = create_async_engine(
+                url=f"sqlite+aiosqlite:///{AppConfig.app_config.database_path}",
+                echo=AppConfig.app_config.database_debug,
+            )
+            return DB._engine
 
         else:
             logger.info("No db found. Initializing one...")
