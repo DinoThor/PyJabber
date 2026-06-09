@@ -66,10 +66,9 @@ def load_config(path=os.path.join(FILE_PATH, "config/config.yaml")):
 config_defaults = load_config()
 
 
-@click.command(context_settings=dict(
-    default_map=config_defaults,
-    auto_envvar_prefix='PYJABBER'
-))
+@click.command(
+    context_settings=dict(default_map=config_defaults, auto_envvar_prefix="PYJABBER")
+)
 @click.option(
     "--host", type=str, default="localhost", show_default=True, help="Host name"
 )
@@ -146,10 +145,13 @@ def main(
     verbose,
     log_path,
     debug,
-    force
+    force,
 ):
     if database_purge and not force:
-        click.confirm("The <database_purge> flag is present. This means that ALL INFORMATION stored will be DELETED from the db file. This action is irreversible. Do you want to keep the execution?", abort=True)
+        click.confirm(
+            "The <database_purge> flag is present. This means that ALL INFORMATION stored will be DELETED from the db file. This action is irreversible. Do you want to keep the execution?",
+            abort=True,
+        )
 
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
 
