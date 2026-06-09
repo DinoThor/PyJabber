@@ -1,12 +1,12 @@
-from typing import TYPE_CHECKING, List, Tuple, Union
+import xml.etree.ElementTree as ET
+from typing import TYPE_CHECKING, Tuple, Union
 
-from sqlalchemy import delete, select, insert
+from sqlalchemy import delete, insert, select
 
 from pyjabber.AppConfig import AppConfig
 from pyjabber.db.database import DB
 from pyjabber.db.model import Model
 from pyjabber.features.presence.Enums import (
-    PresenceType,
     PresenceShow,
     PresenceShowWeights,
 )
@@ -14,13 +14,13 @@ from pyjabber.features.presence.Wrappers import JIDPresence, ResourcePresence
 from pyjabber.network.ConnectionManager import Client
 from pyjabber.stream.JID import JID
 
-import xml.etree.ElementTree as ET
-
 if TYPE_CHECKING:
     from pyjabber.features.presence.PresenceFeature import Presence
+
     BaseClass = Presence
 else:
     BaseClass = object
+
 
 class PresenceMixin(BaseClass):
     async def _load_pending_presence(self):
@@ -59,7 +59,9 @@ class PresenceMixin(BaseClass):
         pending items.
         """
         async with await DB.connection_async() as con:
-            query = delete(Model.PendingSubs).where(Model.PendingSubs.c.jid == jid.bare())
+            query = delete(Model.PendingSubs).where(
+                Model.PendingSubs.c.jid == jid.bare()
+            )
             await con.execute(query)
             if not AppConfig.app_config.database_in_memory:
                 await con.commit()
@@ -80,9 +82,12 @@ class PresenceMixin(BaseClass):
         key_max, sub_dict_max = max(
             resources_presence.items(),
             key=lambda item: (
-                item[1]["priority"],                # Priority
-                PresenceShowWeights[item[1]["show"] # Show
-                if item[1]["show"] is not None else PresenceShow.NONE],
+                item[1]["priority"],  # Priority
+                PresenceShowWeights[
+                    item[1]["show"]  # Show
+                    if item[1]["show"] is not None
+                    else PresenceShow.NONE
+                ],
             ),
         )
 
@@ -158,7 +163,7 @@ class PresenceMixin(BaseClass):
     async def _initial_presence_broadcast(self, jid: JID) -> None:
         pending_items = await self._get_pending_list(jid)
         for raw_item in pending_items:
-            client: Client = self._connections.get_transport(jid)
+            client: Client = await self._connections.get_transport(jid)
             client.transport.write(raw_item)
 
         roster = await self._roster.roster_by_jid(jid)
@@ -171,15 +176,16 @@ class PresenceMixin(BaseClass):
             contact_jid = JID(contact_jid)
             resources_presence = await self._get_present_online_list(contact_jid)
             for resource, presence in resources_presence.items():
-                resource_client = self._connections.get_transport(JID(
-                    user=contact_jid.user,
-                    domain=contact_jid.domain,
-                    resource=resource,
-                ))
+                resource_client = await self._connections.get_transport(
+                    JID(
+                        user=contact_jid.user,
+                        domain=contact_jid.domain,
+                        resource=resource,
+                    )
+                )
                 if resource_client:
                     presence_res = ET.Element(
-                        "presence",
-                        attrib={"type": presence["presence_type"].value}
+                        "presence", attrib={"type": presence["presence_type"].value}
                     )
                     if "show" in presence:
                         show = ET.SubElement(presence_res, "show")
@@ -190,6 +196,4 @@ class PresenceMixin(BaseClass):
                     if "priority" in presence:
                         priority = ET.SubElement(presence_res, "priority")
                         priority.text = str(presence["priority"])
-                    resource_client.transport.write(presence)
-
-
+                    resource_client.transport.write(ET.tostring(presence_res))

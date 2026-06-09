@@ -10,14 +10,16 @@ class ResourcePresence(TypedDict):
     show: Optional[str]
     priority: Optional[int]
 
+
 class JIDPresence(TypedDict):
     resource: ResourcePresence
+
 
 class PIMType(Enum):
     SERVER = "server"
     CLIENT = "client"
 
+
 class PresenceInternalMessage(TypedDict):
     type: PIMType
     value: str
-

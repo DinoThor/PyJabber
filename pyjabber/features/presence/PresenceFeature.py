@@ -10,9 +10,9 @@ from pyjabber import AppConfig
 from pyjabber.features.presence.Enums import PresenceShow, PresenceType
 from pyjabber.features.presence.PresenceMixin import PresenceMixin
 from pyjabber.features.presence.Wrappers import (
-    ResourcePresence,
+    PIMType,
     PresenceInternalMessage,
-    PIMType
+    ResourcePresence,
 )
 from pyjabber.network.ConnectionManager import ConnectionManager
 from pyjabber.plugins.roster.Roster import Roster
@@ -86,20 +86,23 @@ class Presence(PresenceMixin):
         pass
 
     async def feed(self, jid: JID, element: Element):
-        if "to" not in element.attrib:
-            return await self._handle_global_presence(jid, element)
-        else:
-            presence_type = element.attrib.get("type")
-            if presence_type:
-                return await self._handlers[presence_type](jid, element)
+        try:
+            if "to" not in element.attrib:
+                return await self._handle_global_presence(jid, element)
             else:
-                return await self._handle_directed_presence(jid, element)
+                presence_type = element.attrib.get("type")
+                if presence_type:
+                    return await self._handlers[presence_type](jid, element)
+                else:
+                    return await self._handle_directed_presence(jid, element)
+        except Exception as e:
+            loguru.logger.error(e)
 
     async def _handle_subscribe(self, jid: JID, element: ET.Element):
-        to_attrib = JID(element.attrib["to"]).bare()
+        to_attrib = JID(element.attrib["to"])
 
         contact_id, contact_item = await self._roster.search_and_create_contact(
-            jid, to_attrib
+            jid, to_attrib.bare()
         )
 
         if contact_item.attrib.get("subscription") in ["to", "both"]:
@@ -107,7 +110,7 @@ class Presence(PresenceMixin):
                 ET.Element(
                     "presence",
                     attrib={
-                        "from": to_attrib,
+                        "from": to_attrib.bare(),
                         "to": jid.bare(),
                         "id": element.attrib.get("id", str(uuid4())),
                         "type": "subscribed",
@@ -115,9 +118,8 @@ class Presence(PresenceMixin):
                 )
             )
 
-        if contact_item.attrib.get("ask") == "subscribe":
-            return None
-        else:
+        new_item = contact_item
+        if "ask" not in contact_item.attrib:
             new_item = contact_item.__copy__()
             new_item.attrib["ask"] = "subscribe"
             await self._roster.update_contact(jid, contact_id, new_item)
@@ -127,16 +129,21 @@ class Presence(PresenceMixin):
                     "presence",
                     attrib={
                         "from": jid.bare(),
-                        "to": to_attrib,
+                        "to": to_attrib.bare(),
                         "id": element.attrib.get("id", str(uuid4())),
                         "type": "subscribe",
                     },
                 )
             )
-            for client in await self._connections.get_transport(to_attrib):
+            for client in await self._connections.get_transport(JID(to_attrib.bare())):
                 client.transport.write(petition)
 
-            return None
+        res = IQ(id_=element.attrib.get("id"), type_=IQ.TYPE.SET, to=jid.bare())
+        query = ET.SubElement(res, "{jabber:iq:roster}query")
+        query.append(new_item)
+
+        for client in await self._connections.get_transport(JID(jid.bare())):
+            client.transport.write(ET.tostring(res))
 
     async def _handle_subscribed(self, jid: JID, element: ET.Element):
         to_attrib = JID(element.attrib["to"]).bare()
@@ -182,14 +189,10 @@ class Presence(PresenceMixin):
             else:
                 new_item.attrib["subscription"] = "both"
 
-            await self._roster.update_contact(
-                JID(to_attrib), contact_id, ET.tostring(new_item)
-            )
+            await self._roster.update_contact(JID(to_attrib), contact_id, new_item)
             roster_push_receiver = new_item
 
-        roster_sender = await self._roster.search_and_create_contact(
-            JID(jid.bare()), to_attrib
-        )
+        roster_sender = await self._roster.search_and_create_contact(jid, to_attrib)
 
         contact_id, contact_item = roster_sender
         if contact_item.attrib.get("subscription") in ["none", "to"]:
@@ -199,17 +202,17 @@ class Presence(PresenceMixin):
             else:
                 new_item.attrib["subscription"] = "both"
 
-            await self._roster.update_contact(JID(jid.bare()), contact_id, new_item)
+            await self._roster.update_contact(jid, contact_id, new_item)
             roster_push_sender = new_item
 
-        if roster_push_receiver:
+        if roster_push_receiver is not None:
             for receiver in await self._connections.get_transport(JID(to_attrib)):
                 res = IQ(to=str(receiver.jid), type_=IQ.TYPE.SET)
                 query = ET.SubElement(res, "{jabber:iq:roster}query")
                 query.append(roster_push_receiver)
                 receiver.transport.write(ET.tostring(res))
 
-        if roster_push_sender:
+        if roster_push_sender is not None:
             for sender in await self._connections.get_transport(JID(jid.bare())):
                 res = IQ(to=str(sender.jid), type_=IQ.TYPE.SET)
                 query = ET.SubElement(res, "{jabber:iq:roster}query")
@@ -248,9 +251,7 @@ class Presence(PresenceMixin):
             else:
                 new_item.attrib["subscription"] = "none"
 
-            await self._roster.update_contact(
-                JID(to_attrib), contact_id, ET.tostring(new_item)
-            )
+            await self._roster.update_contact(JID(to_attrib), contact_id, new_item)
             roster_push_receiver = new_item
 
         roster_sender = await self._roster.search_and_create_contact(
@@ -269,15 +270,23 @@ class Presence(PresenceMixin):
             await self._roster.update_contact(JID(jid.bare()), contact_id, new_item)
             roster_push_sender = new_item
 
-        if roster_push_receiver:
-            for receiver in self._connections.get_transport(JID(to_attrib)):
+        if roster_push_receiver is not None:
+            clients_receiver = await self._connections.get_transport(JID(to_attrib))
+            if not isinstance(clients_receiver, list):
+                clients_receiver = [clients_receiver]
+
+            for receiver in clients_receiver:
                 res = IQ(to=str(receiver.jid), type_=IQ.TYPE.SET)
                 query = ET.SubElement(res, "{jabber:iq:roster}query")
                 query.append(roster_push_receiver)
                 receiver.transport.write(ET.tostring(res))
 
-        if roster_push_sender:
-            for sender in self._connections.get_transport(JID(jid.bare())):
+        if roster_push_sender is not None:
+            clients_sender = await self._connections.get_transport(JID(to_attrib))
+            if not isinstance(clients_sender, list):
+                clients_sender = [clients_sender]
+
+            for sender in clients_sender:
                 res = IQ(to=str(sender.jid), type_=IQ.TYPE.SET)
                 query = ET.SubElement(res, "{jabber:iq:roster}query")
                 query.append(roster_push_sender)
@@ -303,9 +312,7 @@ class Presence(PresenceMixin):
                 else:
                     new_item.attrib["subscription"] = "none"
 
-                await self._roster.update_contact(
-                    JID(to_attrib), contact_id, ET.tostring(new_item)
-                )
+                await self._roster.update_contact(JID(to_attrib), contact_id, new_item)
                 roster_push_receiver = new_item
 
         roster_sender = await self._roster.search_and_create_contact(
@@ -320,20 +327,26 @@ class Presence(PresenceMixin):
             else:
                 new_item.attrib["subscription"] = "none"
 
-            await self._roster.update_contact(
-                JID(jid.bare()), contact_id, ET.tostring(new_item)
-            )
+            await self._roster.update_contact(JID(jid.bare()), contact_id, new_item)
             roster_push_sender = new_item
 
-        if roster_push_receiver:
-            for receiver in await self._connections.get_transport(JID(to_attrib)):
+        if roster_push_receiver is not None:
+            clients_receiver = await self._connections.get_transport(JID(to_attrib))
+            if not isinstance(clients_receiver, list):
+                clients_receiver = [clients_receiver]
+
+            for receiver in clients_receiver:
                 res = IQ(to=str(receiver.jid), type_=IQ.TYPE.SET)
                 query = ET.SubElement(res, "{jabber:iq:roster}query")
                 query.append(roster_push_receiver)
                 receiver.transport.write(ET.tostring(res))
 
-        if roster_push_sender:
-            for sender in await self._connections.get_transport(JID(jid.bare())):
+        if roster_push_sender is not None:
+            clients_sender = await self._connections.get_transport(JID(to_attrib))
+            if not isinstance(clients_sender, list):
+                clients_sender = [clients_sender]
+
+            for sender in clients_sender:
                 res = IQ(to=str(sender.jid), type_=IQ.TYPE.SET)
                 query = ET.SubElement(res, "{jabber:iq:roster}query")
                 query.append(roster_push_sender)
@@ -371,11 +384,10 @@ class Presence(PresenceMixin):
 
         if type_presence is None or type_presence == PresenceType.AVAILABLE.value:
             if resource_presence_old:
-                presence_type = resource_presence_old.get("presence_type", None)
-                if presence_type:
-                    if presence_type == PresenceType.UNAVAILABLE.value:
-                        await self._connection_queue.put(NewConnectionWrapper(jid))
-                        await self._connections.online(jid)
+                old_presence_type = resource_presence_old.get("presence_type", None)
+                if old_presence_type and old_presence_type == PresenceType.UNAVAILABLE:
+                    await self._connection_queue.put(NewConnectionWrapper(jid))
+                    await self._connections.online(jid)
 
             await self._update_present_online(
                 jid,
@@ -461,7 +473,7 @@ class Presence(PresenceMixin):
 
                         contact_client.transport.write(ET.tostring(presence))
             else:
-                pass #TODO: Reroute presence to external server (S2S)
+                pass  # TODO: Reroute presence to external server (S2S)
 
         await self._initial_presence_broadcast(jid)
 
@@ -478,23 +490,25 @@ class Presence(PresenceMixin):
 
                 contact_jid = JID(item.attrib.get("jid"))
                 if contact_jid.domain not in AppConfig.app_config.domains:
-                    pass # TODO: manage remote server foreword
+                    pass  # TODO: manage remote server foreword
 
                 resources_online_list = await self._connections.get_transport_online(
                     JID(contact_jid.bare())
                 )
-                for client in resources_online_list:
-                    jid, transport, _ = client
-                    presence = ET.Element(
+
+                presence = ET.tostring(
+                    ET.Element(
                         "presence",
                         attrib={
                             "from": str(jid),
-                            "to": str(jid) ,
+                            "to": contact_jid.bare(),
                             "type": PresenceType.UNAVAILABLE.value,
                         },
                     )
-                    transport.write(ET.tostring(presence))
-
+                )
+                for client in resources_online_list:
+                    jid, transport, _ = client
+                    transport.write(presence)
 
     async def _handle_directed_presence(self, jid: JID, element: ET.Element):
         to = JID(element.attrib.get("to"))
@@ -505,7 +519,7 @@ class Presence(PresenceMixin):
             for client in await self._connections.get_transport_online(JID(to.bare())):
                 client.transport.write(ET.tostring(element))
         else:
-            pass # TODO: manage remote server foreword
+            pass  # TODO: manage remote server foreword
 
     async def _handle_unavailable(self, jid: JID, element: ET.Element):
         roster = await self._roster.roster_by_jid(jid)
@@ -525,11 +539,10 @@ class Presence(PresenceMixin):
                             attrib={
                                 "from": str(jid),
                                 "to": str(client.jid),
-                                "type": PresenceType.UNAVAILABLE.value
+                                "type": PresenceType.UNAVAILABLE.value,
                             },
                         )
                     )
                     client.transport.write(presence)
             else:
-                pass # TODO: manage remote server foreword
-
+                pass  # TODO: manage remote server foreword
