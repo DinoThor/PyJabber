@@ -1,131 +1,91 @@
-from asyncio import Transport
-from itertools import chain
-from typing import List, Optional, Tuple
+import asyncio
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
-from loguru import logger
-from sqlalchemy import and_, delete, insert, select, update
+import loguru
+from sqlalchemy import and_, delete
 
 from pyjabber import AppConfig
 from pyjabber.db.database import DB
 from pyjabber.db.model import Model
 from pyjabber.network.ConnectionManager import ConnectionManager
-from pyjabber.plugins.xep_0060.enum import (
+from pyjabber.plugins.xep_0060.types import (
     Affiliation,
     NodeAttrib,
     SubscribersAttrib,
     Subscription,
 )
 from pyjabber.plugins.xep_0060.error import ErrorType, error_response
+from pyjabber.plugins.xep_0060.PubSubMixin import PubSubMixin
 from pyjabber.plugins.xep_0060.utils import success_response
-from pyjabber.stanzas.error import StanzaError
+from pyjabber.plugins.xep_0060.types import Node, NodeItem, Subscriber
 from pyjabber.stanzas.Message import Message
 from pyjabber.stream.JID import JID
-from pyjabber.utils import ClarkNotation as CN
-from pyjabber.utils import Singleton
+
+ET.register_namespace("", "http://jabber.org/protocol/pubsub#event")
 
 
-class PubSub(metaclass=Singleton):
-    __slots__ = (
-        "_connections",
-        "_jid",
-        "_category",
-        "_var",
-        "_nodes",
-        "_subscribers",
-        "_operations",
-    )
+class PubSub(PubSubMixin):
+    _nodes: list[Node] = []
+    _subscribers: list[Subscriber] = []
+    _node_items: dict[str, list[NodeItem]] = {}  # Key: Node id
+
+    _pubsub_metadata = {}
+
+    _pubsub_item = None
+    _pubsub_jid = None
+    _pubsub_category = None
+    _pubsub_var = None
+
+    _operations = {
+        "subscribe": "subscribe",
+        "unsubscribe": "unsubscribe",
+        "subscriptions": "retrieve_subscriptions",
+        "items": "retrieve_items_node",
+        "publish": "publish",
+        # "retract": "retract",
+        "create": "create_node",
+        "configure": "configure_node",
+        "delete": "delete_node",
+        "purge": "purge_node",
+        "default": "get_default_node_config",
+    }
+
+    _lock = asyncio.Lock()
+
+    __slots__ = "_connections"
 
     def __init__(self):
-        super().__init__()
-
         self._connections = ConnectionManager()
-
-        pubsub_item = next((
-                (key, item)
-                for key, item in AppConfig.app_config.items.items()
-                if "pubsub" in key
-            ), None
-        )
-
-        self._jid = pubsub_item[0].replace("$", AppConfig.app_config.host)
-        self._category = pubsub_item[1]["category"]
-        self._var = pubsub_item[1]["var"]
-
-        self._nodes = None
-        self._subscribers = None
-
-        self._operations = {
-            "create": self.create_node,
-            "delete": self.delete_node,
-            "subscribe": self.subscribe,
-            "unsubscribe": self.unsubscribe,
-            "subscriptions": self.retrieve_subscriptions,
-            "items": self.retrieve_items_node,
-            "purge": self.purge,
-            "publish": self.publish,
-            "retract": self.retract,
-        }
 
     async def start(self):
         """
         Initialize the PubSub plugin.
         MUST BE CALLED right after its instantiation.
         """
-        await self.update_memory_from_database()
+        await self._update_memory_from_database()
 
-    async def update_memory_from_database(self):
-        async with await DB.connection_async() as con:
-            query = select(Model.Pubsub)
-            res = await con.execute(query)
-            self._nodes = res.fetchall()
+        self._pubsub_metadata["item"] = next(
+            (
+                (key, item)
+                for key, item in AppConfig.app_config.items.items()
+                if "pubsub" in key
+            ),
+            None,
+        )
 
-            query = select(Model.PubsubSubscribers)
-            res = await con.execute(query)
-            self._subscribers = res.fetchall()
+        self._pubsub_metadata["jid"] = self._pubsub_metadata["item"][0].replace(
+            "$", AppConfig.app_config.host
+        )
+        self._pubsub_metadata["category"] = self._pubsub_metadata["item"][1]["category"]
+        self._pubsub_metadata["var"] = self._pubsub_metadata["item"][1]["var"]
 
     async def feed(self, jid: JID, element: ET.Element):
         try:
-            _, tag = CN.break_down(element[0].tag)
-
-            if tag != "pubsub":
-                return StanzaError.invalid_xml()
-
-            _, operation = CN.break_down(element[0][0].tag)
-            return await self._operations[operation](element, jid)
-        except KeyError as e:
-            logger.error(f"Pubsub operation not supported: {e}")
-            return StanzaError.feature_not_implemented(
-                feature=str(e), namespace="{http://jabber.org/protocol/pubsub}pubsub"
-            )
-
-    def discover_items(self) -> List[tuple]:
-        """
-        Returns the available nodes at the level specified in the query
-        :return: A list of 3-tuples in the format (node, name, type)
-        """
-        return [
-            (
-                node[NodeAttrib.NODE.value],
-                node[NodeAttrib.NAME.value],
-                node[NodeAttrib.TYPE.value],
-            )
-            for node in self._nodes
-        ]
-
-    def discover_info(self, node: str) -> Optional[Tuple[str, str]]:
-        """
-        Return the info for a given node
-        :return: A 2-tuple in the format of (name, type)
-        """
-        match_node = next((k for k, v in self._nodes.items() if v[NodeAttrib.NODE.value] == node), None)
-        # match_node = [n for n in self._nodes if n[NodeAttrib.NODE.value] == node]
-        if match_node:
-            # match_node = match_node.pop()
-            return self._nodes[match_node][NodeAttrib.NAME.value], match_node[NodeAttrib.TYPE.value]
-
-        return None
+            operation_function = self._retrieve_operation(jid, element)
+            return await operation_function(element, jid)
+        except Exception as e:
+            loguru.logger.error("PUBSUB: ", e)
 
     async def create_node(self, element: ET.Element, jid: JID):
         """
@@ -142,27 +102,33 @@ class PubSub(metaclass=Singleton):
             return error_response(element, jid, ErrorType.NOT_ACCEPTABLE)
 
         # Node already exists
-        if [node for node in self._nodes if node[NodeAttrib.NODE.value] == new_node]:
-            return error_response(element, jid, ErrorType.CONFLICT)
+        async with self._lock:
+            match_node = next(
+                (node for node in self._nodes if node["node"] == new_node), None
+            )
+
+        if match_node:
+            if match_node["owner"] == jid.bare():
+                iq_res, pubsub = success_response(element)
+                ET.SubElement(pubsub, "create", attrib={"node": new_node})
+                return ET.tostring(iq_res)
+            else:
+                return error_response(element, jid, ErrorType.CONFLICT)
 
         if config:  # pragma: no cover
             pass  # TODO: create node with given configuration
 
-        item = {
+        item: Node = {
             "node": new_node,
-            "owner": jid.user,
+            "owner": jid.bare(),
             "name": None,
             "type": "leaf",
             "max_items": 1024,
         }
 
-        async with await DB.connection_async() as con:
-            query = insert(Model.Pubsub).values(item)
-            await con.execute(query)
-            if not AppConfig.app_config.database_in_memory:
-                await con.commit()
-
-        await self.update_memory_from_database()
+        insert_item = await self._insert_pubsub_node_database(item)
+        if insert_item:
+            await self._insert_pubsub_node_memory(insert_item)
 
         iq_res, pubsub = success_response(element)
         ET.SubElement(pubsub, "create", attrib={"node": new_node})
@@ -174,40 +140,31 @@ class PubSub(metaclass=Singleton):
         ONLY the owner has the permissions to delete.
         """
         pubsub = element.find("{http://jabber.org/protocol/pubsub#owner}pubsub")
-        delete_stanza = pubsub.find("{http://jabber.org/protocol/pubsub#owner}delete")
-        del_node = delete_stanza.attrib.get("node")
+        delete = pubsub.find("{http://jabber.org/protocol/pubsub#owner}delete")
+        delete_node = delete.attrib.get("node")
 
-        if not del_node:
+        if not delete_node:
             return error_response(element, jid, ErrorType.NOT_ACCEPTABLE)
 
-        node_match = [
-            node for node in self._nodes if node[NodeAttrib.NODE.value] == del_node
-        ]
-        if not node_match:
+        match_node = next(
+            (node for node in self._nodes if node["node"] == delete_node), None
+        )
+        if not match_node:
             return error_response(element, jid, ErrorType.ITEM_NOT_FOUND)
 
-        node_match = node_match.pop()
-        if node_match[NodeAttrib.OWNER.value] != jid.user:
+        if match_node["owner"] != jid.bare():
             return error_response(element, jid, ErrorType.FORBIDDEN)
 
-        async with await DB.connection_async() as con:
-            query = delete(Model.Pubsub).where(Model.Pubsub.c.node == del_node)
-            await con.execute(query)
-            if not AppConfig.app_config.database_in_memory:
-                await con.commit()
+        await self._delete_pubsub_database(match_node["node"])
+        await self._delete_pubsub_memory(match_node["node"])
 
-            query = delete(Model.PubsubItems).where(
-                Model.PubsubItems.c.node == del_node
-            )
-            await con.execute(query)
-            if not AppConfig.app_config.database_in_memory:
-                await con.commit()
-
-        await self.update_memory_from_database()
         iq_res, _ = success_response(element)
         return ET.tostring(iq_res)
 
     async def retrieve_items_node(self, element: ET.Element, jid: JID):
+        """
+        Retrieve all items for a specific node
+        """
         pubsub = element.find("{http://jabber.org/protocol/pubsub}pubsub")
         items = pubsub.find("{http://jabber.org/protocol/pubsub}items")
         node = items.attrib.get("node")
@@ -215,54 +172,36 @@ class PubSub(metaclass=Singleton):
         if node is None:
             return error_response(element, jid, ErrorType.NOT_ACCEPTABLE)
 
-        match_node = [
-            n[NodeAttrib.NODE.value]
-            for n in self._nodes
-            if n[NodeAttrib.NODE.value] == node
-        ]
+        match_node = next((node for node in self._nodes if node["node"] == node), None)
         if not match_node:
             return error_response(element, jid, ErrorType.ITEM_NOT_FOUND)
 
-        target_node: str = match_node.pop()
-        is_owner = any(
-            n[NodeAttrib.NODE.value] == target_node
-            and n[NodeAttrib.OWNER.value] == jid.user
-            for n in self._nodes
-        )
-
-        if not is_owner:
-            subscribed = any(
-                s[SubscribersAttrib.JID.value] == jid.user
-                and s[SubscribersAttrib.NODE.value] == target_node
-                and s[SubscribersAttrib.SUBSCRIPTION.value]
-                in [Affiliation.MEMBER, Affiliation.PUBLISHER]
+        if match_node["owner"] != jid.bare():
+            is_subscribed = any(
+                s["jid"] == jid.bare()
+                and s["subscription"] in [Affiliation.MEMBER, Affiliation.PUBLISHER]
                 for s in self._subscribers
             )
 
-            if not subscribed:
+            if is_subscribed is False:
                 return error_response(element, jid, ErrorType.FORBIDDEN)
 
-        async with await DB.connection_async() as con:
-            query = select(Model.PubsubItems).where(
-                Model.PubsubItems.c.node == target_node
-            )
-            res = await con.execute(query)
-            res = res.fetchall()
+        items_list = self._node_items.get(node, [])
 
         iq_res, pubsub_res = success_response(element)
         items_res = ET.SubElement(
             pubsub_res,
             "{http://jabber.org/protocol/pubsub}items",
-            attrib={"node": target_node},
+            attrib={"node": match_node["node"]},
         )
 
-        for i in res:
+        for i in items_list:
             item = ET.SubElement(
                 items_res,
                 "{http://jabber.org/protocol/pubsub}item",
-                attrib={"id": i[2]},
+                attrib={"id": i["item_id"]},
             )
-            item.append(ET.fromstring(i[3]))
+            item.append(ET.fromstring(i["payload"]))
 
         return ET.tostring(iq_res)
 
@@ -286,71 +225,62 @@ class PubSub(metaclass=Singleton):
         if jid_request.bare() != jid.bare():
             return error_response(element, jid, ErrorType.INVALID_JID)
 
-        try:
-            target_node = [n for n in self._nodes if n[NodeAttrib.NODE.value] == node][
-                0
-            ]
-        except IndexError:
+        target_node = next((n["node"] for n in self._nodes if n["node"] == node), None)
+        if target_node is None:
             return error_response(element, jid, ErrorType.ITEM_NOT_FOUND)
 
-        current_state = [
-            s
-            for s in self._subscribers
-            if s[SubscribersAttrib.JID.value] == jid_request.user
-            and s[SubscribersAttrib.NODE.value] == node
-        ]
-        if len(current_state) >= 1:
-            current_state = current_state.pop()
-            if current_state[SubscribersAttrib.SUBSCRIPTION.value] in [
+        current_state_item = next(
+            (
+                s
+                for s in self._subscribers
+                if s["jid"] == jid_request.bare() and s["node"] == target_node
+            ),
+            None,
+        )
+
+        if current_state_item:
+            if current_state_item["subscription"] in [
                 Subscription.SUBSCRIBED.value,
                 Subscription.UNCONFIGURED.value,
             ]:
                 iq_res, pubsub = success_response(element)
-                subid = current_state[SubscribersAttrib.SUBID.value]
                 ET.SubElement(
                     pubsub,
                     "subscription",
                     attrib={
-                        "node": target_node[NodeAttrib.NODE.value],
+                        "node": target_node,
                         "jid": jid_request.bare(),
-                        "subid": subid,
-                        "subscription": "subscribed",
+                        "subid": current_state_item["subid"],
+                        "subscription": Subscription.SUBSCRIBED.value,
                     },
                 )
                 return ET.tostring(iq_res)
 
-            elif (
-                current_state[SubscribersAttrib.SUBSCRIPTION.value]
-                == Subscription.PENDING.value
-            ):
+            elif current_state_item["subscription"] == Subscription.PENDING.value:
                 return error_response(element, jid, ErrorType.PENDING_SUBSCRIPTION)
 
-        subid = str(uuid4())
+        new_subid = str(uuid4())
 
-        item = {
-            "node": target_node[NodeAttrib.NODE.value],
-            "jid": jid_request.user,
-            "subid": subid,
+        new_item: Subscriber = {
+            "node": target_node,
+            "jid": jid_request.bare(),
+            "subid": new_subid,
             "subscription": Subscription.SUBSCRIBED.value,
-            "affiliation": Affiliation.PUBLISHER,
+            "affiliation": Affiliation.MEMBER,
         }
 
-        async with await DB.connection_async() as con:
-            query = insert(Model.PubsubSubscribers).values(item)
-            await con.execute(query)
-            if not AppConfig.app_config.database_in_memory:
-                await con.commit()
-
-        await self.update_memory_from_database()
+        subscriber_item = await self._insert_pubsub_sub_database(new_item)
+        if subscriber_item:
+            await self._insert_pubsub_sub_memory(subscriber_item)
 
         iq_res, pubsub = success_response(element)
         ET.SubElement(
             pubsub,
             "subscription",
             attrib={
-                "node": target_node[NodeAttrib.NODE.value],
+                "node": target_node,
                 "jid": jid_request.bare(),
-                "subid": subid,
+                "subid": new_subid,
                 "subscription": "subscribed",
             },
         )
@@ -364,7 +294,6 @@ class PubSub(metaclass=Singleton):
         unsubscribe = pubsub.find("{http://jabber.org/protocol/pubsub}unsubscribe")
         node = unsubscribe.attrib.get("node")
         jid_request = unsubscribe.attrib.get("jid")
-        subid = None
 
         if node is None:
             return error_response(element, jid, ErrorType.NOT_ACCEPTABLE)
@@ -376,111 +305,57 @@ class PubSub(metaclass=Singleton):
         if jid_request.bare() != jid.bare():
             return error_response(element, jid, ErrorType.INVALID_JID)
 
-        target_node = [n for n in self._nodes if n[NodeAttrib.NODE.value] == node]
+        target_node = next((n["node"] for n in self._nodes if n["node"] == node), None)
         if not target_node:
             return error_response(element, jid, ErrorType.ITEM_NOT_FOUND)
-        target_node = target_node.pop()
 
-        number_subscriptions = sum(
-            s[SubscribersAttrib.JID.value] == jid_request.user
-            for s in self._subscribers
+        current_subscription = next(
+            (s for s in self._subscribers if s["jid"] == jid_request.bare()), None
         )
 
-        if number_subscriptions == 0:
+        if current_subscription is None:
             return error_response(element, jid, ErrorType.NOT_SUBSCRIBED)
 
-        if number_subscriptions > 1:
-            subid = unsubscribe.attrib.get("subid")
-            if subid is None:
-                return error_response(element, jid, ErrorType.SUBID_REQUIRED)
-
-            if not any(
-                s[SubscribersAttrib.SUBID.value] == subid for s in self._subscribers
-            ):
-                return error_response(element, jid, ErrorType.INVALID_SUBID)
-
-            query = delete(Model.PubsubSubscribers).where(
-                and_(
-                    Model.PubsubSubscribers.c.node
-                    == target_node[NodeAttrib.NODE.value],
-                    Model.PubsubSubscribers.c.jid == jid_request.user,
-                    Model.PubsubSubscribers.c.subid == subid,
-                )
-            )
-
         else:
-            query = delete(Model.PubsubSubscribers).where(
-                and_(
-                    Model.PubsubSubscribers.c.node
-                    == target_node[NodeAttrib.NODE.value],
-                    Model.PubsubSubscribers.c.jid == jid_request.user,
-                )
+            sub_item = await self._delete_pubsub_sub_memory(
+                current_subscription["subid"]
             )
-
-        async with await DB.connection_async() as con:
-            await con.execute(query)
-            if not AppConfig.app_config.database_in_memory:
-                await con.commit()
-
-        self.update_memory_from_database()
+            if sub_item:
+                await self._delete_pubsub_sub_database(sub_item)
 
         iq_res, pubsub = success_response(element)
-        sub = ET.SubElement(
+        ET.SubElement(
             pubsub,
             "subscription",
             attrib={
-                "node": target_node[NodeAttrib.NODE.value],
+                "node": target_node,
                 "jid": jid_request.bare(),
                 "subscription": "none",
             },
         )
-        if subid:
-            sub.attrib["subid"] = subid
+
         return ET.tostring(iq_res)
 
-    @staticmethod
-    async def retrieve_subscriptions(element: ET.Element, jid: JID):
-        pubsub = element.find("{http://jabber.org/protocol/pubsub}pubsub")
-        subscriptions = pubsub.find("{http://jabber.org/protocol/pubsub}subscriptions")
-        target_node = subscriptions.attrib.get("node")
-        from_stanza = element.attrib.get("from")
+    async def retrieve_subscriptions(self, element: ET.Element, jid: JID):
+        pubsub = element.find("{http://jabber.org/protocol/pubsub#owner}pubsub")
+        subscriptions = pubsub.find(
+            "{http://jabber.org/protocol/pubsub#owner}subscriptions"
+        )
+        target_node = subscriptions.attrib.get("node", None)
 
-        if from_stanza is not None and JID(from_stanza).user != jid.user:
-            return error_response(element, jid, ErrorType.FORBIDDEN)
+        # subscriptions = await self._get_pubsub_sub_memory(jid, target_node)
 
         iq_res, pubsub = success_response(element)
         subscriptions_res = ET.SubElement(
             pubsub, "{http://jabber.org/protocol/pubsub}subscriptions"
         )
 
-        if target_node is not None and target_node != "":
-            query = select(
-                Model.PubsubSubscribers.c.node,
-                Model.PubsubSubscribers.c.subscription,
-                Model.PubsubSubscribers.c.subid,
-            ).where(
-                and_(
-                    Model.PubsubSubscribers.c.jid == str(jid.user),
-                    Model.PubsubSubscribers.c.node == target_node,
-                )
-            )
-        else:
-            query = select(
-                Model.PubsubSubscribers.c.node,
-                Model.PubsubSubscribers.c.subscription,
-                Model.PubsubSubscribers.c.subid,
-            ).where(Model.PubsubSubscribers.c.jid == str(jid.user))
-
-        async with await DB.connection_async() as con:
-            res = await con.execute(query)
-            res = res.fetchall()
-
-        for sub in res:
+        for sub in subscriptions:
             ET.SubElement(
                 subscriptions_res,
                 "{http://jabber.org/protocol/pubsub}subscription",
                 attrib={
-                    "node": sub[0],
+                    # "node": sub[0],
                     "jid": jid.bare(),
                     "subscription": sub[1],
                     "subid": sub[2],
@@ -576,83 +451,70 @@ class PubSub(metaclass=Singleton):
         item_id, payload = None, None
 
         if item is not None:
-            item_id = item.attrib.get("id")
-            payload = item[0]
+            item_id = item.attrib.get("id", None)
+            if len(item) > 0:
+                payload = item[0]
 
-        node = publish.attrib.get("node")
+        node = publish.attrib.get("node", None)
+        if node is None:
+            return error_response(element, jid, ErrorType.NODEID_REQUIRED)
 
-        target_node = [n for n in self._nodes if n[NodeAttrib.NODE.value] == node]
-        if len(target_node) == 0:
+        target_node = next((n for n in self._nodes if n["node"] == node), None)
+        if target_node is None:
             return error_response(element, jid, ErrorType.ITEM_NOT_FOUND)
 
-        current_sub = [
-            s
-            for s in self._subscribers
-            if s[SubscribersAttrib.AFFILIATION.value] == jid.user
-        ]
-        if jid.user != target_node[0][NodeAttrib.OWNER.value] or (
-            current_sub
-            and current_sub[0][SubscribersAttrib.AFFILIATION.value]
-            != Affiliation.PUBLISHER
-        ):
-            return error_response(element, jid, ErrorType.FORBIDDEN)
+        current_sub = next(
+            (
+                s
+                for s in self._subscribers
+                if s["node"] == node and s["jid"] == jid.bare()
+            ),
+            None,
+        )
+
+        if current_sub is None or current_sub["affiliation"] != Affiliation.PUBLISHER:
+            if target_node["owner"] != jid.bare():
+                return error_response(element, jid, ErrorType.FORBIDDEN)
 
         if payload is not None:
-            async with await DB.connection_async() as con:
-                if item_id is not None:
-                    query = select(Model.PubsubItems.c.item_id).where(
-                        and_(
-                            Model.PubsubItems.c.item_id == item_id,
-                            Model.PubsubItems.c.node == node,
-                        )
-                    )
-                    res = await con.execute(query)
-                    res = res.fetchone
+            if item_id is not None:
+                previous_item = next(
+                    (i for i in self._node_items[node] if i["item_id"] == item_id), None
+                )
+                if previous_item:
+                    previous_item["publisher"] = jid.bare()
+                    if payload:
+                        previous_item["payload"] = ET.tostring(payload)
 
-                    if res:
-                        query = (
-                            update(Model.PubsubItems)
-                            .where(
-                                and_(
-                                    Model.PubsubItems.c.node
-                                    == target_node[NodeAttrib.NODE.value],
-                                    Model.PubsubItems.c.item_id == item_id,
-                                )
-                            )
-                            .values(payload=item_id)
-                        )
-
-                    else:
-                        query = insert(Model.PubsubItems).values(
-                            {
-                                "node": target_node[0][NodeAttrib.NODE.value],
-                                "publisher": jid.bare(),
-                                "item_id": item_id,
-                                "payload": ET.tostring(payload),
-                            }
-                        )
-
-                    await con.execute(query)
-                    if not AppConfig.app_config.database_in_memory:
-                        await con.commit()
+                    new_item = await self._update_pubsub_item_memory(previous_item)
+                    if new_item:
+                        await self._insert_pubsub_item_database(new_item)
 
                 else:
-                    item_id = str(uuid4())
-                    query = insert(Model.PubsubItems).values(
-                        {
-                            "node": target_node[0][NodeAttrib.NODE.value],
-                            "publisher": jid.bare(),
-                            "item_id": item_id,
-                            "payload": ET.tostring(payload),
-                        }
-                    )
-                    await con.execute(query)
-                    if not AppConfig.app_config.database_in_memory:
-                        await con.commit()
+                    new_item: NodeItem = {
+                        "node": target_node["node"],
+                        "publisher": jid.bare(),
+                        "item_id": item_id,
+                        "payload": ET.tostring(payload),
+                    }
+                    res_item = await self._insert_pubsub_item_database(new_item)
+                    if res_item:
+                        await self._insert_pubsub_item_database(res_item)
 
-        self.send_notification(
-            node=target_node[0][NodeAttrib.NODE.value], payload=payload
-        )
+            else:
+                new_item_id = str(uuid4())
+
+                new_item: NodeItem = {
+                    "node": target_node["node"],
+                    "publisher": jid.bare(),
+                    "item_id": new_item_id,
+                    "payload": ET.tostring(payload),
+                }
+                res_item = await self._insert_pubsub_item_database(new_item)
+                if res_item:
+                    await self._insert_pubsub_item_memory(res_item)
+
+        await self.send_notification(new_item)
 
         iq_res, pubsub = success_response(element)
         publish = ET.SubElement(pubsub, "publish", attrib={"node": node})
@@ -660,55 +522,38 @@ class PubSub(metaclass=Singleton):
             ET.SubElement(publish, "item", attrib={"id": item_id})
         return ET.tostring(iq_res)
 
-    def send_notification(
-        self,
-        node: str,
-        payload: Optional[ET.Element],
-        item_id: Optional[str] = None,
-        retract: bool = False,
-    ):
-        receivers = [
-            s
-            for s in self._subscribers
-            if s[SubscribersAttrib.NODE.value] == node
-            and s[SubscribersAttrib.AFFILIATION.value]
-            in [Affiliation.MEMBER, Affiliation.PUBLISHER, Affiliation.OWNER]
-        ]
-
-        receivers_jid = [r[1] for r in receivers]
-        receivers_buffer = [
-            self._connections.get_transport(
-                JID(user=r, domain=AppConfig.app_config.host)
-            )
-            for r in receivers_jid
-        ]
-        receivers_buffer_single_iterator: List[Tuple[JID, Transport]] = list(
-            chain.from_iterable(receivers_buffer)
-        )
+    async def send_notification(self, item: NodeItem, retract: bool = False):
+        async with self._lock:
+            receivers_bare_jid = [
+                receiver
+                for receiver in self._subscribers
+                if receiver["node"] == item["node"]
+                and receiver["affiliation"]
+                in [Affiliation.MEMBER, Affiliation.PUBLISHER, Affiliation.OWNER]
+            ]
 
         event = ET.Element(
             "event", attrib={"xmlns": "http://jabber.org/protocol/pubsub#event"}
         )
-        items = ET.SubElement(event, "items", attrib={"node": node})
+        items = ET.SubElement(event, "items", attrib={"node": item["node"]})
 
         if retract:
             retract = ET.SubElement(items, "retract")
-            if item_id:
-                retract.attrib["id"] = item_id
+            retract.attrib["id"] = item["item_id"]
 
         else:
-            item = ET.SubElement(items, "item")
-            if item_id:
-                item.attrib["id"] = item_id
-            if payload is not None:
-                item.append(payload)
+            item_notification = ET.SubElement(items, "item")
+            item_notification.attrib["id"] = item["item_id"]
+            if item["payload"] is not None:
+                item_notification.append(ET.fromstring(item["payload"]))
 
-        for jid, buffer, _ in receivers_buffer_single_iterator:
-            message = Message(
-                mto=jid.bare(),
-                mfrom=AppConfig.app_config.host,
-                id=str(uuid4()),
-                mtype=None,
-                body=event,
-            )
-            buffer.write(ET.tostring(message))
+        for receiver in receivers_bare_jid:
+            for client in await self._connections.get_transport(JID(receiver["jid"])):
+                message = Message(
+                    mto=client.jid.bare(),
+                    mfrom=self._pubsub_metadata["jid"],
+                    id=str(uuid4()),
+                    mtype=None,
+                    body=event,
+                )
+                client.transport.write(ET.tostring(message))

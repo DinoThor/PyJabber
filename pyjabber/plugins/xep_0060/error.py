@@ -9,6 +9,7 @@ from pyjabber.stream.JID import JID
 class ErrorType(Enum):
     INVALID_JID = "<error type='modify'><bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/><invalid-jid xmlns='http://jabber.org/protocol/pubsub#errors'/></error>"
     CONFLICT = "<error type='auth'><conflict xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>"
+    MORE_THAT_ONE_OP = "<error type='modify'><bad-request xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/><text xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'>You can only send one main PubSub operation for each IQ reques.</text></error>"
     NOT_ACCEPTABLE = "<error type='auth'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/><nodeid-required xmlns='http://jabber.org/protocol/pubsub#errors'/></error>"
     ITEM_NOT_FOUND = "<error type='cancel'><item-not-found xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>"
     FORBIDDEN = "<error type='auth'><forbidden xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>"
