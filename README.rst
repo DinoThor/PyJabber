@@ -1,3 +1,6 @@
+.. meta::
+   :canonical: https://github.com/DinoThor/PyJabber
+
 ===================================
 PyJabber: The Python XMPP Server
 ===================================
